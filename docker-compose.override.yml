@@ -1,0 +1,29 @@
+# docker-compose.override.yml — aplicado automaticamente em desenvolvimento
+# Sobrescreve o docker-compose.yml com configurações de dev
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    volumes:
+      - ./backend:/app          # Hot-reload: código local montado no container
+      - /app/staticfiles        # Exclui staticfiles do bind mount
+      - /app/mediafiles         # Exclui mediafiles do bind mount
+    ports:
+      - "8000:8000"             # Acesso direto ao Django sem passar pelo Nginx
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    ports:
+      - "5433:5432"             # Acesso direto ao banco (5433 no host → 5432 no container)
+
+  nginx:
+    profiles:
+      - production              # Nginx não sobe em dev por padrão

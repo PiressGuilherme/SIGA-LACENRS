@@ -32,21 +32,36 @@ Este documento descreve o plano completo para o desenvolvimento do SIGA-LACEN (S
 ### Modelo de Dados
 
 #### Amostra
-| Campo | Tipo | Descrição |
-| :--- | :--- | :--- |
-| `numero_gal` | CharField (único) | Identificador do paciente no GAL — anonimizado, sem dado nominativo |
-| `codigo_interno` | CharField (único) | Código do laboratório no formato `N/AA` (ex: `1/26` = amostra 1 do ano 2026) |
-| `data_coleta` | DateField | Do CSV do GAL |
-| `data_recebimento` | DateField | Data de chegada ao LACEN |
-| `sexo` | CharField | Dado clínico (a confirmar com CSV real do GAL) |
-| `idade` | IntegerField | Dado clínico |
-| `municipio` | CharField | Origem da amostra |
-| `cid` | CharField | Classificação clínica |
-| `status` | CharField (enum) | Ver Fluxo de Status |
-| `criado_em` | DateTimeField | Auto |
-| `atualizado_em` | DateTimeField | Auto |
+Mapeamento direto do CSV exportado pelo GAL (separador `;`, encoding Latin-1).
 
-> **Nota de privacidade (LGPD):** Nenhum campo nominativo (nome, CPF, data de nascimento) é armazenado. O `numero_gal` é o único vínculo ao paciente. Campos exatos a confirmar quando o CSV real do GAL estiver disponível.
+| Campo | Coluna CSV | Tipo | Descrição |
+| :--- | :--- | :--- | :--- |
+| `cod_exame_gal` | `Cód. Exame` | CharField (único) | Identificador único do exame no GAL |
+| `numero_gal` | `Requisição` | CharField | Número da requisição do paciente no GAL — 1 por paciente |
+| `cod_amostra_gal` | `Cód. Amostra` | CharField | Código da amostra física no GAL |
+| `codigo_interno` | `Num.Interno` | CharField (único, nullable) | Código LACEN no formato `N/AA` (ex: `1/26`). Importado do CSV quando disponível; preenchido manualmente quando ausente |
+| `nome_paciente` | `Paciente` | CharField | Nome completo do paciente |
+| `nome_social` | `Nome Social` | CharField | Nome social (opcional) |
+| `cns` | `CNS` | CharField | Cartão Nacional de Saúde |
+| `cpf` | `CPF` | CharField | CPF do paciente |
+| `municipio` | `Mun. Residência` | CharField | Município de residência |
+| `uf` | `UF Residência` | CharField | Unidade Federativa |
+| `unidade_solicitante` | `Requisitante` | CharField | UBS / unidade que solicitou o exame |
+| `municipio_solicitante` | `Mun. Requisitante` | CharField | Município da unidade solicitante |
+| `material` | `Material` | CharField | Tipo de material (ex: Secreção endocervical, Swab) |
+| `data_coleta` | `Dt. Cadastro` | DateTimeField | Data de cadastro/coleta no GAL |
+| `data_recebimento` | `Dt. Recebimento` | DateTimeField | Data de recebimento no LACEN (nullable — ausente em amostras ainda não recebidas) |
+| `status` | — | CharField (enum) | Fluxo interno do LACEN — ver Fluxo de Status |
+| `criado_em` | — | DateTimeField | Auto |
+| `atualizado_em` | — | DateTimeField | Auto |
+
+> **Ciclo de vida da Amostra:**
+> - Uma **Requisição GAL** corresponde a **um paciente**. No LACEN, cada importação cria uma **Amostra mãe**.
+> - A Amostra mãe é **aliquotada uma única vez** → status: `Aliquotada`.
+> - Em caso de **reteste**, a **mesma alíquota** é reutilizada (não há nova aliquotagem).
+> - Em um novo ciclo anual, o paciente aparece com uma **nova Requisição GAL** → nova Amostra mãe → nova alíquota.
+>
+> **Dados nominativos:** O sistema armazena nome, CPF e CNS para uso interno autorizado. O acesso é controlado por perfil de usuário.
 
 #### Placa
 | Campo | Tipo | Descrição |
@@ -179,14 +194,14 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * Configurar Nginx com HTTPS (mkcert) na LAN dentro do ambiente Docker.
 * Instalar certificado CA mkcert nos browsers dos clientes Windows.
 
-#### Fase 2 - Módulo de Registro Inteligente (2 semanas)
-> **Pré-requisito:** Obter exemplo real do CSV do GAL para confirmar campos exatos do model `Amostra`.
-
-* Criar Models Django conforme o Modelo de Dados descrito acima.
-* Gerar e aplicar migrations.
-* Desenvolver fluxo de upload de CSV com tela de **pré-visualização (Preview)** — validação de duplicidade (`numero_gal`) e formatação.
-* Endpoint `POST /api/amostras/importar-csv/` com DRF.
-* Configurar Django Admin para gestão base das amostras.
+#### Fase 2 - Módulo de Registro Inteligente (2 semanas) ✅ Em andamento
+* ✅ Model `Amostra` atualizado com todos os campos do CSV GAL (nome, CPF, CNS, datas como DateTimeField, etc.)
+* ✅ `utils.py` com parser do CSV GAL (encoding Latin-1, separador `;`, mapeamento de colunas, parse de datas)
+* ✅ Endpoints DRF implementados:
+  * `POST /api/amostras/preview-csv/` — parse sem salvar; retorna preview com `_status_importacao` (novo/duplicado) por linha
+  * `POST /api/amostras/importar-csv/` — importação real; ignora duplicatas por `cod_exame_gal`; retorna resumo
+* ✅ Django Admin configurado (busca por nome, CPF, CNS, GAL; filtros por status, UF, município; badges coloridos)
+* ⏳ Migrations a regenerar (ver instruções de setup)
 
 #### Fase 3 - Extração/PCR e espelho de placa (3-4 semanas)
 * Integrar `django-vite` ao projeto para servir os componentes frontend.
@@ -235,6 +250,7 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 | :--- | :--- | :--- | :--- |
 | Login / obter token | POST | /api/token/ | todos |
 | Renovar token | POST | /api/token/refresh/ | todos |
+| Preview CSV de amostras | POST | /api/amostras/preview-csv/ | extracao / supervisor |
 | Importar CSV de amostras | POST | /api/amostras/importar-csv/ | extracao / supervisor |
 | Listar amostras | GET | /api/amostras/ | todos |
 | Editar amostra | PATCH | /api/amostras/{id}/ | supervisor |
@@ -248,10 +264,10 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 
 ### Pendências Técnicas (Bloqueadores de Fase)
 
-| Pendência | Bloqueia | Ação necessária |
+| Pendência | Bloqueia | Status |
 | :--- | :--- | :--- |
-| CSV real do GAL | Início da Fase 2 | Obter arquivo de exemplo do sistema GAL para confirmar campos exatos |
-| Critérios IBMP Biomol | Início da Fase 4 | Levantar cutoffs de Cq para CI, HPV16, HPV18 e HPV AR na bula/manual do kit |
+| ~~CSV real do GAL~~ | ~~Início da Fase 2~~ | ✅ Resolvido — formato confirmado, modelo e parser implementados |
+| Critérios IBMP Biomol | Início da Fase 4 | ⏳ Pendente — levantar cutoffs de Cq para CI, HPV16, HPV18 e HPV AR na bula/manual do kit |
 
 ---
 
@@ -263,8 +279,8 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 #### Acesso web sem instalação e Importação Segura
 * Nenhum software precisa ser instalado nos clientes Windows. O gargalo de importação do GAL é mitigado por uma validação estrita em tela (preview), protegendo o banco de dados contra inconsistências na entrada.
 
-#### Anonimização e Conformidade (LGPD)
-* Nenhum dado nominativo (nome, CPF, data de nascimento) é armazenado. O `numero_gal` é o único vínculo ao paciente, mantido no sistema GAL externo. Dados clínicos não-nominativos (sexo, idade, município, CID) podem ser armazenados para fins de vigilância epidemiológica.
+#### Dados Nominativos e Controle de Acesso
+* Nome, CPF e CNS dos pacientes são armazenados para uso interno autorizado. O acesso é restrito por perfil (`supervisor` para edição manual; `extracao`/`pcr` apenas para consulta no contexto do fluxo). Dados geográficos e clínicos (município, material) apoiam a vigilância epidemiológica.
 
 #### Rastreabilidade completa e Imutabilidade
 * Resultados liberados nunca são sobrescritos (`imutavel=True`). Alterações geram histórico no `audit_log`.

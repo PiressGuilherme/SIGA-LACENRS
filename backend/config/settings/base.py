@@ -33,6 +33,7 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'auditlog',
+    'django_vite',
 ]
 
 LOCAL_APPS = [
@@ -125,9 +126,24 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles'
+
+# ---------------------------------------------------------------------------
+# Django Vite
+# ---------------------------------------------------------------------------
+
+DJANGO_VITE = {
+    'default': {
+        'dev_mode': False,  # sobrescrito em development.py
+        'dev_server_host': 'localhost',
+        'dev_server_port': 5173,
+        'manifest_path': BASE_DIR / 'staticfiles' / 'vite' / '.vite' / 'manifest.json',
+        'static_url_prefix': 'vite',
+    }
+}
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
@@ -136,6 +152,7 @@ MEDIA_ROOT = BASE_DIR / 'mediafiles'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

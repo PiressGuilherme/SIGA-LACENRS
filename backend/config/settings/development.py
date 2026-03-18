@@ -18,3 +18,6 @@ MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']  # noqa: F405
 INTERNAL_IPS = ['127.0.0.1']
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Vite dev server ativo no desenvolvimento
+DJANGO_VITE['default']['dev_mode'] = True  # noqa: F405

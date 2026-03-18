@@ -24,6 +24,16 @@ services:
     ports:
       - "5433:5432"             # Acesso direto ao banco (5433 no host → 5432 no container)
 
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    # Instala dependências caso node_modules não exista e sobe o dev server
+    command: sh -c "npm install --prefer-offline 2>/dev/null; npm run dev"
+    ports:
+      - "5173:5173"             # Vite HMR acessível no host
+
   nginx:
     profiles:
       - production              # Nginx não sobe em dev por padrão

@@ -7,6 +7,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from apps.amostras.urls import page_urlpatterns as amostras_pages
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -14,15 +16,16 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # Apps
+    # Apps — API REST
     path('api/amostras/', include('apps.amostras.urls')),
     path('api/placas/', include('apps.placas.urls')),
     path('api/resultados/', include('apps.resultados.urls')),
+
+    # Apps — Páginas web (Django Templates + React)
+    *amostras_pages,
 ]
 
 if settings.DEBUG:
     import debug_toolbar
-    urlpatterns = [
-        path('__debug__/', include(debug_toolbar.urls)),
-    ] + urlpatterns
+    urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

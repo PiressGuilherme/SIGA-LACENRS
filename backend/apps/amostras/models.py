@@ -12,51 +12,86 @@ class StatusAmostra(models.TextChoices):
     REPETICAO_SOLICITADA = 'repeticao_solicitada', 'Repetição Solicitada'
 
 
-class SexoChoices(models.TextChoices):
-    MASCULINO = 'M', 'Masculino'
-    FEMININO = 'F', 'Feminino'
-    INDETERMINADO = 'I', 'Indeterminado'
-
-
 class Amostra(models.Model):
     """
     Representa uma amostra de paciente recebida para análise de HPV.
 
-    Identificadores:
-      - numero_gal     : código único do sistema GAL (vínculo anônimo ao paciente)
-      - codigo_interno : código do laboratório no formato N/AA (ex: 1/26)
+    Identificadores do GAL:
+      - cod_exame_gal   : código único do exame no GAL (coluna "Cód. Exame")
+      - numero_gal      : número da requisição do paciente no GAL (coluna "Requisição")
+      - cod_amostra_gal : código da amostra física no GAL (coluna "Cód. Amostra")
+      - codigo_interno  : rastreamento interno LACEN no formato N/AA
+                          (ex: 1/26 = 1ª amostra do ano 2026). Importado do CSV
+                          quando disponível (coluna "Num.Interno"); preenchido
+                          manualmente quando ausente.
 
-    Uma amostra pode participar de múltiplas placas ao longo do tempo (retestes).
-    O resultado ativo é sempre o último ResultadoAmostra com imutavel=True.
+    Ciclo de vida:
+      - Uma Requisição GAL corresponde a UM paciente.
+      - No LACEN, cada importação cria uma Amostra mãe (status: Recebida).
+      - A Amostra mãe é aliquotada UMA VEZ → status: Aliquotada.
+      - Em reteste, a MESMA alíquota é reutilizada (não há nova aliquotagem).
+      - Novo ciclo anual → nova Requisição GAL → nova Amostra mãe → nova alíquota.
     """
 
-    # Identificadores
+    # ------------------------------------------------------------------
+    # Identificadores GAL
+    # ------------------------------------------------------------------
+    cod_exame_gal = models.CharField(
+        max_length=20, unique=True, db_index=True,
+        verbose_name='Cód. Exame GAL',
+        help_text='Identificador único do exame no GAL (coluna "Cód. Exame").',
+    )
     numero_gal = models.CharField(
-        max_length=50, unique=True, verbose_name='Número GAL',
-        help_text='Identificador único do sistema GAL — anonimizado.',
+        max_length=30, db_index=True,
+        verbose_name='Número GAL (Requisição)',
+        help_text='Número da requisição do paciente no GAL.',
+    )
+    cod_amostra_gal = models.CharField(
+        max_length=20, blank=True,
+        verbose_name='Cód. Amostra GAL',
+        help_text='Código da amostra física no GAL (coluna "Cód. Amostra").',
     )
     codigo_interno = models.CharField(
-        max_length=20, unique=True, verbose_name='Código interno',
-        help_text='Formato N/AA (ex: 1/26 = 1ª amostra do ano 2026).',
+        max_length=20, unique=True, null=True, blank=True,
+        verbose_name='Código interno',
+        help_text='Formato N/AA atribuído pelo LACEN (ex: 1/26). '
+                  'Importado do GAL quando disponível; preenchido manualmente caso ausente.',
     )
 
-    # Datas
-    data_coleta = models.DateField(
-        null=True, blank=True, verbose_name='Data de coleta',
-        help_text='Preenchida a partir do CSV do GAL.',
-    )
-    data_recebimento = models.DateField(verbose_name='Data de recebimento')
+    # ------------------------------------------------------------------
+    # Dados do paciente
+    # ------------------------------------------------------------------
+    nome_paciente = models.CharField(max_length=200, verbose_name='Paciente')
+    nome_social = models.CharField(max_length=200, blank=True, verbose_name='Nome Social')
+    cns = models.CharField(max_length=25, blank=True, verbose_name='CNS')
+    cpf = models.CharField(max_length=14, blank=True, verbose_name='CPF')
 
-    # Dados clínicos (sem dado nominativo — conformidade LGPD)
-    sexo = models.CharField(
-        max_length=1, choices=SexoChoices.choices,
-        null=True, blank=True, verbose_name='Sexo',
-    )
-    idade = models.PositiveIntegerField(null=True, blank=True, verbose_name='Idade')
-    municipio = models.CharField(max_length=100, blank=True, verbose_name='Município')
-    cid = models.CharField(max_length=20, blank=True, verbose_name='CID')
+    # ------------------------------------------------------------------
+    # Dados geográficos / solicitação
+    # ------------------------------------------------------------------
+    municipio = models.CharField(max_length=100, blank=True, verbose_name='Município de Residência')
+    uf = models.CharField(max_length=2, blank=True, verbose_name='UF')
+    unidade_solicitante = models.CharField(max_length=200, blank=True, verbose_name='Unidade Solicitante')
+    municipio_solicitante = models.CharField(max_length=100, blank=True, verbose_name='Município Solicitante')
+    material = models.CharField(max_length=100, blank=True, verbose_name='Material')
 
-    # Fluxo
+    # ------------------------------------------------------------------
+    # Datas (vêm do CSV GAL; podem estar ausentes para amostras não recebidas)
+    # ------------------------------------------------------------------
+    data_coleta = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name='Data de Cadastro/Coleta (GAL)',
+        help_text='Coluna "Dt. Cadastro" do CSV GAL.',
+    )
+    data_recebimento = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name='Data de Recebimento',
+        help_text='Coluna "Dt. Recebimento" do CSV GAL.',
+    )
+
+    # ------------------------------------------------------------------
+    # Fluxo interno
+    # ------------------------------------------------------------------
     status = models.CharField(
         max_length=30,
         choices=StatusAmostra.choices,
@@ -66,7 +101,9 @@ class Amostra(models.Model):
     )
     observacoes = models.TextField(blank=True, verbose_name='Observações')
 
+    # ------------------------------------------------------------------
     # Auditoria
+    # ------------------------------------------------------------------
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True,
@@ -82,11 +119,13 @@ class Amostra(models.Model):
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['numero_gal']),
+            models.Index(fields=['cod_exame_gal']),
             models.Index(fields=['codigo_interno']),
         ]
 
     def __str__(self):
-        return f'{self.codigo_interno} (GAL: {self.numero_gal})'
+        codigo = self.codigo_interno or self.cod_exame_gal
+        return f'{codigo} — {self.nome_paciente} (GAL: {self.numero_gal})'
 
     @property
     def resultado_ativo(self):

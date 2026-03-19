@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% load django_vite %}
 
-{% block title %}Importar CSV GAL — SIGA-LACEN{% endblock %}
+{% block title %}Montar Placa — SIGA-LACEN{% endblock %}
 
 {% block extra_head %}
   {% vite_hmr_client %}
   {% vite_react_refresh %}
-  {% vite_asset 'entries/import.jsx' %}
+  {% vite_asset 'entries/plates.jsx' %}
 {% endblock %}
 
 {% block content %}
-  <div id="importar-csv-app" data-csrf="{{ csrf_token }}"></div>
+  <div id="plates-app" data-csrf="{{ csrf_token }}"></div>
 {% endblock %}

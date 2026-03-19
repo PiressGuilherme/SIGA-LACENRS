@@ -3,12 +3,17 @@ from django.db import models
 
 
 class StatusAmostra(models.TextChoices):
-    RECEBIDA = 'recebida', 'Recebida'
-    ALIQUOTADA = 'aliquotada', 'Aliquotada'
-    EM_PROCESSAMENTO = 'em_processamento', 'Em processamento'
-    AMPLIFICADA = 'amplificada', 'Amplificada'
-    RESULTADO_LIBERADO = 'resultado_liberado', 'Resultado liberado'
-    CANCELADA = 'cancelada', 'Cancelada'
+    # Statuses refletidos do GAL (definidos pelo sistema de origem)
+    AGUARDANDO_TRIAGEM   = 'aguardando_triagem',   'Aguardando Triagem'
+    EXAME_EM_ANALISE     = 'exame_em_analise',     'Exame em Análise'
+    # Statuses internos do LACEN (definidos pelo fluxo laboratorial)
+    ALIQUOTADA           = 'aliquotada',           'Aliquotada'
+    EXTRACAO             = 'extracao',             'Extração'
+    EXTRAIDA             = 'extraida',             'Extraída'
+    RESULTADO            = 'resultado',            'Resultado'
+    RESULTADO_LIBERADO   = 'resultado_liberado',   'Resultado Liberado'
+    # Exceções
+    CANCELADA            = 'cancelada',            'Cancelada'
     REPETICAO_SOLICITADA = 'repeticao_solicitada', 'Repetição Solicitada'
 
 
@@ -27,8 +32,13 @@ class Amostra(models.Model):
 
     Ciclo de vida:
       - Uma Requisição GAL corresponde a UM paciente.
-      - No LACEN, cada importação cria uma Amostra mãe (status: Recebida).
-      - A Amostra mãe é aliquotada UMA VEZ → status: Aliquotada.
+      - Importação do CSV GAL → status inicial reflete o Status Exame do GAL
+        (Aguardando Triagem ou Exame em Análise).
+      - No Módulo de Recebimento, após aliquotagem confirmada por scanner → Aliquotada.
+      - Adicionada a placa de extração e placa salva → Extração.
+      - Código da placa escaneado → Extraída.
+      - CSV do termociclador importado → Resultado.
+      - Resultado publicado no GAL → Resultado Liberado.
       - Em reteste, a MESMA alíquota é reutilizada (não há nova aliquotagem).
       - Novo ciclo anual → nova Requisição GAL → nova Amostra mãe → nova alíquota.
     """
@@ -95,7 +105,7 @@ class Amostra(models.Model):
     status = models.CharField(
         max_length=30,
         choices=StatusAmostra.choices,
-        default=StatusAmostra.RECEBIDA,
+        default=StatusAmostra.AGUARDANDO_TRIAGEM,
         verbose_name='Status',
         db_index=True,
     )

@@ -8,6 +8,7 @@ from rest_framework_simplejwt.views import (
 )
 
 from apps.amostras.urls import page_urlpatterns as amostras_pages
+from apps.placas.urls import page_urlpatterns as placas_pages
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -23,6 +24,7 @@ urlpatterns = [
 
     # Apps — Páginas web (Django Templates + React)
     *amostras_pages,
+    *placas_pages,
 ]
 
 if settings.DEBUG:

@@ -166,11 +166,13 @@ make superuser
 | Fase | Status | O que cobre |
 |---|---|---|
 | Fase 1 — Infraestrutura | ✅ Concluída | Django, Docker, PostgreSQL, Nginx, modelos |
-| Fase 2 — Registro de amostras | ⏳ Aguarda CSV real do GAL | Import CSV, tela preview, endpoint |
-| Fase 3 — Placas/PCR | 🔜 Planejado | Espelho de placa React, cálculo de reagentes |
-| Fase 4 — Resultados | 🔜 Aguarda critérios IBMP | Parser CFX Manager, classificação HPV |
-| Fase 5 — Auditoria/Relatórios | 🔜 Planejado | Admin avançado, PDF/Excel |
-| Fase 6 — Dashboard | 🔜 Planejado | Chart.js, alertas, contadores |
+| Fase 2 — Registro de amostras | ✅ Concluída | Import CSV GAL, tela preview, endpoint, fluxo de status refatorado |
+| Fase 3 — Módulo de Recebimento | ✅ Concluída | Tela React scanner de alíquota, endpoint receber, status → Aliquotada |
+| Fase 4 — Placas/Extração | ✅ Concluída | Espelho de placa React 8×12, scan da placa, cálculo de reagentes, confirmar extração |
+| Fase 5 — Consulta de Amostras | 🔜 Próxima | Tela React de consulta/busca para o usuário final |
+| Fase 6 — Resultados | 🔜 Aguarda critérios IBMP | Parser CFX Manager, classificação HPV, tela revisão |
+| Fase 7 — Auditoria/Relatórios | 🔜 Planejado | Admin avançado, PDF/Excel |
+| Fase 8 — Dashboard | 🔜 Planejado | Chart.js, alertas, contadores |
 
 ---
 

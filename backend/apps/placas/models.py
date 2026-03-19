@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.amostras.models import Amostra, StatusAmostra
 
@@ -25,6 +26,12 @@ class Placa(models.Model):
     Uma amostra pode estar em múltiplas placas ao longo do tempo (retestes).
     """
 
+    codigo = models.CharField(
+        max_length=20, unique=True, blank=True,
+        verbose_name='Código da Placa',
+        help_text='Código de barras gerado automaticamente (ex: PL2603-0001).',
+        db_index=True,
+    )
     protocolo = models.CharField(max_length=50, blank=True, verbose_name='Protocolo')
     responsavel = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -45,25 +52,58 @@ class Placa(models.Model):
         verbose_name_plural = 'Placas'
         ordering = ['-data_criacao']
 
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            self.codigo = self._gerar_codigo()
+        super().save(*args, **kwargs)
+
+    def _gerar_codigo(self):
+        """Gera código único no formato PL{AAMM}-{NNNN}."""
+        agora = timezone.now()
+        prefixo = f'PL{agora.strftime("%y%m")}-'
+        ultimo = (
+            Placa.objects.filter(codigo__startswith=prefixo)
+            .order_by('-codigo')
+            .values_list('codigo', flat=True)
+            .first()
+        )
+        seq = 1
+        if ultimo:
+            try:
+                seq = int(ultimo.split('-')[-1]) + 1
+            except (ValueError, IndexError):
+                pass
+        return f'{prefixo}{seq:04d}'
+
     def __str__(self):
-        return f'Placa #{self.pk} — {self.data_criacao.strftime("%d/%m/%Y")} ({self.get_status_placa_display()})'
+        label = self.codigo or f'Placa #{self.pk}'
+        return f'{label} ({self.get_status_placa_display()})'
 
     @property
     def total_amostras(self):
         return self.pocos.filter(tipo_conteudo=TipoConteudoPoco.AMOSTRA).count()
 
-    def submeter(self):
-        """Marca a placa como submetida ao termociclador e atualiza o status das amostras."""
-        amostras_ids = self.pocos.filter(
-            tipo_conteudo=TipoConteudoPoco.AMOSTRA,
-            amostra__isnull=False,
-        ).values_list('amostra_id', flat=True)
+    def _amostras_ids(self):
+        return list(
+            self.pocos.filter(
+                tipo_conteudo=TipoConteudoPoco.AMOSTRA,
+                amostra__isnull=False,
+            ).values_list('amostra_id', flat=True)
+        )
 
-        Amostra.objects.filter(pk__in=amostras_ids).update(
-            status=StatusAmostra.EM_PROCESSAMENTO
+    def submeter(self):
+        """Marca a placa como submetida ao termociclador."""
+        Amostra.objects.filter(pk__in=self._amostras_ids()).update(
+            status=StatusAmostra.EXTRACAO,
         )
         self.status_placa = StatusPlaca.SUBMETIDA
         self.save(update_fields=['status_placa', 'atualizado_em'])
+
+    def confirmar_extracao(self):
+        """Após scan do código da placa: todas as amostras → Extraída."""
+        Amostra.objects.filter(pk__in=self._amostras_ids()).update(
+            status=StatusAmostra.EXTRAIDA,
+        )
 
 
 class Poco(models.Model):

@@ -26,7 +26,12 @@
     <h1>SIGA-LACEN &mdash; Laboratório de HPV</h1>
     <nav>
       <a href="/amostras/importar/">Importar CSV</a>
-      <a href="/admin/">Admin</a>
+      <a href="/amostras/recebimento/">Recebimento</a>
+      <a href="/placas/montar/">Montar Placa</a>
+      <a href="/amostras/consulta/">Consulta</a>
+      {% if user.is_staff %}
+        <a href="/admin/">Admin</a>
+      {% endif %}
       {% if user.is_authenticated %}
         <span style="color:#adc8e6;margin-left:1.5rem;font-size:0.85rem">{{ user.nome_completo }}</span>
       {% endif %}

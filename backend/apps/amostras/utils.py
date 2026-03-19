@@ -15,6 +15,7 @@ Regras de importação:
 """
 import csv
 import io
+import zipfile
 from datetime import datetime
 
 # Mapeamento coluna CSV → campo do model Amostra
@@ -42,6 +43,15 @@ DATE_FORMATS = ('%d/%m/%Y %H:%M:%S', '%d/%m/%Y')
 
 # Valores de 'Status Exame' no GAL que devem ser ignorados na importação
 STATUSES_IGNORADOS = {'Exame Cancelado'}
+
+# Mapeamento de 'Status Exame' do GAL → status interno SIGA.
+# Valores confirmados com CSV real do GAL (data.csv).
+GAL_STATUS_MAP = {
+    'Aguardando Triagem':  'aguardando_triagem',
+    'Exame em Análise':    'exame_em_analise',
+    'Resultado Liberado':  'resultado_liberado',
+    # 'Exame Cancelado' é tratado em STATUSES_IGNORADOS (não entra no banco).
+}
 
 
 def _parse_date(value: str):
@@ -101,9 +111,34 @@ def parse_gal_csv(file_content) -> list[dict]:
             else:
                 record[field] = raw
 
+        # Status interno derivado do Status Exame do GAL.
+        # Fallback: 'aguardando_triagem' para valores não mapeados.
+        record['status'] = GAL_STATUS_MAP.get(status_gal, 'aguardando_triagem')
+
         # Inclui o status GAL original apenas para exibição no preview
         record['_status_exame_gal'] = status_gal
 
         rows.append(record)
 
     return rows, canceladas
+
+
+def parse_gal_file(file_content: bytes, filename: str) -> tuple[list[dict], int]:
+    """
+    Aceita um CSV ou um ZIP contendo um ou mais CSVs do GAL.
+    Retorna a lista unificada de registros e o total de canceladas.
+    """
+    if filename.lower().endswith('.zip'):
+        all_rows = []
+        total_canceladas = 0
+        with zipfile.ZipFile(io.BytesIO(file_content)) as zf:
+            csv_names = [n for n in zf.namelist() if n.lower().endswith('.csv')]
+            if not csv_names:
+                raise ValueError('O arquivo ZIP não contém nenhum CSV.')
+            for name in csv_names:
+                rows, canceladas = parse_gal_csv(zf.read(name))
+                all_rows.extend(rows)
+                total_canceladas += canceladas
+        return all_rows, total_canceladas
+
+    return parse_gal_csv(file_content)

@@ -107,26 +107,39 @@ Mapeamento direto do CSV exportado pelo GAL (separador `;`, encoding Latin-1).
 
 ### Módulos do Sistema
 
-#### Registro de Amostras
+#### Registro de Amostras (Importação GAL)
 * Upload de arquivo CSV do GAL pelo browser (página web Django).
 * **Tela de pré-visualização (Preview):** Validação estrita onde o sistema analisa o arquivo e exibe um resumo (amostras válidas, duplicadas ou com erro) para confirmação humana antes da inserção no banco de dados.
-* Amostras novas inseridas com status `Recebida`.
-* Amostras disponíveis para aliquotagem após registro.
+* Status inicial da amostra importada é derivado automaticamente da coluna `Status Exame` do CSV GAL:
+  * Valores não mapeados ou desconhecidos → `Aguardando Triagem` (fallback seguro).
+  * Ver `GAL_STATUS_MAP` em `utils.py` para o mapeamento; ajustar quando os valores reais do GAL forem confirmados.
 * Listagem e revisão via Django Admin.
 
-#### Extração e Amplificação (Em processamento)
-* Espelho de placa 8x12 editável como página web (componente React).
-* Operador atribui amostras (`codigo_interno`) aos poços via interface web.
-* Ao adicionar uma amostra ao poço: status da amostra muda automaticamente para `Aliquotada`.
-* Cálculo automático de volumes de reagentes (Tampão, Oligomix, Enzima).
+#### Módulo de Recebimento
+* Tela web dedicada ao recebimento físico e aliquotagem das amostras.
+* Operador escaneia o código de barras da alíquota → sistema localiza a amostra pelo `cod_amostra_gal` ou `codigo_interno`.
+* Confirmação da alíquota pelo scanner → status da amostra muda para `Aliquotada`.
+* Múltiplas amostras podem ser confirmadas em sequência em uma mesma sessão de recebimento.
+* Registra data/hora e operador responsável pelo recebimento físico.
+
+#### Montagem de Placa de Extração
+* Espelho de placa 8×12 editável como página web (componente React).
+* Operador escaneia (ou digita) o `codigo_interno` de cada amostra para atribuí-la a um poço.
+* Ao escanear a amostra: ela é automaticamente adicionada à placa que está sendo montada.
 * Suporte a controles CN e CP em posições configuráveis pelo operador.
-* Ao salvar a placa: status das amostras muda para `Em processamento`.
-* Exportação da placa em PDF (formulário FR-HPV-001, layout definido pelo sistema) via browser.
+* **Ao salvar a placa:** todas as amostras incluídas recebem status `Extração`. A placa recebe um código próprio (gerado pelo sistema).
+* Cálculo automático de volumes de reagentes (Tampão, Oligomix, Enzima).
+* Exportação da placa em PDF (formulário FR-HPV-001) via browser.
+
+#### Confirmação de Extração
+* Operador escaneia o código da placa após a extração concluída.
+* O sistema localiza todas as amostras vinculadas àquela placa e atualiza o status de todas para `Extraída`.
+* Ação registrada com data/hora e operador (auditlog).
 
 #### Resultados e Gestão de Repetições
 * Upload do CSV exportado do CFX Manager (Bio-Rad) — termociclador único do laboratório.
 * **Cruzamento por posição de poço:** O parser identifica amostras pelo poço (`Well A01` → `Poco.posicao A01`), não pelo código interno. A amostra já está mapeada ao poço desde a montagem da placa.
-* Ao importar com sucesso: status de todas as amostras da placa muda para `Amplificada`.
+* Ao importar e interpretar com sucesso: status de todas as amostras da placa muda para `Resultado`.
 * **Interpretação multi-alvo:** Para cada amostra, os 4 canais são interpretados separadamente (CI, HPV16, HPV18, HPV AR). Regras de classificação por critérios IBMP Biomol HPV Alto Risco (**cutoffs de Cq a definir — ver Pendências Técnicas**).
 * Lógica de resultado consolidado:
   * CI inválido → amostra `Inválida`
@@ -135,8 +148,9 @@ Mapeamento direto do CSV exportado pelo GAL (separador `;`, encoding Latin-1).
 * **Tela de revisão:** Usuário visualiza todos os resultados interpretados por poço e por canal antes de confirmar.
 * Edição individual na revisão: operador pode corrigir interpretação com justificativa obrigatória.
 * **Controles falhos:** Se CN amplificar ou CP não amplificar, o sistema exibe alerta. O operador decide na tela de revisão quais amostras marcar como `Inválidas` ou `Repetição Solicitada`.
-* **Gestão de Repetições:** Amostras marcadas para repetição retornam ao status `Aliquotada/Recebida` para inclusão em nova placa. O histórico de falhas é preservado via `auditlog`.
+* **Gestão de Repetições:** Amostras marcadas para repetição retornam ao status `Aliquotada` para inclusão em nova placa. O histórico de falhas é preservado via `auditlog`.
 * Somente após confirmação: `ResultadoAmostra.imutavel = True` — resultados gravados de forma definitiva.
+* **Resultado Liberado:** Status final, atualizado quando o resultado for publicado na tabela do GAL.
 
 #### Consulta de Amostras
 * Busca avançada no Django Admin (list_filter, search_fields, date_hierarchy).
@@ -157,15 +171,51 @@ Mapeamento direto do CSV exportado pelo GAL (separador `;`, encoding Latin-1).
 
 ### Fluxo de Status da Amostra
 
-1. **Recebida** — Amostra importada do GAL; pronta para entrar no fluxo
-2. **Aliquotada** — Amostra atribuída a um poço de placa (status definido automaticamente ao montar a placa)
-3. **Em processamento** — Placa salva e submetida ao termociclador
-4. **Amplificada** — CSV do termociclador importado com sucesso para a placa da amostra
-5. **Resultado liberado** — ResultadoAmostra confirmado e imutável
+```
+[GAL CSV] ──► Aguardando Triagem
+                    │
+                    ▼
+             Exame em Análise     (status refletido do GAL)
+                    │
+          [Módulo de Recebimento]
+                    │ scanner confirma alíquota
+                    ▼
+               Aliquotada
+                    │
+          [Montagem da Placa]
+                    │ placa salva
+                    ▼
+                Extração
+                    │
+          [Scan do código da placa]
+                    │
+                    ▼
+                Extraída
+                    │
+          [Import CSV termociclador]
+                    │
+                    ▼
+               Resultado
+                    │
+          [Publicação no GAL]
+                    │
+                    ▼
+          Resultado Liberado ✓
+```
+
+| # | Status | Gatilho |
+|---|---|---|
+| 1 | **Aguardando Triagem** | Importação do CSV GAL (status padrão / fallback) |
+| 2 | **Exame em Análise** | Importação do CSV GAL (quando Status Exame GAL indica análise) |
+| 3 | **Aliquotada** | Scanner confirma alíquota no Módulo de Recebimento |
+| 4 | **Extração** | Amostra adicionada à placa; placa salva |
+| 5 | **Extraída** | Código da placa escaneado após extração concluída |
+| 6 | **Resultado** | CSV do CFX Manager importado e interpretado |
+| 7 | **Resultado Liberado** | Resultado publicado na tabela do GAL |
 
 **Status de Exceção:**
 * **Cancelada** — Amostra descartada com justificativa; editável apenas por supervisor
-* **Repetição Solicitada** — Resultado inválido; amostra retorna ao fluxo a partir de `Aliquotada`
+* **Repetição Solicitada** — Resultado inválido; amostra retorna ao status `Aliquotada` para inclusão em nova placa
 
 **Rastreabilidade de Retestes:**
 Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentativa). O resultado ativo é sempre o último `ResultadoAmostra` com `imutavel=True`. O histórico completo de todas as tentativas é acessível via `Amostra → Pocos → ResultadoPoco`.
@@ -201,19 +251,38 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
   * `POST /api/amostras/preview-csv/` — parse sem salvar; retorna preview com `_status_importacao` (novo/duplicado) por linha
   * `POST /api/amostras/importar-csv/` — importação real; ignora duplicatas por `cod_exame_gal`; retorna resumo
 * ✅ Django Admin configurado (busca por nome, CPF, CNS, GAL; filtros por status, UF, município; badges coloridos)
-* ⏳ Migrations a regenerar (ver instruções de setup)
+* ✅ `StatusAmostra` refatorado para refletir o fluxo real GAL → LACEN (Aguardando Triagem, Exame em Análise, + statuses internos)
+* ✅ `GAL_STATUS_MAP` em `utils.py` mapeia `Status Exame` do GAL ao status interno na importação
+* ⏳ Confirmar valores reais do campo `Status Exame` do GAL para ajustar `GAL_STATUS_MAP`
 
-#### Fase 3 - Extração/PCR e espelho de placa (3-4 semanas)
+#### Fase 3 - Módulo de Recebimento (1-2 semanas)
+* Tela web de recebimento físico de amostras (Django Template + lógica DRF).
+* Operador escaneia código de barras da alíquota → sistema localiza a amostra.
+* Confirmação via scanner → status muda para `Aliquotada`; registra data/hora e operador.
+* Suporte a leitura em sequência (múltiplas alíquotas por sessão).
+* Endpoint: `POST /api/amostras/{id}/receber/` — requer perfil `extracao` ou `supervisor`.
+
+#### Fase 4 - Montagem de Placa e Extração (3-4 semanas)
 * Integrar `django-vite` ao projeto para servir os componentes frontend.
-* Página web com componente React de placa 8x12 editável:
-  * Drag-and-drop ou digitação de `codigo_interno` por poço
+* Página web com componente React de placa 8×12 editável:
+  * Leitura de `codigo_interno` por scanner ou digitação por poço
   * Marcação de poços como CN, CP ou Vazio
   * Cálculo automático de volumes de reagentes
 * `PlacaViewSet` DRF para criação, edição e persistência da placa e poços.
-* Atualização em massa de status via `Amostra.objects.bulk_update()`.
+* Ao salvar placa: atualização em massa do status das amostras para `Extração` via `bulk_update()`.
+* Endpoint para scan do código da placa: `POST /api/placas/{codigo}/confirmar-extracao/` → status das amostras → `Extraída`.
 * Geração de PDF da placa (FR-HPV-001) — layout definido pelo sistema.
 
-#### Fase 4 - Módulo de Resultados e Repetição (2-3 semanas)
+#### Fase 5 - Consulta de Amostras (1 semana)
+* Tela React acessível a todos os perfis autenticados (`/amostras/consulta/`).
+* Tabela paginada com todas as amostras do sistema.
+* Busca textual por: nome do paciente, CPF, CNS, código interno, número GAL, cód. exame.
+* Filtros por: status, município, UF, material.
+* Ordenação por colunas clicáveis (código interno, paciente, status, data).
+* Badge colorido de status (mesma paleta do Admin).
+* Endpoint DRF com paginação, filtros e busca: `GET /api/amostras/?search=&status=&municipio=&page=`.
+
+#### Fase 6 - Módulo de Resultados e Repetição (2-3 semanas)
 > **Pré-requisito:** Obter critérios IBMP Biomol (cutoffs de Cq por canal) antes de implementar a lógica de classificação.
 
 * Página web de upload do CSV do CFX Manager.
@@ -224,19 +293,21 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
   * Cruza por `posicao` do poço com a placa salva no banco
 * Implementar classificação automática por critérios IBMP Biomol.
 * Calcular `resultado_final` consolidado por amostra.
+* Ao importar com sucesso: status das amostras da placa → `Resultado`.
 * Tela de revisão de resultados com edição individual e justificativa.
 * Exibição de alertas para controles falhos; decisão do operador sobre repetições.
 * Implementar lógica de **Gestão de Repetições** — voltar amostras para `Aliquotada`.
 * Gravação imutável de resultados confirmados (`imutavel=True`).
+* Endpoint/ação para marcar resultado como liberado no GAL → status `Resultado Liberado`.
 
-#### Fase 5 - Consulta, ajustes e auditoria (2 semanas)
+#### Fase 7 - Consulta avançada, ajustes e auditoria (2 semanas)
 * Configuração avançada do Django Admin (filtros e buscas por status, data, município, resultado).
 * Integração final do django-auditlog para garantir rastreabilidade regulatória.
 * Visualização completa do histórico de retestes por amostra.
 * Relatórios exportáveis em PDF/Excel com ReportLab/openpyxl.
 * Testes de ponta a ponta e documentação.
 
-#### Fase 6 - Dashboard (1-2 semanas)
+#### Fase 8 - Dashboard (1-2 semanas)
 * Página inicial com Chart.js.
 * Contadores e gráficos de resultados por genótipo.
 * Alertas automáticos de amostras pendentes (`Repetição Solicitada`).
@@ -254,10 +325,13 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 | Importar CSV de amostras | POST | /api/amostras/importar-csv/ | extracao / supervisor |
 | Listar amostras | GET | /api/amostras/ | todos |
 | Editar amostra | PATCH | /api/amostras/{id}/ | supervisor |
+| Confirmar recebimento (aliquotagem) | POST | /api/amostras/{id}/receber/ | extracao / supervisor |
 | Criar placa | POST | /api/placas/ | extracao |
 | Salvar poços da placa | POST | /api/placas/{id}/pocos/ | extracao |
+| Confirmar extração da placa (scan) | POST | /api/placas/{codigo}/confirmar-extracao/ | extracao / supervisor |
 | Importar resultado PCR | POST | /api/resultados/importar/ | pcr / supervisor |
 | Confirmar resultados | POST | /api/resultados/{id}/confirmar/ | pcr / supervisor |
+| Marcar resultado liberado no GAL | POST | /api/resultados/{id}/liberar/ | pcr / supervisor |
 | Histórico de auditoria | GET | /api/amostras/{id}/historico/ | supervisor |
 
 ---
@@ -267,7 +341,8 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 | Pendência | Bloqueia | Status |
 | :--- | :--- | :--- |
 | ~~CSV real do GAL~~ | ~~Início da Fase 2~~ | ✅ Resolvido — formato confirmado, modelo e parser implementados |
-| Critérios IBMP Biomol | Início da Fase 4 | ⏳ Pendente — levantar cutoffs de Cq para CI, HPV16, HPV18 e HPV AR na bula/manual do kit |
+| ~~Valores reais de `Status Exame` do GAL~~ | ~~`GAL_STATUS_MAP` em `utils.py`~~ | ✅ Confirmado — 4 valores: Aguardando Triagem, Exame em Análise, Resultado Liberado, Exame Cancelado |
+| Critérios IBMP Biomol | Início da Fase 5 | ⏳ Pendente — levantar cutoffs de Cq para CI, HPV16, HPV18 e HPV AR na bula/manual do kit |
 
 ---
 

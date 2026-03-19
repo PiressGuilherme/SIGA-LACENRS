@@ -13,14 +13,14 @@ class PocoInline(admin.TabularInline):
 
 @admin.register(Placa)
 class PlacaAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'protocolo', 'responsavel', 'status_placa', 'total_amostras', 'data_criacao')
+    list_display = ('codigo', '__str__', 'protocolo', 'responsavel', 'status_placa', 'total_amostras', 'data_criacao')
     list_filter = ('status_placa', 'data_criacao')
-    search_fields = ('protocolo', 'responsavel__email', 'responsavel__nome_completo')
-    readonly_fields = ('data_criacao', 'atualizado_em', 'total_amostras')
+    search_fields = ('codigo', 'protocolo', 'responsavel__email', 'responsavel__nome_completo')
+    readonly_fields = ('codigo', 'data_criacao', 'atualizado_em', 'total_amostras')
     inlines = [PocoInline]
 
     fieldsets = (
-        (None, {'fields': ('protocolo', 'responsavel', 'status_placa', 'observacoes')}),
+        (None, {'fields': ('codigo', 'protocolo', 'responsavel', 'status_placa', 'observacoes')}),
         ('Auditoria', {'fields': ('data_criacao', 'atualizado_em'), 'classes': ('collapse',)}),
     )
 

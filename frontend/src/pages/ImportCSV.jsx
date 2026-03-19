@@ -20,6 +20,39 @@ async function apiFetch(url, { csrfToken, body }) {
   return res.json()
 }
 
+const COLUNAS = [
+  { label: 'Status',          key: '_status_importacao' },
+  { label: 'Cód. Exame',      key: 'cod_exame_gal' },
+  { label: 'Num. Interno',    key: 'codigo_interno' },
+  { label: 'Paciente',        key: 'nome_paciente' },
+  { label: 'CPF',             key: 'cpf' },
+  { label: 'Município',       key: 'municipio' },
+  { label: 'Dt. Cadastro',    key: 'data_coleta' },
+  { label: 'Dt. Recebimento', key: 'data_recebimento' },
+]
+
+function parseCodigoInterno(v) {
+  if (!v) return [Infinity, Infinity]
+  const m = v.match(/^(\d+)\/(\d+)$/)
+  return m ? [parseInt(m[1], 10), parseInt(m[2], 10)] : [Infinity, Infinity]
+}
+
+function sortRows(rows, key, dir) {
+  return [...rows].sort((a, b) => {
+    let cmp
+    if (key === 'codigo_interno') {
+      const [as, ay] = parseCodigoInterno(a[key])
+      const [bs, by] = parseCodigoInterno(b[key])
+      cmp = as !== bs ? as - bs : ay - by
+    } else {
+      const av = a[key] ?? ''
+      const bv = b[key] ?? ''
+      cmp = av < bv ? -1 : av > bv ? 1 : 0
+    }
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
 export default function ImportCSV({ csrfToken }) {
   const [etapa, setEtapa] = useState('upload')   // upload | preview | resultado
   const [arquivo, setArquivo] = useState(null)
@@ -27,7 +60,18 @@ export default function ImportCSV({ csrfToken }) {
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState(null)
   const [carregando, setCarregando] = useState(false)
+  const [sortKey, setSortKey] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
   const inputRef = useRef()
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   // ------------------------------------------------------------------ upload
   function handleArquivo(file) {
@@ -114,16 +158,16 @@ export default function ImportCSV({ csrfToken }) {
             <input
               ref={inputRef}
               type="file"
-              accept=".csv"
+              accept=".csv,.zip"
               style={{ display: 'none' }}
               onChange={e => handleArquivo(e.target.files[0])}
             />
             <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📂</div>
             <p style={{ color: '#1e40af', fontWeight: 500 }}>
-              Clique ou arraste o arquivo CSV do GAL aqui
+              Clique ou arraste o arquivo CSV ou ZIP do GAL aqui
             </p>
             <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Formato: exportação GAL (.csv), separador ponto-e-vírgula
+              Formato: exportação GAL (.csv ou .zip com CSVs), separador ponto-e-vírgula
             </p>
           </div>
 
@@ -150,10 +194,10 @@ export default function ImportCSV({ csrfToken }) {
         <div>
           {/* Contadores */}
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <Contador label="Total no arquivo" valor={preview.total} cor="#1a3a5c" />
+            <Contador label="Total no arquivo" valor={preview.total} cor="#fff" />
             <Contador label="Novas" valor={preview.novos} cor="#065f46" bg="#d1fae5" />
             <Contador label="A atualizar" valor={preview.atualizaveis} cor="#1e40af" bg="#dbeafe" />
-            <Contador label="Duplicadas" valor={preview.duplicados} cor="#6b7280" bg="#f3f4f6" />
+            <Contador label="Duplicadas" valor={preview.duplicados} cor="#374151" bg="#d1d5db" />
             <Contador label="Canceladas (GAL)" valor={preview.cancelados} cor="#92400e" bg="#fef3c7" />
           </div>
 
@@ -163,14 +207,21 @@ export default function ImportCSV({ csrfToken }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                  {['Status', 'Cód. Exame', 'Num. Interno', 'Paciente', 'CPF',
-                    'Município', 'Dt. Cadastro', 'Dt. Recebimento'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
+                  {COLUNAS.map(col => (
+                    <th key={col.key}
+                        onClick={() => handleSort(col.key)}
+                        style={{ ...thStyle, cursor: 'pointer', userSelect: 'none',
+                                 whiteSpace: 'nowrap' }}>
+                      {col.label}
+                      <span style={{ marginLeft: 4, opacity: sortKey === col.key ? 1 : 0.3 }}>
+                        {sortKey === col.key && sortDir === 'desc' ? '▼' : '▲'}
+                      </span>
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {preview.amostras.map((a, i) => {
+                {(sortKey ? sortRows(preview.amostras, sortKey, sortDir) : preview.amostras).map((a, i) => {
                   const st = STATUS_LABEL[a._status_importacao] || STATUS_LABEL.duplicado
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>

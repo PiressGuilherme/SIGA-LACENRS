@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from rest_framework import status, viewsets, permissions
@@ -6,15 +7,33 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
-from .models import Amostra
+from .models import Amostra, StatusAmostra
 from .serializers import AmostraSerializer
-from .utils import parse_gal_csv
+from .utils import parse_gal_file
+
+# Status válidos para recebimento (aliquotagem)
+_STATUS_RECEBIMENTO_VALIDOS = {
+    StatusAmostra.AGUARDANDO_TRIAGEM,
+    StatusAmostra.EXAME_EM_ANALISE,
+}
 
 
 @method_decorator(login_required, name='dispatch')
 class ImportarCSVView(TemplateView):
     """Página de importação de CSV do GAL (React via django-vite)."""
     template_name = 'amostras/importar_csv.html'
+
+
+@method_decorator(login_required, name='dispatch')
+class RecebimentoView(TemplateView):
+    """Página de recebimento/aliquotagem de amostras (React via django-vite)."""
+    template_name = 'amostras/recebimento.html'
+
+
+@method_decorator(login_required, name='dispatch')
+class ConsultaAmostrasView(TemplateView):
+    """Página de consulta de amostras para o usuário final (React via django-vite)."""
+    template_name = 'amostras/consulta.html'
 
 # Campos que podem ser atualizados numa reimportação quando estavam vazios
 # (o cod_exame_gal já existe, mas o GAL agora trouxe novos dados)
@@ -42,19 +61,69 @@ class AmostraViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
+        # Busca textual unificada (nome, CPF, CNS, código interno, GAL)
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(nome_paciente__icontains=search)
+                | Q(cpf__icontains=search)
+                | Q(cns__icontains=search)
+                | Q(codigo_interno__icontains=search)
+                | Q(cod_exame_gal__icontains=search)
+                | Q(numero_gal__icontains=search)
+            )
+
+        # Filtros individuais
         status_param = self.request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param)
-        nome = self.request.query_params.get('nome')
-        if nome:
-            qs = qs.filter(nome_paciente__icontains=nome)
         municipio = self.request.query_params.get('municipio')
         if municipio:
             qs = qs.filter(municipio__icontains=municipio)
+        uf = self.request.query_params.get('uf')
+        if uf:
+            qs = qs.filter(uf=uf)
+
+        # Ordenação
+        ordering = self.request.query_params.get('ordering', '-criado_em')
+        if ordering.lstrip('-') in self._ORDENAVEIS:
+            qs = qs.order_by(ordering)
+
         return qs
+
+    _ORDENAVEIS = {
+        'codigo_interno', 'nome_paciente', 'status',
+        'municipio', 'data_recebimento', 'criado_em',
+    }
 
     def perform_create(self, serializer):
         serializer.save(criado_por=self.request.user)
+
+    # ------------------------------------------------------------------
+    # Filtros disponíveis para o frontend
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=['get'], url_path='filtros')
+    def filtros(self, request):
+        """Retorna valores distintos de município e UF para popular dropdowns."""
+        municipios = (
+            Amostra.objects.exclude(municipio='')
+            .values_list('municipio', flat=True)
+            .distinct().order_by('municipio')
+        )
+        ufs = (
+            Amostra.objects.exclude(uf='')
+            .values_list('uf', flat=True)
+            .distinct().order_by('uf')
+        )
+        return Response({
+            'status_choices': [
+                {'value': v, 'label': l} for v, l in StatusAmostra.choices
+            ],
+            'municipios': list(municipios),
+            'ufs': list(ufs),
+        })
 
     # ------------------------------------------------------------------
     # Helpers internos
@@ -86,6 +155,72 @@ class AmostraViewSet(viewsets.ModelViewSet):
         return updates
 
     # ------------------------------------------------------------------
+    # Endpoint de recebimento (aliquotagem)
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=['post'], url_path='receber')
+    def receber(self, request):
+        """
+        Confirma o recebimento/aliquotagem de uma amostra via leitura de código.
+
+        Body: { "codigo": "<valor escaneado>" }
+
+        Busca por: codigo_interno, cod_amostra_gal ou cod_exame_gal (nessa ordem).
+        Valida que a amostra está em status Aguardando Triagem ou Exame em Análise.
+        Atualiza o status para Aliquotada.
+        """
+        codigo = (request.data.get('codigo') or '').strip()
+        if not codigo:
+            return Response(
+                {'erro': 'Nenhum código informado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Busca por múltiplos campos de identificação
+        amostra = (
+            Amostra.objects.filter(codigo_interno=codigo).first()
+            or Amostra.objects.filter(cod_amostra_gal=codigo).first()
+            or Amostra.objects.filter(cod_exame_gal=codigo).first()
+        )
+
+        if not amostra:
+            return Response(
+                {'erro': f'Amostra não encontrada para o código "{codigo}".'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if amostra.status == StatusAmostra.ALIQUOTADA:
+            return Response(
+                {
+                    'aviso': 'Amostra já está aliquotada.',
+                    'amostra': AmostraSerializer(amostra).data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        if amostra.status not in _STATUS_RECEBIMENTO_VALIDOS:
+            return Response(
+                {
+                    'erro': (
+                        f'Amostra está com status "{amostra.get_status_display()}" '
+                        f'e não pode ser recebida.'
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        amostra.status = StatusAmostra.ALIQUOTADA
+        amostra.save(update_fields=['status', 'atualizado_em'])
+
+        return Response(
+            {
+                'sucesso': True,
+                'amostra': AmostraSerializer(amostra).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    # ------------------------------------------------------------------
     # Endpoints de importação
     # ------------------------------------------------------------------
 
@@ -113,7 +248,11 @@ class AmostraViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        rows, canceladas = parse_gal_csv(csv_file.read())
+        try:
+            rows, canceladas = parse_gal_file(csv_file.read(), csv_file.name)
+        except (ValueError, Exception) as exc:
+            return Response({'erro': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         existentes_map = self._build_existentes_map(rows)
 
         result = []
@@ -153,7 +292,7 @@ class AmostraViewSet(viewsets.ModelViewSet):
         Importa o CSV do GAL para o banco de dados com lógica inteligente:
 
         - Exame Cancelado → ignorado
-        - cod_exame_gal novo → cria registro (status: Recebida)
+        - cod_exame_gal novo → cria registro (status derivado do Status Exame do GAL)
         - cod_exame_gal existente + novos dados (codigo_interno/data_recebimento)
           → atualiza apenas esses campos
         - cod_exame_gal existente sem novidade → conta como duplicado (sem ação)
@@ -165,7 +304,11 @@ class AmostraViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        rows, canceladas = parse_gal_csv(csv_file.read())
+        try:
+            rows, canceladas = parse_gal_file(csv_file.read(), csv_file.name)
+        except (ValueError, Exception) as exc:
+            return Response({'erro': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         existentes_map = self._build_existentes_map(rows)
 
         importadas = []

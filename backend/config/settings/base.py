@@ -140,8 +140,8 @@ DJANGO_VITE = {
         'dev_mode': False,  # sobrescrito em development.py
         'dev_server_host': 'localhost',
         'dev_server_port': 5173,
-        'manifest_path': BASE_DIR / 'staticfiles' / 'vite' / '.vite' / 'manifest.json',
-        'static_url_prefix': 'vite',
+        'manifest_path': BASE_DIR / 'staticfiles' / '.vite' / 'manifest.json',
+        'static_url_prefix': '',
     }
 }
 

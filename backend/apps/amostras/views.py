@@ -210,7 +210,8 @@ class AmostraViewSet(viewsets.ModelViewSet):
             )
 
         amostra.status = StatusAmostra.ALIQUOTADA
-        amostra.save(update_fields=['status', 'atualizado_em'])
+        amostra.recebido_por = request.user
+        amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
 
         return Response(
             {

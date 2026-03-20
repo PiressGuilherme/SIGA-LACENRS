@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from rest_framework import status, viewsets, permissions
@@ -9,6 +10,7 @@ from rest_framework.response import Response
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.amostras.serializers import AmostraSerializer
 from .models import Placa, Poco, StatusPlaca, TipoConteudoPoco
+from .pdf import gerar_pdf_placa
 from .serializers import PlacaSerializer, PocoInputSerializer
 
 
@@ -23,6 +25,18 @@ class PlacaViewSet(viewsets.ModelViewSet):
     serializer_class = PlacaSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Filtro por status da placa
+        status_param = self.request.query_params.get('status_placa')
+        if status_param:
+            qs = qs.filter(status_placa=status_param)
+        # Busca por código
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(codigo__icontains=search)
+        return qs
+
     def perform_create(self, serializer):
         serializer.save(responsavel=self.request.user)
 
@@ -35,7 +49,7 @@ class PlacaViewSet(viewsets.ModelViewSet):
         """
         GET /api/placas/buscar-amostra/?codigo=<valor>
 
-        Busca amostra por codigo_interno (match exato).
+        Busca amostra por codigo_interno, cod_amostra_gal ou cod_exame_gal.
         Só retorna amostras com status Aliquotada.
         """
         codigo = request.query_params.get('codigo', '').strip()
@@ -45,14 +59,20 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        amostra = Amostra.objects.filter(
-            codigo_interno=codigo,
-            status=StatusAmostra.ALIQUOTADA,
-        ).first()
+        # Buscar por múltiplos campos de identificação
+        amostra = (
+            Amostra.objects.filter(codigo_interno=codigo, status=StatusAmostra.ALIQUOTADA).first()
+            or Amostra.objects.filter(cod_amostra_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
+            or Amostra.objects.filter(cod_exame_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
+        )
 
         if not amostra:
             # Verificar se existe mas com status errado (feedback útil)
-            existe = Amostra.objects.filter(codigo_interno=codigo).first()
+            existe = (
+                Amostra.objects.filter(codigo_interno=codigo).first()
+                or Amostra.objects.filter(cod_amostra_gal=codigo).first()
+                or Amostra.objects.filter(cod_exame_gal=codigo).first()
+            )
             if existe:
                 return Response(
                     {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Aliquotada.'},
@@ -117,6 +137,19 @@ class PlacaViewSet(viewsets.ModelViewSet):
         if erros:
             return Response({'erros': erros}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validar que há pelo menos um CN e um CP
+        tipos = {item['tipo_conteudo'] for item in serializer.validated_data}
+        if TipoConteudoPoco.CONTROLE_NEGATIVO not in tipos:
+            return Response(
+                {'erros': ['A placa precisa de pelo menos um Controle Negativo (CN).']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if TipoConteudoPoco.CONTROLE_POSITIVO not in tipos:
+            return Response(
+                {'erros': ['A placa precisa de pelo menos um Controle Positivo (CP).']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         with transaction.atomic():
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
@@ -128,6 +161,56 @@ class PlacaViewSet(viewsets.ModelViewSet):
 
         placa.refresh_from_db()
         return Response(PlacaSerializer(placa).data)
+
+    # ------------------------------------------------------------------
+    # Submeter placa ao termociclador
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['post'], url_path='submeter')
+    def submeter(self, request, pk=None):
+        """
+        POST /api/placas/{id}/submeter/
+
+        Marca a placa como submetida ao termociclador.
+        Só pode ser feito em placas abertas que já tenham poços salvos.
+        """
+        placa = self.get_object()
+
+        if placa.status_placa != StatusPlaca.ABERTA:
+            return Response(
+                {'erro': f'Placa já está com status "{placa.get_status_placa_display()}".'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if placa.pocos.count() == 0:
+            return Response(
+                {'erro': 'Placa não tem poços salvos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        placa.submeter()
+
+        return Response({
+            'sucesso': True,
+            'placa': PlacaSerializer(placa).data,
+        })
+
+    # ------------------------------------------------------------------
+    # PDF do espelho de placa (FR-HPV-001)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def pdf(self, request, pk=None):
+        """
+        GET /api/placas/{id}/pdf/
+
+        Gera e retorna o PDF do espelho de placa (FR-HPV-001).
+        """
+        placa = self.get_object()
+        pdf_bytes = gerar_pdf_placa(placa)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{placa.codigo}.pdf"'
+        return response
 
     # ------------------------------------------------------------------
     # Confirmar extração (scan do código da placa)

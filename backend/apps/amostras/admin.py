@@ -32,7 +32,7 @@ class AmostraAdmin(admin.ModelAdmin):
         'codigo_interno', 'nome_paciente', 'cpf', 'cns',
     )
     date_hierarchy = 'data_recebimento'
-    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+    readonly_fields = ('criado_por', 'recebido_por', 'criado_em', 'atualizado_em')
     ordering = ('-criado_em',)
 
     fieldsets = (
@@ -52,7 +52,7 @@ class AmostraAdmin(admin.ModelAdmin):
             'fields': ('status', 'observacoes'),
         }),
         ('Auditoria', {
-            'fields': ('criado_por', 'criado_em', 'atualizado_em'),
+            'fields': ('criado_por', 'recebido_por', 'criado_em', 'atualizado_em'),
             'classes': ('collapse',),
         }),
     )

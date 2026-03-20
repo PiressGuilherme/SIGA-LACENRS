@@ -5,6 +5,16 @@ const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
 const ALL_POSITIONS = ROWS.flatMap(r => COLS.map(c => r + c))
 
+// Ordem de preenchimento vertical (coluna-major): A01, B01, C01...H01, A02, B02...
+const FILL_ORDER = []
+for (let ci = 0; ci < 12; ci++) {
+  for (let ri = 0; ri < 8; ri++) {
+    FILL_ORDER.push(ri * 12 + ci)
+  }
+}
+const FILL_POS = new Array(96)
+FILL_ORDER.forEach((gridIdx, fillPos) => { FILL_POS[gridIdx] = fillPos })
+
 const TIPO = { AMOSTRA: 'amostra', CN: 'cn', CP: 'cp', VAZIO: 'vazio' }
 
 const TIPO_COLORS = {
@@ -14,7 +24,9 @@ const TIPO_COLORS = {
   [TIPO.VAZIO]:   { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
 }
 
-// Volumes de reagentes por reação (uL) — placeholders, ajustar com protocolo real
+const DEFAULT_CP_IDX = 6 * 12 + 11  // G12
+const DEFAULT_CN_IDX = 7 * 12 + 11  // H12
+
 const REAGENTES = [
   { nome: 'Tampão de Lise', vol: 200 },
   { nome: 'Oligomix',       vol: 5 },
@@ -22,13 +34,35 @@ const REAGENTES = [
 ]
 
 function emptyGrid() {
-  return ALL_POSITIONS.map(pos => ({
+  const g = ALL_POSITIONS.map(pos => ({
     posicao: pos,
     tipo_conteudo: TIPO.VAZIO,
     amostra_id: null,
     amostra_codigo: '',
-    amostra_nome: '',
   }))
+  g[DEFAULT_CP_IDX] = { ...g[DEFAULT_CP_IDX], tipo_conteudo: TIPO.CP }
+  g[DEFAULT_CN_IDX] = { ...g[DEFAULT_CN_IDX], tipo_conteudo: TIPO.CN }
+  return g
+}
+
+function gridFromPocos(pocos) {
+  const g = ALL_POSITIONS.map(pos => ({
+    posicao: pos,
+    tipo_conteudo: TIPO.VAZIO,
+    amostra_id: null,
+    amostra_codigo: '',
+  }))
+  for (const poco of pocos) {
+    const idx = ALL_POSITIONS.indexOf(poco.posicao)
+    if (idx === -1) continue
+    g[idx] = {
+      posicao: poco.posicao,
+      tipo_conteudo: poco.tipo_conteudo,
+      amostra_id: poco.amostra || null,
+      amostra_codigo: poco.amostra_codigo || '',
+    }
+  }
+  return g
 }
 
 // ---- API helpers ----
@@ -48,33 +82,104 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
   return data
 }
 
+const STATUS_PLACA = {
+  aberta:                { bg: '#0d6efd', label: 'Aberta' },
+  submetida:             { bg: '#fd7e14', label: 'Submetida' },
+  resultados_importados: { bg: '#198754', label: 'Resultados' },
+}
+
 // ================================================================
 export default function PlateEditor({ csrfToken }) {
-  const [placa, setPlaca] = useState(null)      // objeto da API após criar
+  // ---- State: lista de placas ----
+  const [placas, setPlacas] = useState([])
+  const [loadingList, setLoadingList] = useState(false)
+  const [showList, setShowList] = useState(false)
+
+  // ---- State: editor ----
+  const [placa, setPlaca] = useState(null)
   const [grid, setGrid] = useState(emptyGrid)
   const [modo, setModo] = useState(TIPO.AMOSTRA)
-  const [selected, setSelected] = useState(0)   // índice do próximo poço
+  const [selected, setSelected] = useState(FILL_ORDER[0])
   const [codigo, setCodigo] = useState('')
   const [feedback, setFeedback] = useState(null)
   const [carregando, setCarregando] = useState(false)
   const [salva, setSalva] = useState(false)
+  const [pendingDuplicate, setPendingDuplicate] = useState(null)
   const inputRef = useRef()
 
-  useEffect(() => { inputRef.current?.focus() }, [feedback, selected])
+  // ---- State: confirmar extração ----
+  const [codigoExtracao, setCodigoExtracao] = useState('')
+  const [feedbackExtracao, setFeedbackExtracao] = useState(null)
+  const [carregandoExtracao, setCarregandoExtracao] = useState(false)
+  const extracaoRef = useRef()
+
+  const isEditable = placa && placa.status_placa === 'aberta'
+
+  useEffect(() => { if (isEditable) inputRef.current?.focus() }, [feedback, selected, isEditable])
 
   // ---- Contadores ----
   const totalAmostras = grid.filter(w => w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo).length
   const totalCN = grid.filter(w => w.tipo_conteudo === TIPO.CN).length
   const totalCP = grid.filter(w => w.tipo_conteudo === TIPO.CP).length
   const totalReacoes = totalAmostras + totalCN + totalCP
+  const hasControls = totalCN > 0 && totalCP > 0
 
-  // Avançar para próximo poço vazio a partir de um índice
-  const nextEmpty = useCallback((from = 0) => {
-    for (let i = from; i < grid.length; i++) {
-      if (grid[i].tipo_conteudo === TIPO.VAZIO) return i
+  const nextEmpty = useCallback((afterGridIdx) => {
+    const startFP = FILL_POS[afterGridIdx] + 1
+    for (let fp = startFP; fp < FILL_ORDER.length; fp++) {
+      if (grid[FILL_ORDER[fp]].tipo_conteudo === TIPO.VAZIO) return FILL_ORDER[fp]
     }
     return -1
   }, [grid])
+
+  const firstEmpty = useCallback(() => {
+    for (let fp = 0; fp < FILL_ORDER.length; fp++) {
+      if (grid[FILL_ORDER[fp]].tipo_conteudo === TIPO.VAZIO) return FILL_ORDER[fp]
+    }
+    return -1
+  }, [grid])
+
+  // ---- Carregar lista de placas ----
+  async function fetchPlacas() {
+    setLoadingList(true)
+    try {
+      const data = await api('/api/placas/', { csrfToken })
+      setPlacas(data.results || data)
+    } catch {
+      setPlacas([])
+    } finally {
+      setLoadingList(false)
+    }
+  }
+
+  function toggleList() {
+    if (!showList) fetchPlacas()
+    setShowList(!showList)
+  }
+
+  // ---- Carregar placa existente ----
+  async function carregarPlaca(id) {
+    setCarregando(true)
+    setFeedback(null)
+    try {
+      const data = await api(`/api/placas/${id}/`, { csrfToken })
+      setPlaca(data)
+      if (data.pocos && data.pocos.length > 0) {
+        setGrid(gridFromPocos(data.pocos))
+        setSalva(true)
+      } else {
+        setGrid(emptyGrid())
+        setSalva(false)
+      }
+      setSelected(FILL_ORDER[0])
+      setShowList(false)
+      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} carregada.` })
+    } catch (err) {
+      setFeedback({ tipo: 'erro', msg: err.data?.detail || 'Erro ao carregar placa.' })
+    } finally {
+      setCarregando(false)
+    }
+  }
 
   // ---- Criar placa ----
   async function criarPlaca() {
@@ -82,12 +187,35 @@ export default function PlateEditor({ csrfToken }) {
     try {
       const data = await api('/api/placas/', { csrfToken, method: 'POST', body: {} })
       setPlaca(data)
+      setGrid(emptyGrid())
+      setSelected(FILL_ORDER[0])
+      setSalva(false)
       setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} criada.` })
+      setShowList(false)
     } catch (err) {
       setFeedback({ tipo: 'erro', msg: err.data?.detail || 'Erro ao criar placa.' })
     } finally {
       setCarregando(false)
     }
+  }
+
+  // ---- Colocar amostra ----
+  function placeSample(amostra, gridIdx) {
+    setGrid(prev => {
+      const next = [...prev]
+      next[gridIdx] = {
+        ...next[gridIdx],
+        tipo_conteudo: TIPO.AMOSTRA,
+        amostra_id: amostra.id,
+        amostra_codigo: amostra.codigo_interno,
+      }
+      return next
+    })
+    const ne = nextEmpty(gridIdx)
+    setSelected(ne === -1 ? gridIdx : ne)
+    setFeedback({ tipo: 'sucesso', msg: `${amostra.codigo_interno} \u2192 ${ALL_POSITIONS[gridIdx]}` })
+    setSalva(false)
+    setPendingDuplicate(null)
   }
 
   // ---- Scan / digitar amostra ----
@@ -96,7 +224,6 @@ export default function PlateEditor({ csrfToken }) {
     const val = codigo.trim()
     if (!val) return
 
-    // Modo CN/CP: não precisa buscar amostra
     if (modo !== TIPO.AMOSTRA) {
       placeControl(modo)
       setCodigo('')
@@ -105,75 +232,61 @@ export default function PlateEditor({ csrfToken }) {
 
     setCarregando(true)
     setFeedback(null)
+    setPendingDuplicate(null)
     try {
       const amostra = await api(`/api/placas/buscar-amostra/?codigo=${encodeURIComponent(val)}`, { csrfToken })
 
-      // Verificar se já está na placa
-      if (grid.some(w => w.amostra_codigo === amostra.codigo_interno)) {
-        setFeedback({ tipo: 'aviso', msg: `${amostra.codigo_interno} já está nesta placa.` })
-        setCodigo('')
-        setCarregando(false)
-        return
-      }
-
-      // Colocar no poço selecionado (ou no próximo vazio)
       let idx = selected
-      if (grid[idx].tipo_conteudo !== TIPO.VAZIO) {
-        idx = nextEmpty(0)
-      }
+      if (grid[idx].tipo_conteudo !== TIPO.VAZIO) idx = firstEmpty()
       if (idx === -1) {
-        setFeedback({ tipo: 'aviso', msg: 'Placa cheia — todos os poços ocupados.' })
+        setFeedback({ tipo: 'aviso', msg: 'Placa cheia.' })
         setCodigo('')
         setCarregando(false)
         return
       }
 
-      setGrid(prev => {
-        const next = [...prev]
-        next[idx] = {
-          ...next[idx],
-          tipo_conteudo: TIPO.AMOSTRA,
-          amostra_id: amostra.id,
-          amostra_codigo: amostra.codigo_interno,
-          amostra_nome: amostra.nome_paciente,
-        }
-        return next
-      })
+      if (grid.some(w => w.amostra_codigo === amostra.codigo_interno)) {
+        setPendingDuplicate({ amostra, idx })
+        setFeedback({ tipo: 'aviso', msg: `${amostra.codigo_interno} j\u00e1 est\u00e1 nesta placa.` })
+        setCodigo('')
+        setCarregando(false)
+        return
+      }
 
-      // Avançar seleção
-      const ne = nextEmpty(idx + 1)
-      setSelected(ne === -1 ? idx : ne)
-      setFeedback({ tipo: 'sucesso', msg: `${amostra.codigo_interno} — ${amostra.nome_paciente} → ${ALL_POSITIONS[idx]}` })
-      setSalva(false)
+      placeSample(amostra, idx)
     } catch (err) {
-      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Amostra não encontrada.' })
+      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Amostra n\u00e3o encontrada.' })
     } finally {
       setCodigo('')
       setCarregando(false)
     }
   }
 
-  // ---- Colocar controle ----
+  function forceAddDuplicate() {
+    if (!pendingDuplicate) return
+    placeSample(pendingDuplicate.amostra, pendingDuplicate.idx)
+  }
+
   function placeControl(tipo) {
     let idx = selected
-    if (grid[idx].tipo_conteudo !== TIPO.VAZIO) idx = nextEmpty(0)
+    if (grid[idx].tipo_conteudo !== TIPO.VAZIO) idx = firstEmpty()
     if (idx === -1) return
 
     setGrid(prev => {
       const next = [...prev]
-      next[idx] = { ...next[idx], tipo_conteudo: tipo, amostra_id: null, amostra_codigo: '', amostra_nome: '' }
+      next[idx] = { ...next[idx], tipo_conteudo: tipo, amostra_id: null, amostra_codigo: '' }
       return next
     })
-    const ne = nextEmpty(idx + 1)
+    const ne = nextEmpty(idx)
     setSelected(ne === -1 ? idx : ne)
     setSalva(false)
   }
 
-  // ---- Limpar poço ----
   function clearWell(idx) {
+    if (!isEditable) return
     setGrid(prev => {
       const next = [...prev]
-      next[idx] = { ...next[idx], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '', amostra_nome: '' }
+      next[idx] = { ...next[idx], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '' }
       return next
     })
     setSalva(false)
@@ -182,6 +295,10 @@ export default function PlateEditor({ csrfToken }) {
   // ---- Salvar placa ----
   async function salvarPlaca() {
     if (!placa) return
+    if (!hasControls) {
+      setFeedback({ tipo: 'erro', msg: 'A placa precisa ter pelo menos um CN e um CP.' })
+      return
+    }
     setCarregando(true)
     setFeedback(null)
 
@@ -199,10 +316,28 @@ export default function PlateEditor({ csrfToken }) {
       })
       setPlaca(data)
       setSalva(true)
-      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} salva — ${totalAmostras} amostras em extração.` })
+      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} salva \u2014 ${totalAmostras} amostras em extra\u00e7\u00e3o.` })
     } catch (err) {
       const erros = err.data?.erros || err.data?.detail
       setFeedback({ tipo: 'erro', msg: Array.isArray(erros) ? erros.join('; ') : (erros || 'Erro ao salvar.') })
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  // ---- Submeter ao termociclador ----
+  async function submeterPlaca() {
+    if (!placa) return
+    setCarregando(true)
+    setFeedback(null)
+    try {
+      const data = await api(`/api/placas/${placa.id}/submeter/`, {
+        csrfToken, method: 'POST', body: {},
+      })
+      setPlaca(data.placa)
+      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.placa.codigo} submetida ao termociclador.` })
+    } catch (err) {
+      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Erro ao submeter.' })
     } finally {
       setCarregando(false)
     }
@@ -212,10 +347,35 @@ export default function PlateEditor({ csrfToken }) {
   function resetar() {
     setPlaca(null)
     setGrid(emptyGrid())
-    setSelected(0)
+    setSelected(FILL_ORDER[0])
     setFeedback(null)
     setSalva(false)
     setCodigo('')
+    setPendingDuplicate(null)
+  }
+
+  // ---- Confirmar extração ----
+  async function handleConfirmarExtracao(e) {
+    e.preventDefault()
+    const val = codigoExtracao.trim()
+    if (!val) return
+    setCarregandoExtracao(true)
+    setFeedbackExtracao(null)
+    try {
+      const data = await api('/api/placas/confirmar-extracao/', {
+        csrfToken, method: 'POST', body: { codigo: val },
+      })
+      const total = data.placa?.total_amostras || 0
+      setFeedbackExtracao({
+        tipo: 'sucesso',
+        msg: `Placa ${val} \u2014 ${total} amostra${total !== 1 ? 's' : ''} atualizada${total !== 1 ? 's' : ''} para Extra\u00edda.`,
+      })
+    } catch (err) {
+      setFeedbackExtracao({ tipo: 'erro', msg: err.data?.erro || 'Placa n\u00e3o encontrada.' })
+    } finally {
+      setCodigoExtracao('')
+      setCarregandoExtracao(false)
+    }
   }
 
   // ================================================================
@@ -224,18 +384,82 @@ export default function PlateEditor({ csrfToken }) {
   return (
     <div style={{ fontFamily: 'inherit' }}>
       <h2 style={{ marginBottom: '0.5rem', fontSize: '1.3rem', color: '#1a3a5c' }}>
-        Montar Placa de Extração
+        Montar Placa de Extra\u00e7\u00e3o
       </h2>
 
-      {/* ---- Criar / info da placa ---- */}
-      {!placa ? (
+      {/* ---- Selecionar / Criar placa ---- */}
+      {!placa && (
         <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Crie uma nova placa para começar a montagem.</p>
-          <button onClick={criarPlaca} disabled={carregando} style={btnStyle('#1a3a5c')}>
-            {carregando ? 'Criando...' : 'Criar Nova Placa'}
-          </button>
+          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+            Crie uma nova placa ou carregue uma existente.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <button onClick={criarPlaca} disabled={carregando} style={btnStyle('#1a3a5c')}>
+              {carregando ? 'Criando...' : 'Criar Nova Placa'}
+            </button>
+            <button onClick={toggleList} disabled={carregando} style={btnStyle('#4b5563')}>
+              {showList ? 'Fechar Lista' : 'Carregar Placa Existente'}
+            </button>
+          </div>
+
+          {/* ---- Lista de placas ---- */}
+          {showList && (
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
+              {loadingList ? (
+                <p style={{ padding: '1rem', color: '#6b7280' }}>Carregando...</p>
+              ) : placas.length === 0 ? (
+                <p style={{ padding: '1rem', color: '#9ca3af' }}>Nenhuma placa encontrada.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={thStyle}>C\u00f3digo</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Amostras</th>
+                      <th style={thStyle}>Respons\u00e1vel</th>
+                      <th style={thStyle}>Data</th>
+                      <th style={thStyle}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {placas.map(p => {
+                      const badge = STATUS_PLACA[p.status_placa] || { bg: '#6c757d', label: p.status_display }
+                      return (
+                        <tr key={p.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ ...tdStyle, fontWeight: 600 }}>{p.codigo}</td>
+                          <td style={tdStyle}>
+                            <span style={{
+                              background: badge.bg, color: '#fff',
+                              padding: '2px 8px', borderRadius: 4,
+                              fontSize: '0.78rem', fontWeight: 500,
+                            }}>
+                              {badge.label}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{p.total_amostras}</td>
+                          <td style={tdStyle}>{p.responsavel_nome || '\u2014'}</td>
+                          <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
+                          <td style={tdStyle}>
+                            <button
+                              onClick={() => carregarPlaca(p.id)}
+                              style={{ ...btnStyle('#1a3a5c'), padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                            >
+                              Abrir
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
-      ) : (
+      )}
+
+      {/* ---- Info da placa ativa ---- */}
+      {placa && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '1rem',
           marginBottom: '1rem', flexWrap: 'wrap',
@@ -246,61 +470,104 @@ export default function PlateEditor({ csrfToken }) {
           }}>
             {placa.codigo}
           </span>
-          <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>
-            {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} reações
+          <span style={{
+            background: (STATUS_PLACA[placa.status_placa] || {}).bg || '#6c757d',
+            color: '#fff', padding: '2px 8px', borderRadius: 4,
+            fontSize: '0.78rem', fontWeight: 500,
+          }}>
+            {placa.status_display || placa.status_placa}
           </span>
-          {salva && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
+          <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+            {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} rea\u00e7\u00f5es
+          </span>
+          {salva && isEditable && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
         </div>
       )}
 
       {/* ---- Feedback ---- */}
       {feedback && (
-        <div style={{ padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem', ...feedbackStyles[feedback.tipo] }}>
-          {feedback.msg}
+        <div style={{
+          padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem',
+          ...feedbackStyles[feedback.tipo],
+          display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+        }}>
+          <span>{feedback.msg}</span>
+          {pendingDuplicate && (
+            <button
+              onClick={forceAddDuplicate}
+              style={{ ...btnStyle('#92400e'), padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+            >
+              Adicionar mesmo assim
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ---- Aviso de controles ---- */}
+      {placa && isEditable && !hasControls && (
+        <div style={{
+          padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '1rem',
+          background: '#fee2e2', color: '#b91c1c', fontSize: '0.85rem',
+          border: '1px solid #fca5a5',
+        }}>
+          A placa precisa de pelo menos um CN e um CP para ser salva.
         </div>
       )}
 
       {placa && (
         <>
-          {/* ---- Scanner + modo ---- */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: 280 }}>
-              <input
-                ref={inputRef}
-                type="text"
-                value={codigo}
-                onChange={e => setCodigo(e.target.value)}
-                placeholder={modo === TIPO.AMOSTRA ? 'Escanear código da amostra...' : `Clique no poço ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
-                disabled={carregando}
-                autoComplete="off"
-                style={{
-                  flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
-                  border: '2px solid #93c5fd', borderRadius: 6, outline: 'none',
-                }}
-              />
-              <button type="submit" disabled={carregando} style={btnStyle('#1a3a5c')}>
-                {modo === TIPO.AMOSTRA ? 'Buscar' : 'Inserir'}
-              </button>
-            </form>
-
-            <div style={{ display: 'flex', gap: '0.35rem' }}>
-              {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setModo(t)}
+          {/* ---- Scanner + modo (só para placa aberta) ---- */}
+          {isEditable && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: 280 }}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={codigo}
+                  onChange={e => setCodigo(e.target.value)}
+                  placeholder={modo === TIPO.AMOSTRA ? 'Escanear c\u00f3digo da amostra...' : `Clique no po\u00e7o ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
+                  disabled={carregando}
+                  autoComplete="off"
                   style={{
-                    ...btnStyle(modo === t ? TIPO_COLORS[t].border : '#d1d5db'),
-                    color: modo === t ? '#fff' : '#374151',
-                    padding: '0.5rem 0.75rem', fontSize: '0.8rem',
+                    flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
+                    border: '2px solid #93c5fd', borderRadius: 6, outline: 'none',
                   }}
-                >
-                  {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
+                />
+                <button type="submit" disabled={carregando} style={btnStyle('#1a3a5c')}>
+                  {modo === TIPO.AMOSTRA ? 'Buscar' : 'Inserir'}
                 </button>
-              ))}
-            </div>
-          </div>
+              </form>
 
-          {/* ---- Cálculo de reagentes ---- */}
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setModo(t)}
+                    style={{
+                      ...btnStyle(modo === t ? TIPO_COLORS[t].border : '#d1d5db'),
+                      color: modo === t ? '#fff' : '#374151',
+                      padding: '0.5rem 0.75rem', fontSize: '0.8rem',
+                    }}
+                  >
+                    {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ---- Não editável info ---- */}
+          {!isEditable && (
+            <div style={{
+              padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '1rem',
+              background: '#f0f7ff', color: '#1e40af', fontSize: '0.85rem',
+              border: '1px solid #bfdbfe',
+            }}>
+              Placa {placa.status_placa === 'submetida' ? 'submetida ao termociclador' : placa.status_display} \u2014 visualiza\u00e7\u00e3o somente.
+            </div>
+          )}
+
+          {/* ---- Reagentes ---- */}
           {totalReacoes > 0 && (
             <div style={{
               display: 'flex', gap: '1.5rem', marginBottom: '1rem', padding: '0.6rem 1rem',
@@ -338,48 +605,42 @@ export default function PlateEditor({ csrfToken }) {
                       const idx = ri * 12 + ci
                       const w = grid[idx]
                       const colors = TIPO_COLORS[w.tipo_conteudo]
-                      const isSelected = idx === selected
+                      const isSelected = idx === selected && isEditable
 
                       return (
                         <td key={col} style={{ padding: 1.5 }}>
                           <div
                             onClick={() => {
+                              if (!isEditable) return
                               if (w.tipo_conteudo === TIPO.VAZIO) {
-                                if (modo !== TIPO.AMOSTRA) {
-                                  placeControl(modo)
-                                } else {
-                                  setSelected(idx)
-                                }
+                                if (modo !== TIPO.AMOSTRA) placeControl(modo)
+                                else setSelected(idx)
                               } else {
                                 setSelected(idx)
                               }
                             }}
                             onContextMenu={(e) => { e.preventDefault(); clearWell(idx) }}
-                            title={w.amostra_codigo ? `${w.amostra_codigo} — ${w.amostra_nome}` : w.tipo_conteudo}
+                            title={w.amostra_codigo || w.tipo_conteudo}
                             style={{
-                              width: 72, height: 48,
+                              width: 62, height: 40,
                               background: colors.bg,
                               border: `2px solid ${isSelected ? '#1a3a5c' : colors.border}`,
                               borderRadius: 4,
-                              display: 'flex', flexDirection: 'column',
-                              alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: isEditable ? 'pointer' : 'default',
                               fontSize: '0.7rem', lineHeight: 1.2,
                               position: 'relative',
                               boxShadow: isSelected ? '0 0 0 2px #3b82f6' : 'none',
                             }}
                           >
                             {w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo && (
-                              <>
-                                <span style={{ fontWeight: 700, color: colors.text }}>{w.amostra_codigo}</span>
-                                <span style={{ color: '#6b7280', fontSize: '0.6rem', maxWidth: 66, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {w.amostra_nome}
-                                </span>
-                              </>
+                              <span style={{ fontWeight: 700, color: colors.text, fontSize: '0.7rem' }}>
+                                {w.amostra_codigo}
+                              </span>
                             )}
                             {w.tipo_conteudo === TIPO.CN && <span style={{ fontWeight: 700, color: colors.text }}>CN</span>}
                             {w.tipo_conteudo === TIPO.CP && <span style={{ fontWeight: 700, color: colors.text }}>CP</span>}
-                            {w.tipo_conteudo !== TIPO.VAZIO && (
+                            {w.tipo_conteudo !== TIPO.VAZIO && isEditable && (
                               <span
                                 onClick={(e) => { e.stopPropagation(); clearWell(idx) }}
                                 style={{
@@ -402,29 +663,112 @@ export default function PlateEditor({ csrfToken }) {
           </div>
 
           {/* ---- Ações ---- */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={salvarPlaca}
-              disabled={carregando || totalAmostras === 0}
-              style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0) ? 0.5 : 1 }}
-            >
-              {carregando ? 'Salvando...' : 'Salvar Placa'}
-            </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+            {isEditable && (
+              <>
+                <button
+                  onClick={salvarPlaca}
+                  disabled={carregando || totalAmostras === 0 || !hasControls}
+                  style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
+                >
+                  {carregando ? 'Salvando...' : 'Salvar Placa'}
+                </button>
+                {salva && (
+                  <button
+                    onClick={submeterPlaca}
+                    disabled={carregando}
+                    style={{ ...btnStyle('#b45309'), opacity: carregando ? 0.5 : 1 }}
+                  >
+                    Submeter ao Termociclador
+                  </button>
+                )}
+              </>
+            )}
+            {salva && placa && (
+              <a
+                href={`/api/placas/${placa.id}/pdf/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ ...btnStyle('#4b5563'), textDecoration: 'none', display: 'inline-block' }}
+              >
+                Exportar PDF
+              </a>
+            )}
             <button onClick={resetar} style={btnStyle('#6b7280')}>
-              Nova Placa
+              {placa ? 'Fechar Placa' : 'Nova Placa'}
             </button>
           </div>
         </>
       )}
+
+      {/* ---- Seção: Confirmar Extração ---- */}
+      <div style={{
+        borderTop: '2px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '1rem',
+      }}>
+        <h3 style={{ fontSize: '1.1rem', color: '#1a3a5c', marginBottom: '0.75rem' }}>
+          Confirmar Extra\u00e7\u00e3o
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          Escaneie o c\u00f3digo da placa ap\u00f3s a extra\u00e7\u00e3o para atualizar todas as amostras para Extra\u00edda.
+        </p>
+        <form onSubmit={handleConfirmarExtracao} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
+          <input
+            ref={extracaoRef}
+            type="text"
+            value={codigoExtracao}
+            onChange={e => setCodigoExtracao(e.target.value)}
+            placeholder="Escanear c\u00f3digo da placa (ex: PL2603-0001)"
+            disabled={carregandoExtracao}
+            autoComplete="off"
+            style={{
+              flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
+              border: '2px solid #c4b5fd', borderRadius: 6, outline: 'none',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={carregandoExtracao || !codigoExtracao.trim()}
+            style={{
+              ...btnStyle('#6f42c1'),
+              opacity: (carregandoExtracao || !codigoExtracao.trim()) ? 0.5 : 1,
+            }}
+          >
+            {carregandoExtracao ? 'Confirmando...' : 'Confirmar'}
+          </button>
+        </form>
+        {feedbackExtracao && (
+          <div style={{
+            padding: '0.6rem 1rem', borderRadius: 6,
+            ...feedbackStyles[feedbackExtracao.tipo],
+          }}>
+            {feedbackExtracao.msg}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-// ---- Styles ----
+// ---- Helpers / Styles ----
+function fmtDate(iso) {
+  if (!iso) return '\u2014'
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 const btnStyle = (bg) => ({
   background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem',
   borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,
 })
+
+const thStyle = {
+  padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600,
+  color: '#374151', whiteSpace: 'nowrap',
+}
+
+const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
 
 const feedbackStyles = {
   sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },

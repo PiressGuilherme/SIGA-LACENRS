@@ -244,7 +244,7 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * Configurar Nginx com HTTPS (mkcert) na LAN dentro do ambiente Docker.
 * Instalar certificado CA mkcert nos browsers dos clientes Windows.
 
-#### Fase 2 - Módulo de Registro Inteligente (2 semanas) ✅ Em andamento
+#### Fase 2 - Módulo de Registro Inteligente ✅ Concluída
 * ✅ Model `Amostra` atualizado com todos os campos do CSV GAL (nome, CPF, CNS, datas como DateTimeField, etc.)
 * ✅ `utils.py` com parser do CSV GAL (encoding Latin-1, separador `;`, mapeamento de colunas, parse de datas)
 * ✅ Endpoints DRF implementados:
@@ -253,34 +253,111 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * ✅ Django Admin configurado (busca por nome, CPF, CNS, GAL; filtros por status, UF, município; badges coloridos)
 * ✅ `StatusAmostra` refatorado para refletir o fluxo real GAL → LACEN (Aguardando Triagem, Exame em Análise, + statuses internos)
 * ✅ `GAL_STATUS_MAP` em `utils.py` mapeia `Status Exame` do GAL ao status interno na importação
-* ⏳ Confirmar valores reais do campo `Status Exame` do GAL para ajustar `GAL_STATUS_MAP`
+* ✅ Valores de `Status Exame` do GAL confirmados: Aguardando Triagem, Exame em Análise, Resultado Liberado, Exame Cancelado
+* ✅ Tela React de importação (ImportCSV.jsx) — 3 etapas: upload → preview → resultado
 
-#### Fase 3 - Módulo de Recebimento (1-2 semanas)
-* Tela web de recebimento físico de amostras (Django Template + lógica DRF).
-* Operador escaneia código de barras da alíquota → sistema localiza a amostra.
-* Confirmação via scanner → status muda para `Aliquotada`; registra data/hora e operador.
-* Suporte a leitura em sequência (múltiplas alíquotas por sessão).
-* Endpoint: `POST /api/amostras/{id}/receber/` — requer perfil `extracao` ou `supervisor`.
+#### Fase 3 - Módulo de Recebimento ✅ Concluída (com ressalvas)
+* ✅ Tela React de recebimento físico de amostras (`Recebimento.jsx` via django-vite)
+* ✅ Operador escaneia código de barras → sistema localiza por `codigo_interno`, `cod_amostra_gal` ou `cod_exame_gal`
+* ✅ Confirmação via scanner → status muda para `Aliquotada`
+* ✅ Suporte a leitura em sequência (múltiplas alíquotas por sessão com contador)
+* ✅ Feedback em tempo real: sucesso (verde), já aliquotada (amarelo), erro (vermelho)
+* ✅ Endpoint: `POST /api/amostras/receber/` (action non-detail no ViewSet)
+* ⚠️ **Pendente:** Não registra operador do recebimento em campo dedicado (só `atualizado_em` muda; não há `recebido_por` no model)
+* ⚠️ **Pendente:** Não verifica perfil `extracao`/`supervisor` — qualquer usuário autenticado pode receber
 
-#### Fase 4 - Montagem de Placa e Extração (3-4 semanas)
-* Integrar `django-vite` ao projeto para servir os componentes frontend.
-* Página web com componente React de placa 8×12 editável:
-  * Leitura de `codigo_interno` por scanner ou digitação por poço
-  * Marcação de poços como CN, CP ou Vazio
-  * Cálculo automático de volumes de reagentes
-* `PlacaViewSet` DRF para criação, edição e persistência da placa e poços.
-* Ao salvar placa: atualização em massa do status das amostras para `Extração` via `bulk_update()`.
-* Endpoint para scan do código da placa: `POST /api/placas/{codigo}/confirmar-extracao/` → status das amostras → `Extraída`.
-* Geração de PDF da placa (FR-HPV-001) — layout definido pelo sistema.
+#### Fase 4 - Montagem de Placa e Extração ⏳ Parcialmente concluída
+* ✅ `django-vite` integrado ao projeto
+* ✅ Componente React de placa 8×12 editável (`PlateEditor.jsx`):
+  * ✅ Leitura de `codigo_interno` por scanner ou digitação
+  * ✅ Marcação de poços como CN, CP ou Vazio
+  * ✅ Cálculo automático de volumes de reagentes (Tampão, Oligomix, Enzima)
+  * ✅ Detecção de duplicatas (mesma amostra na mesma placa)
+  * ✅ Limpar poço (botão X ou clique direito)
+* ✅ `PlacaViewSet` DRF para criação e persistência da placa e poços
+* ✅ Código de barras da placa gerado automaticamente (formato `PL{AAMM}-{NNNN}`)
+* ✅ Ao salvar poços: atualização em massa do status das amostras para `Extração`
+* ✅ Endpoint para confirmar extração: `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
+* ❌ **Não implementado: Listar/carregar placas existentes** — o frontend só cria novas placas; não há como abrir ou editar uma placa salva anteriormente
+* ❌ **Não implementado: Submeter placa ao termociclador** — o método `submeter()` existe no model (`Placa.submeter()`) mas não há endpoint DRF nem botão no frontend. A placa fica com status `ABERTA` mesmo após salvar os poços.
+* ❌ **Não implementado: Interface de confirmação de extração** — o endpoint `confirmar-extracao` existe no backend, mas não há tela/seção no frontend para o operador escanear o código da placa e confirmar a extração
+* ❌ **Não implementado: Geração de PDF da placa (FR-HPV-001)** — reportlab instalado mas sem implementação
+* ❌ **Não implementado: Buscar amostra por outros campos** — `buscar-amostra` só aceita `codigo_interno` exato; não busca por `cod_amostra_gal` ou `cod_exame_gal`
 
-#### Fase 5 - Consulta de Amostras (1 semana)
-* Tela React acessível a todos os perfis autenticados (`/amostras/consulta/`).
-* Tabela paginada com todas as amostras do sistema.
-* Busca textual por: nome do paciente, CPF, CNS, código interno, número GAL, cód. exame.
-* Filtros por: status, município, UF, material.
-* Ordenação por colunas clicáveis (código interno, paciente, status, data).
-* Badge colorido de status (mesma paleta do Admin).
-* Endpoint DRF com paginação, filtros e busca: `GET /api/amostras/?search=&status=&municipio=&page=`.
+#### Fase 5 - Consulta de Amostras ✅ Concluída
+* ✅ Tela React acessível a todos os perfis autenticados (`/amostras/consulta/`)
+* ✅ Tabela paginada com todas as amostras do sistema (50 por página)
+* ✅ Busca textual por: nome do paciente, CPF, CNS, código interno, número GAL, cód. exame
+* ✅ Filtros por: status, município (dropdowns populados via `/api/amostras/filtros/`)
+* ✅ Ordenação por colunas clicáveis
+* ✅ Badge colorido de status (mesma paleta do Admin)
+* ✅ Endpoint DRF com paginação, filtros e busca: `GET /api/amostras/?search=&status=&municipio=&page=`
+* ⚠️ **Pendente:** Filtro por UF e material (backend suporta UF, mas não há dropdown no frontend; material não implementado)
+
+---
+
+#### Fase 4B - Completar Placa e Extração (1-2 semanas)
+> Itens restantes da Fase 4 que precisam ser implementados antes de avançar para Resultados.
+
+* Listar placas existentes no frontend com filtro por status (aberta/submetida) e busca por código
+* Carregar placa salva para edição — ao selecionar, popular o grid com os poços já salvos
+* Endpoint e botão "Submeter ao Termociclador":
+  * `POST /api/placas/{id}/submeter/` — atualiza status da placa para `SUBMETIDA`
+  * No frontend: botão habilitado apenas quando a placa tem poços salvos
+  * Placa submetida não pode mais ter poços editados
+* Interface de confirmação de extração no frontend:
+  * Campo de scanner para código da placa
+  * Ao escanear: chama `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
+  * Exibir feedback com lista de amostras atualizadas
+* Geração de PDF da placa (FR-HPV-001):
+  * Layout: cabeçalho com código da placa, data, responsável
+  * Grid 8×12 com código interno + nome do paciente por poço
+  * Tabela de reagentes com volumes calculados
+  * Endpoint: `GET /api/placas/{id}/pdf/` → download do PDF
+  * Botão "Exportar PDF" no frontend
+* Ampliar busca de amostra na placa: aceitar `cod_amostra_gal` e `cod_exame_gal` além de `codigo_interno`
+
+#### Fase 5.5 - Consolidação e Qualidade (2 semanas)
+> Passos intermediários de consolidação antes de avançar para o módulo de resultados. Essenciais para um sistema de laboratório clínico.
+
+**Testes automatizados:**
+* Testes unitários do parser CSV GAL (`parse_gal_csv`, `parse_gal_file`) — cenários: encoding, ZIP, duplicatas, cancelados, datas inválidas
+* Testes do fluxo de status da amostra — validar transições permitidas/proibidas
+* Testes dos endpoints de importação, recebimento e placas (DRF `APITestCase`)
+* Testes do model Placa — geração de código, submissão, confirmação de extração
+
+**Permissões por grupo:**
+* Criar permission mixins/decorators que verifiquem grupo do usuário (`extracao`, `pcr`, `supervisor`)
+* Aplicar nas views:
+  * Import CSV / Recebimento → requer `extracao` ou `supervisor`
+  * Montar placa / Confirmar extração → requer `extracao` ou `supervisor`
+  * Resultados (futuro) → requer `pcr` ou `supervisor`
+  * Edição manual de amostra → requer `supervisor`
+  * Cancelar amostra → requer `supervisor`
+* Retornar `403 Forbidden` com mensagem clara quando sem permissão
+
+**Ativar django-auditlog:**
+* Registrar models com `auditlog.register()`: `Amostra`, `Placa`, `Poco`
+* Configurar campos excluídos do log (se necessário)
+* Verificar que alterações de status ficam registradas no histórico
+
+**Tela de login dedicada:**
+* Página de login própria com autenticação JWT (em vez de redirecionar para `/admin/login/`)
+* Formulário: e-mail + senha → obter access + refresh token → salvar em localStorage
+* Redirect para página principal após login bem-sucedido
+* Rota `/logout/` que limpa tokens e redireciona para login
+
+**Validação de transições de status (state machine):**
+* Criar mapa de transições válidas no model `Amostra`:
+  * `AGUARDANDO_TRIAGEM` → `ALIQUOTADA`, `CANCELADA`
+  * `EXAME_EM_ANALISE` → `ALIQUOTADA`, `CANCELADA`
+  * `ALIQUOTADA` → `EXTRACAO`, `CANCELADA`
+  * `EXTRACAO` → `EXTRAIDA`, `CANCELADA`
+  * `EXTRAIDA` → `RESULTADO`, `CANCELADA`
+  * `RESULTADO` → `RESULTADO_LIBERADO`, `REPETICAO_SOLICITADA`, `CANCELADA`
+  * `REPETICAO_SOLICITADA` → `ALIQUOTADA`, `CANCELADA`
+* Método `Amostra.transitar(novo_status)` que valida a transição antes de aplicar
+* Usar em todas as views que alteram status (receber, salvar placa, confirmar extração, etc.)
 
 #### Fase 6 - Módulo de Resultados e Repetição (2-3 semanas)
 > **Pré-requisito:** Obter critérios IBMP Biomol (cutoffs de Cq por canal) antes de implementar a lógica de classificação.
@@ -300,18 +377,35 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * Gravação imutável de resultados confirmados (`imutavel=True`).
 * Endpoint/ação para marcar resultado como liberado no GAL → status `Resultado Liberado`.
 
-#### Fase 7 - Consulta avançada, ajustes e auditoria (2 semanas)
-* Configuração avançada do Django Admin (filtros e buscas por status, data, município, resultado).
-* Integração final do django-auditlog para garantir rastreabilidade regulatória.
-* Visualização completa do histórico de retestes por amostra.
-* Relatórios exportáveis em PDF/Excel com ReportLab/openpyxl.
-* Testes de ponta a ponta e documentação.
+#### Fase 6.5 - Integração e Robustez (1-2 semanas)
+> Garantir que o fluxo completo funciona de ponta a ponta antes de avançar para relatórios.
 
-#### Fase 8 - Dashboard (1-2 semanas)
-* Página inicial com Chart.js.
-* Contadores e gráficos de resultados por genótipo.
-* Alertas automáticos de amostras pendentes (`Repetição Solicitada`).
-* Atalhos rápidos de navegação.
+* Testes E2E do fluxo completo: Importar CSV → Receber → Montar Placa → Submeter → Confirmar Extração → Importar Resultado → Confirmar → Liberar
+* Fluxo de repetição completo na UI: botão "Solicitar Repetição" na tela de revisão → amostra retorna para `Aliquotada` → inclusão em nova placa
+* Visualização do histórico de uma amostra: todas as placas/poços/resultados anteriores acessíveis numa timeline
+* Tratamento de erros global no frontend — componente de erro padronizado, loading states consistentes
+* Endpoint `GET /api/amostras/{id}/historico/` — retorna timeline completa com todas as tentativas
+
+#### Fase 7 - Auditoria e Relatórios (2 semanas)
+* Configuração avançada do Django Admin (filtros e buscas por status, data, município, resultado).
+* Tela de auditoria para supervisor: visualizar histórico de alterações por amostra via django-auditlog.
+* Visualização completa do histórico de retestes por amostra.
+* Relatórios exportáveis:
+  * PDF de resultados por placa (laudo consolidado)
+  * Excel de resultados por período (exportação para vigilância epidemiológica)
+  * PDF da placa de extração (FR-HPV-001) — se não concluído na Fase 4B
+* Indicadores para supervisor: amostras pendentes por status, placas abertas, resultados por confirmar
+* Testes de integração e documentação técnica
+
+#### Fase 8 - Dashboard e Polish (2 semanas)
+* Página inicial com Chart.js (dashboard pós-login).
+* Contadores de amostras por status atual (cards com ícones).
+* Gráfico de resultados por genótipo e filtro de período.
+* Tabela das últimas placas processadas com link direto para detalhes.
+* Alertas automáticos de amostras pendentes (`Repetição Solicitada`, amostras paradas há mais de N dias).
+* Atalhos rápidos de navegação (importar, receber, montar placa).
+* Otimização de estilos: migrar inline styles para CSS modules ou Tailwind para consistência visual.
+* Responsividade para tablets (recebimento e montagem de placa são usados no bancada do laboratório).
 
 ---
 

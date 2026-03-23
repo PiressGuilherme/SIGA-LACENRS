@@ -94,6 +94,8 @@ export default function PlateEditor({ csrfToken }) {
   const [placas, setPlacas] = useState([])
   const [loadingList, setLoadingList] = useState(false)
   const [showList, setShowList] = useState(false)
+  const [searchPlacas, setSearchPlacas] = useState('')
+  const [statusFilterPlacas, setStatusFilterPlacas] = useState('')
 
   // ---- State: editor ----
   const [placa, setPlaca] = useState(null)
@@ -110,6 +112,7 @@ export default function PlateEditor({ csrfToken }) {
   // ---- State: confirmar extração ----
   const [codigoExtracao, setCodigoExtracao] = useState('')
   const [feedbackExtracao, setFeedbackExtracao] = useState(null)
+  const [amostrasExtraidas, setAmostrasExtraidas] = useState([])
   const [carregandoExtracao, setCarregandoExtracao] = useState(false)
   const extracaoRef = useRef()
 
@@ -140,10 +143,14 @@ export default function PlateEditor({ csrfToken }) {
   }, [grid])
 
   // ---- Carregar lista de placas ----
-  async function fetchPlacas() {
+  async function fetchPlacas(search = searchPlacas, statusFilter = statusFilterPlacas) {
     setLoadingList(true)
     try {
-      const data = await api('/api/placas/', { csrfToken })
+      const params = new URLSearchParams()
+      if (search.trim()) params.append('search', search.trim())
+      if (statusFilter) params.append('status_placa', statusFilter)
+      const qs = params.toString() ? `?${params.toString()}` : ''
+      const data = await api(`/api/placas/${qs}`, { csrfToken })
       setPlacas(data.results || data)
     } catch {
       setPlacas([])
@@ -155,6 +162,18 @@ export default function PlateEditor({ csrfToken }) {
   function toggleList() {
     if (!showList) fetchPlacas()
     setShowList(!showList)
+  }
+
+  function handleSearchPlacas(e) {
+    const val = e.target.value
+    setSearchPlacas(val)
+    fetchPlacas(val, statusFilterPlacas)
+  }
+
+  function handleStatusFilterPlacas(e) {
+    const val = e.target.value
+    setStatusFilterPlacas(val)
+    fetchPlacas(searchPlacas, val)
   }
 
   // ---- Carregar placa existente ----
@@ -364,14 +383,20 @@ export default function PlateEditor({ csrfToken }) {
     if (!val) return
     setCarregandoExtracao(true)
     setFeedbackExtracao(null)
+    setAmostrasExtraidas([])
     try {
       const data = await api('/api/placas/confirmar-extracao/', {
         csrfToken, method: 'POST', body: { codigo: val },
       })
-      const total = data.placa?.total_amostras || 0
+      const pocos = data.placa?.pocos || []
+      const codigos = pocos
+        .filter(p => p.tipo_conteudo === 'amostra' && p.amostra_codigo)
+        .map(p => p.amostra_codigo)
+        .sort()
+      setAmostrasExtraidas(codigos)
       setFeedbackExtracao({
         tipo: 'sucesso',
-        msg: `Placa ${val} — ${total} amostra${total !== 1 ? 's' : ''} atualizada${total !== 1 ? 's' : ''} para Extraída.`,
+        msg: `Placa ${val} — ${codigos.length} amostra${codigos.length !== 1 ? 's' : ''} atualizada${codigos.length !== 1 ? 's' : ''} para Extraída.`,
       })
     } catch (err) {
       setFeedbackExtracao({ tipo: 'erro', msg: err.data?.erro || 'Placa não encontrada.' })
@@ -408,6 +433,32 @@ export default function PlateEditor({ csrfToken }) {
           {/* ---- Lista de placas ---- */}
           {showList && (
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
+              {/* Filtros */}
+              <div style={{ display: 'flex', gap: '0.5rem', padding: '0.75rem', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={searchPlacas}
+                  onChange={handleSearchPlacas}
+                  placeholder="Buscar por código (ex: PL2603)"
+                  style={{
+                    flex: 1, minWidth: 200, padding: '0.45rem 0.75rem',
+                    border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem',
+                  }}
+                />
+                <select
+                  value={statusFilterPlacas}
+                  onChange={handleStatusFilterPlacas}
+                  style={{
+                    padding: '0.45rem 0.75rem', border: '1px solid #d1d5db',
+                    borderRadius: 5, fontSize: '0.85rem', background: '#fff',
+                  }}
+                >
+                  <option value="">Todos os status</option>
+                  <option value="aberta">Aberta</option>
+                  <option value="submetida">Submetida</option>
+                  <option value="resultados_importados">Resultados</option>
+                </select>
+              </div>
               {loadingList ? (
                 <p style={{ padding: '1rem', color: '#6b7280' }}>Carregando...</p>
               ) : placas.length === 0 ? (
@@ -720,11 +771,23 @@ export default function PlateEditor({ csrfToken }) {
           </button>
         </form>
         {feedbackExtracao && (
-          <div style={{
-            padding: '0.6rem 1rem', borderRadius: 6,
-            ...feedbackStyles[feedbackExtracao.tipo],
-          }}>
-            {feedbackExtracao.msg}
+          <div style={{ borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{
+              padding: '0.6rem 1rem',
+              ...feedbackStyles[feedbackExtracao.tipo],
+            }}>
+              {feedbackExtracao.msg}
+            </div>
+            {feedbackExtracao.tipo === 'sucesso' && amostrasExtraidas.length > 0 && (
+              <div style={{
+                padding: '0.5rem 1rem',
+                background: '#f0fdf4', borderTop: '1px solid #bbf7d0',
+                fontSize: '0.8rem', color: '#065f46',
+              }}>
+                <b>Amostras extraídas:</b>{' '}
+                {amostrasExtraidas.join(', ')}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -266,26 +266,28 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * ✅ Campo `recebido_por` adicionado ao model `Amostra` — registra operador que confirmou a alíquota (migration `0005_add_recebido_por.py`)
 * ⚠️ **Pendente:** Não verifica perfil `extracao`/`supervisor` — qualquer usuário autenticado pode receber
 
-#### Fase 4 - Montagem de Placa e Extração ⏳ Parcialmente concluída
+#### Fase 4 - Montagem de Placa e Extração ✅ Concluída
 * ✅ `django-vite` integrado ao projeto
 * ✅ Componente React de placa 8×12 editável (`PlateEditor.jsx`):
-  * ✅ Leitura de `codigo_interno` por scanner ou digitação
+  * ✅ Leitura de `codigo_interno` por scanner ou digitação (também aceita `cod_amostra_gal` e `cod_exame_gal`)
   * ✅ Marcação de poços como CN, CP ou Vazio
   * ✅ Cálculo automático de volumes de reagentes (Tampão, Oligomix, Enzima)
   * ✅ Detecção de duplicatas (mesma amostra na mesma placa)
   * ✅ Limpar poço (botão X ou clique direito)
   * ✅ Criação lazy da placa — placa só é criada no banco ao salvar (não ao clicar "Nova Placa")
   * ✅ Excluir placa com reversão automática das amostras para `Aliquotada`
-  * ✅ Seção "Confirmar Extração" integrada no frontend — operador escaneia código da placa após extração
+  * ✅ Seção "Confirmar Extração" integrada no frontend — operador escaneia código da placa após extração; exibe lista de amostras extraídas
+  * ✅ Listar placas existentes com filtro por status e busca por código
+  * ✅ Carregar placa salva para edição — popula o grid com os poços existentes (`gridFromPocos`)
+  * ✅ Botão "Exportar PDF" (Aberta a `GET /api/placas/{id}/pdf/` em nova aba)
 * ✅ `PlacaViewSet` DRF para criação e persistência da placa e poços
 * ✅ Código de barras da placa gerado automaticamente (formato `PL{AAMM}-{NNNN}`)
 * ✅ Ao salvar poços: atualização em massa do status das amostras para `Extração`
 * ✅ Endpoint para confirmar extração: `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
 * ✅ `perform_destroy` no ViewSet: ao excluir placa via API, amostras vinculadas voltam para `Aliquotada`
+* ✅ `GET /api/placas/{id}/pdf/` — gera PDF FR-HPV-001 (ReportLab): cabeçalho, grid 8×12 colorido, tabela de reagentes
+* ✅ `GET /api/placas/buscar-amostra/?codigo=` busca por `codigo_interno`, `cod_amostra_gal` e `cod_exame_gal`; resposta com erro descritivo quando amostra existe mas está no status errado
 * ℹ️ **Decisão de design:** Etapa "Submeter ao Termociclador" removida do fluxo — simplifica operação; o fluxo é: Salvar Placa (amostras → `Extração`) → Scan do código da placa após extração (amostras → `Extraída`)
-* ❌ **Não implementado: Listar/carregar placas existentes para edição** — o frontend lista placas mas não permite reabrir uma placa salva para editar poços
-* ❌ **Não implementado: Geração de PDF da placa (FR-HPV-001)** — reportlab instalado mas sem implementação
-* ❌ **Não implementado: Buscar amostra por outros campos** — `buscar-amostra` só aceita `codigo_interno` exato; não busca por `cod_amostra_gal` ou `cod_exame_gal`
 
 #### Fase 5 - Consulta de Amostras ✅ Concluída
 * ✅ Tela React acessível a todos os perfis autenticados (`/amostras/consulta/`)
@@ -295,26 +297,24 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * ✅ Ordenação por colunas clicáveis
 * ✅ Badge colorido de status (mesma paleta do Admin)
 * ✅ Endpoint DRF com paginação, filtros e busca: `GET /api/amostras/?search=&status=&municipio=&page=`
-* ⚠️ **Pendente:** Filtro por UF e material (backend suporta UF, mas não há dropdown no frontend; material não implementado)
-
+* ⚠️ **Pendente:** Filtro por UF e material (verificar se o filtro por UF está funcionando; filtro por material não implementado, implementar em backend e frontend com dropdown).
 ---
 
-#### Fase 4B - Completar Placa e Extração (1-2 semanas)
-> Itens restantes da Fase 4 que precisam ser implementados antes de avançar para Resultados.
+#### Fase 4B - Completar Placa e Extração ✅ Concluída
 
-* Listar placas existentes no frontend com filtro por status e busca por código
-* Carregar placa salva para edição — ao selecionar, popular o grid com os poços já salvos
-* Interface de confirmação de extração no frontend (seção já existe, validar completude):
-  * Campo de scanner para código da placa
-  * Ao escanear: chama `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
-  * Exibir feedback com lista de amostras atualizadas
-* Geração de PDF da placa (FR-HPV-001):
-  * Layout: cabeçalho com código da placa, data, responsável
-  * Grid 8×12 com código interno + nome do paciente por poço
-  * Tabela de reagentes com volumes calculados
-  * Endpoint: `GET /api/placas/{id}/pdf/` → download do PDF
-  * Botão "Exportar PDF" no frontend
-* Ampliar busca de amostra na placa: aceitar `cod_amostra_gal` e `cod_exame_gal` além de `codigo_interno`
+* ✅ Filtro por status e busca por código na listagem de placas do frontend (passa `?status_placa=` e `?search=` ao backend)
+* ✅ Carregar placa salva para edição — popula grid via `gridFromPocos`; verificado funcional
+* ✅ Interface de confirmação de extração validada:
+  * ✅ Campo de scanner para código da placa
+  * ✅ Chama `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
+  * ✅ Exibe feedback com lista de amostras extraídas (códigos internos)
+* ✅ Geração de PDF da placa (FR-HPV-001):
+  * ✅ Cabeçalho com código, data e responsável
+  * ✅ Grid 8×12 com código interno por poço (células coloridas: azul=amostra, amarelo=CN, rosa=CP)
+  * ✅ Tabela de reagentes com volumes calculados
+  * ✅ Endpoint `GET /api/placas/{id}/pdf/` implementado em `pdf.py` (ReportLab)
+  * ✅ Botão "Exportar PDF" no frontend (visível após salvar)
+* ✅ `buscar-amostra` aceita `codigo_interno`, `cod_amostra_gal` e `cod_exame_gal`; retorna erro descritivo quando status inadequado
 
 #### Fase 5.5 - Consolidação e Qualidade (2 semanas)
 > Passos intermediários de consolidação antes de avançar para o módulo de resultados. Essenciais para um sistema de laboratório clínico.

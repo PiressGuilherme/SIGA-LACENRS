@@ -113,7 +113,7 @@ export default function PlateEditor({ csrfToken }) {
   const [carregandoExtracao, setCarregandoExtracao] = useState(false)
   const extracaoRef = useRef()
 
-  const isEditable = placa && placa.status_placa === 'aberta'
+  const isEditable = !!placa
 
   useEffect(() => { if (isEditable) inputRef.current?.focus() }, [feedback, selected, isEditable])
 
@@ -181,22 +181,14 @@ export default function PlateEditor({ csrfToken }) {
     }
   }
 
-  // ---- Criar placa ----
-  async function criarPlaca() {
-    setCarregando(true)
-    try {
-      const data = await api('/api/placas/', { csrfToken, method: 'POST', body: {} })
-      setPlaca(data)
-      setGrid(emptyGrid())
-      setSelected(FILL_ORDER[0])
-      setSalva(false)
-      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} criada.` })
-      setShowList(false)
-    } catch (err) {
-      setFeedback({ tipo: 'erro', msg: err.data?.detail || 'Erro ao criar placa.' })
-    } finally {
-      setCarregando(false)
-    }
+  // ---- Criar placa (local — só persiste ao salvar) ----
+  function criarPlaca() {
+    setPlaca({ local: true })
+    setGrid(emptyGrid())
+    setSelected(FILL_ORDER[0])
+    setSalva(false)
+    setFeedback(null)
+    setShowList(false)
   }
 
   // ---- Colocar amostra ----
@@ -213,7 +205,7 @@ export default function PlateEditor({ csrfToken }) {
     })
     const ne = nextEmpty(gridIdx)
     setSelected(ne === -1 ? gridIdx : ne)
-    setFeedback({ tipo: 'sucesso', msg: `${amostra.codigo_interno} \u2192 ${ALL_POSITIONS[gridIdx]}` })
+    setFeedback({ tipo: 'sucesso', msg: `${amostra.codigo_interno} → ${ALL_POSITIONS[gridIdx]}` })
     setSalva(false)
     setPendingDuplicate(null)
   }
@@ -247,7 +239,7 @@ export default function PlateEditor({ csrfToken }) {
 
       if (grid.some(w => w.amostra_codigo === amostra.codigo_interno)) {
         setPendingDuplicate({ amostra, idx })
-        setFeedback({ tipo: 'aviso', msg: `${amostra.codigo_interno} j\u00e1 est\u00e1 nesta placa.` })
+        setFeedback({ tipo: 'aviso', msg: `${amostra.codigo_interno} já está nesta placa.` })
         setCodigo('')
         setCarregando(false)
         return
@@ -255,7 +247,7 @@ export default function PlateEditor({ csrfToken }) {
 
       placeSample(amostra, idx)
     } catch (err) {
-      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Amostra n\u00e3o encontrada.' })
+      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Amostra não encontrada.' })
     } finally {
       setCodigo('')
       setCarregando(false)
@@ -311,12 +303,19 @@ export default function PlateEditor({ csrfToken }) {
       }))
 
     try {
-      const data = await api(`/api/placas/${placa.id}/salvar-pocos/`, {
+      // Se a placa ainda não existe no banco, criar primeiro
+      let placaAtual = placa
+      if (placa.local) {
+        placaAtual = await api('/api/placas/', { csrfToken, method: 'POST', body: {} })
+        setPlaca(placaAtual)
+      }
+
+      const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
         csrfToken, method: 'POST', body: { pocos },
       })
       setPlaca(data)
       setSalva(true)
-      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} salva \u2014 ${totalAmostras} amostras em extra\u00e7\u00e3o.` })
+      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} salva — ${totalAmostras} amostras em extração.` })
     } catch (err) {
       const erros = err.data?.erros || err.data?.detail
       setFeedback({ tipo: 'erro', msg: Array.isArray(erros) ? erros.join('; ') : (erros || 'Erro ao salvar.') })
@@ -325,19 +324,23 @@ export default function PlateEditor({ csrfToken }) {
     }
   }
 
-  // ---- Submeter ao termociclador ----
-  async function submeterPlaca() {
+  // ---- Excluir placa ----
+  async function excluirPlaca() {
     if (!placa) return
+    // Placa local (não salva) — basta resetar
+    if (placa.local) {
+      resetar()
+      return
+    }
+    if (!window.confirm(`Excluir placa ${placa.codigo}? As amostras voltarão ao status Aliquotada.`)) return
     setCarregando(true)
     setFeedback(null)
     try {
-      const data = await api(`/api/placas/${placa.id}/submeter/`, {
-        csrfToken, method: 'POST', body: {},
-      })
-      setPlaca(data.placa)
-      setFeedback({ tipo: 'sucesso', msg: `Placa ${data.placa.codigo} submetida ao termociclador.` })
+      await api(`/api/placas/${placa.id}/`, { csrfToken, method: 'DELETE' })
+      setFeedback({ tipo: 'sucesso', msg: `Placa ${placa.codigo} excluída.` })
+      resetar()
     } catch (err) {
-      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Erro ao submeter.' })
+      setFeedback({ tipo: 'erro', msg: err.data?.erro || err.data?.detail || 'Erro ao excluir.' })
     } finally {
       setCarregando(false)
     }
@@ -368,10 +371,10 @@ export default function PlateEditor({ csrfToken }) {
       const total = data.placa?.total_amostras || 0
       setFeedbackExtracao({
         tipo: 'sucesso',
-        msg: `Placa ${val} \u2014 ${total} amostra${total !== 1 ? 's' : ''} atualizada${total !== 1 ? 's' : ''} para Extra\u00edda.`,
+        msg: `Placa ${val} — ${total} amostra${total !== 1 ? 's' : ''} atualizada${total !== 1 ? 's' : ''} para Extraída.`,
       })
     } catch (err) {
-      setFeedbackExtracao({ tipo: 'erro', msg: err.data?.erro || 'Placa n\u00e3o encontrada.' })
+      setFeedbackExtracao({ tipo: 'erro', msg: err.data?.erro || 'Placa não encontrada.' })
     } finally {
       setCodigoExtracao('')
       setCarregandoExtracao(false)
@@ -384,7 +387,7 @@ export default function PlateEditor({ csrfToken }) {
   return (
     <div style={{ fontFamily: 'inherit' }}>
       <h2 style={{ marginBottom: '0.5rem', fontSize: '1.3rem', color: '#1a3a5c' }}>
-        Montar Placa de Extra\u00e7\u00e3o
+        Montar Placa de Extração
       </h2>
 
       {/* ---- Selecionar / Criar placa ---- */}
@@ -413,10 +416,10 @@ export default function PlateEditor({ csrfToken }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={thStyle}>C\u00f3digo</th>
+                      <th style={thStyle}>Código</th>
                       <th style={thStyle}>Status</th>
                       <th style={thStyle}>Amostras</th>
-                      <th style={thStyle}>Respons\u00e1vel</th>
+                      <th style={thStyle}>Responsável</th>
                       <th style={thStyle}>Data</th>
                       <th style={thStyle}></th>
                     </tr>
@@ -437,7 +440,7 @@ export default function PlateEditor({ csrfToken }) {
                             </span>
                           </td>
                           <td style={tdStyle}>{p.total_amostras}</td>
-                          <td style={tdStyle}>{p.responsavel_nome || '\u2014'}</td>
+                          <td style={tdStyle}>{p.responsavel_nome || '—'}</td>
                           <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
                           <td style={tdStyle}>
                             <button
@@ -468,19 +471,12 @@ export default function PlateEditor({ csrfToken }) {
             background: '#1a3a5c', color: '#fff', padding: '0.4rem 1rem',
             borderRadius: 6, fontWeight: 600, fontSize: '1rem', letterSpacing: 1,
           }}>
-            {placa.codigo}
-          </span>
-          <span style={{
-            background: (STATUS_PLACA[placa.status_placa] || {}).bg || '#6c757d',
-            color: '#fff', padding: '2px 8px', borderRadius: 4,
-            fontSize: '0.78rem', fontWeight: 500,
-          }}>
-            {placa.status_display || placa.status_placa}
+            {placa.local ? 'Nova Placa' : placa.codigo}
           </span>
           <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>
-            {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} rea\u00e7\u00f5es
+            {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} reações
           </span>
-          {salva && isEditable && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
+          {salva && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
         </div>
       )}
 
@@ -525,7 +521,7 @@ export default function PlateEditor({ csrfToken }) {
                   type="text"
                   value={codigo}
                   onChange={e => setCodigo(e.target.value)}
-                  placeholder={modo === TIPO.AMOSTRA ? 'Escanear c\u00f3digo da amostra...' : `Clique no po\u00e7o ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
+                  placeholder={modo === TIPO.AMOSTRA ? 'Escanear código da amostra...' : `Clique no poço ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
                   disabled={carregando}
                   autoComplete="off"
                   style={{
@@ -553,17 +549,6 @@ export default function PlateEditor({ csrfToken }) {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* ---- Não editável info ---- */}
-          {!isEditable && (
-            <div style={{
-              padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '1rem',
-              background: '#f0f7ff', color: '#1e40af', fontSize: '0.85rem',
-              border: '1px solid #bfdbfe',
-            }}>
-              Placa {placa.status_placa === 'submetida' ? 'submetida ao termociclador' : placa.status_display} \u2014 visualiza\u00e7\u00e3o somente.
             </div>
           )}
 
@@ -665,24 +650,22 @@ export default function PlateEditor({ csrfToken }) {
           {/* ---- Ações ---- */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
             {isEditable && (
-              <>
-                <button
-                  onClick={salvarPlaca}
-                  disabled={carregando || totalAmostras === 0 || !hasControls}
-                  style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
-                >
-                  {carregando ? 'Salvando...' : 'Salvar Placa'}
-                </button>
-                {salva && (
-                  <button
-                    onClick={submeterPlaca}
-                    disabled={carregando}
-                    style={{ ...btnStyle('#b45309'), opacity: carregando ? 0.5 : 1 }}
-                  >
-                    Submeter ao Termociclador
-                  </button>
-                )}
-              </>
+              <button
+                onClick={salvarPlaca}
+                disabled={carregando || totalAmostras === 0 || !hasControls}
+                style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
+              >
+                {carregando ? 'Salvando...' : 'Salvar Placa'}
+              </button>
+            )}
+            {placa && (
+              <button
+                onClick={excluirPlaca}
+                disabled={carregando}
+                style={{ ...btnStyle('#dc3545'), opacity: carregando ? 0.5 : 1 }}
+              >
+                Excluir Placa
+              </button>
             )}
             {salva && placa && (
               <a
@@ -706,10 +689,10 @@ export default function PlateEditor({ csrfToken }) {
         borderTop: '2px solid #e5e7eb', paddingTop: '1.5rem', marginTop: '1rem',
       }}>
         <h3 style={{ fontSize: '1.1rem', color: '#1a3a5c', marginBottom: '0.75rem' }}>
-          Confirmar Extra\u00e7\u00e3o
+          Confirmar Extração
         </h3>
         <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
-          Escaneie o c\u00f3digo da placa ap\u00f3s a extra\u00e7\u00e3o para atualizar todas as amostras para Extra\u00edda.
+          Escaneie o código da placa após a extração para atualizar todas as amostras para Extraída.
         </p>
         <form onSubmit={handleConfirmarExtracao} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
           <input
@@ -717,7 +700,7 @@ export default function PlateEditor({ csrfToken }) {
             type="text"
             value={codigoExtracao}
             onChange={e => setCodigoExtracao(e.target.value)}
-            placeholder="Escanear c\u00f3digo da placa (ex: PL2603-0001)"
+            placeholder="Escanear código da placa (ex: PL2603-0001)"
             disabled={carregandoExtracao}
             autoComplete="off"
             style={{
@@ -751,7 +734,7 @@ export default function PlateEditor({ csrfToken }) {
 
 // ---- Helpers / Styles ----
 function fmtDate(iso) {
-  if (!iso) return '\u2014'
+  if (!iso) return '—'
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',

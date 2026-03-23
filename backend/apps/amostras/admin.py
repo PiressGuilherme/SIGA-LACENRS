@@ -24,8 +24,9 @@ class AmostraAdmin(admin.ModelAdmin):
 
     list_display = (
         'codigo_interno_display', 'cod_exame_gal', 'nome_paciente',
-        'status_badge', 'municipio', 'data_recebimento', 'criado_por',
+        'status', 'municipio', 'data_recebimento', 'criado_por',
     )
+    list_editable = ('status',)
     list_filter = ('status', 'uf', 'municipio', 'material')
     search_fields = (
         'numero_gal', 'cod_exame_gal', 'cod_amostra_gal',

@@ -40,6 +40,15 @@ class PlacaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(responsavel=self.request.user)
 
+    def perform_destroy(self, instance):
+        """Ao excluir placa, reverte amostras vinculadas para Aliquotada."""
+        amostra_ids = instance._amostras_ids()
+        if amostra_ids:
+            Amostra.objects.filter(pk__in=amostra_ids).update(
+                status=StatusAmostra.ALIQUOTADA,
+            )
+        instance.delete()
+
     # ------------------------------------------------------------------
     # Buscar amostra elegível para a placa
     # ------------------------------------------------------------------
@@ -161,39 +170,6 @@ class PlacaViewSet(viewsets.ModelViewSet):
 
         placa.refresh_from_db()
         return Response(PlacaSerializer(placa).data)
-
-    # ------------------------------------------------------------------
-    # Submeter placa ao termociclador
-    # ------------------------------------------------------------------
-
-    @action(detail=True, methods=['post'], url_path='submeter')
-    def submeter(self, request, pk=None):
-        """
-        POST /api/placas/{id}/submeter/
-
-        Marca a placa como submetida ao termociclador.
-        Só pode ser feito em placas abertas que já tenham poços salvos.
-        """
-        placa = self.get_object()
-
-        if placa.status_placa != StatusPlaca.ABERTA:
-            return Response(
-                {'erro': f'Placa já está com status "{placa.get_status_placa_display()}".'},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        if placa.pocos.count() == 0:
-            return Response(
-                {'erro': 'Placa não tem poços salvos.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        placa.submeter()
-
-        return Response({
-            'sucesso': True,
-            'placa': PlacaSerializer(placa).data,
-        })
 
     # ------------------------------------------------------------------
     # PDF do espelho de placa (FR-HPV-001)

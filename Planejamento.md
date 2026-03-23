@@ -246,15 +246,15 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 
 #### Fase 2 - Módulo de Registro Inteligente ✅ Concluída
 * ✅ Model `Amostra` atualizado com todos os campos do CSV GAL (nome, CPF, CNS, datas como DateTimeField, etc.)
-* ✅ `utils.py` com parser do CSV GAL (encoding Latin-1, separador `;`, mapeamento de colunas, parse de datas)
+* ✅ `utils.py` com parser do CSV/ZIP GAL (encoding Latin-1, separador `;`, mapeamento de colunas, parse de datas). `parse_gal_file()` aceita `.csv` ou `.zip` com múltiplos CSVs.
 * ✅ Endpoints DRF implementados:
-  * `POST /api/amostras/preview-csv/` — parse sem salvar; retorna preview com `_status_importacao` (novo/duplicado) por linha
+  * `POST /api/amostras/preview-csv/` — parse sem salvar; retorna preview com `_status_importacao` (novo/atualizável/duplicado) por linha
   * `POST /api/amostras/importar-csv/` — importação real; ignora duplicatas por `cod_exame_gal`; retorna resumo
-* ✅ Django Admin configurado (busca por nome, CPF, CNS, GAL; filtros por status, UF, município; badges coloridos)
+* ✅ Django Admin configurado: busca por nome/CPF/CNS/GAL; filtros por status/UF/município; ordenação numérica de `codigo_interno` (N/AA); status editável inline na listagem
 * ✅ `StatusAmostra` refatorado para refletir o fluxo real GAL → LACEN (Aguardando Triagem, Exame em Análise, + statuses internos)
 * ✅ `GAL_STATUS_MAP` em `utils.py` mapeia `Status Exame` do GAL ao status interno na importação
 * ✅ Valores de `Status Exame` do GAL confirmados: Aguardando Triagem, Exame em Análise, Resultado Liberado, Exame Cancelado
-* ✅ Tela React de importação (ImportCSV.jsx) — 3 etapas: upload → preview → resultado
+* ✅ Tela React de importação (`ImportCSV.jsx`) — 3 etapas: upload → preview (tabela ordenável por qualquer coluna, incluindo `codigo_interno` com lógica N/AA) → resultado
 
 #### Fase 3 - Módulo de Recebimento ✅ Concluída (com ressalvas)
 * ✅ Tela React de recebimento físico de amostras (`Recebimento.jsx` via django-vite)
@@ -263,7 +263,7 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 * ✅ Suporte a leitura em sequência (múltiplas alíquotas por sessão com contador)
 * ✅ Feedback em tempo real: sucesso (verde), já aliquotada (amarelo), erro (vermelho)
 * ✅ Endpoint: `POST /api/amostras/receber/` (action non-detail no ViewSet)
-* ⚠️ **Pendente:** Não registra operador do recebimento em campo dedicado (só `atualizado_em` muda; não há `recebido_por` no model)
+* ✅ Campo `recebido_por` adicionado ao model `Amostra` — registra operador que confirmou a alíquota (migration `0005_add_recebido_por.py`)
 * ⚠️ **Pendente:** Não verifica perfil `extracao`/`supervisor` — qualquer usuário autenticado pode receber
 
 #### Fase 4 - Montagem de Placa e Extração ⏳ Parcialmente concluída
@@ -274,13 +274,16 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
   * ✅ Cálculo automático de volumes de reagentes (Tampão, Oligomix, Enzima)
   * ✅ Detecção de duplicatas (mesma amostra na mesma placa)
   * ✅ Limpar poço (botão X ou clique direito)
+  * ✅ Criação lazy da placa — placa só é criada no banco ao salvar (não ao clicar "Nova Placa")
+  * ✅ Excluir placa com reversão automática das amostras para `Aliquotada`
+  * ✅ Seção "Confirmar Extração" integrada no frontend — operador escaneia código da placa após extração
 * ✅ `PlacaViewSet` DRF para criação e persistência da placa e poços
 * ✅ Código de barras da placa gerado automaticamente (formato `PL{AAMM}-{NNNN}`)
 * ✅ Ao salvar poços: atualização em massa do status das amostras para `Extração`
 * ✅ Endpoint para confirmar extração: `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
-* ❌ **Não implementado: Listar/carregar placas existentes** — o frontend só cria novas placas; não há como abrir ou editar uma placa salva anteriormente
-* ❌ **Não implementado: Submeter placa ao termociclador** — o método `submeter()` existe no model (`Placa.submeter()`) mas não há endpoint DRF nem botão no frontend. A placa fica com status `ABERTA` mesmo após salvar os poços.
-* ❌ **Não implementado: Interface de confirmação de extração** — o endpoint `confirmar-extracao` existe no backend, mas não há tela/seção no frontend para o operador escanear o código da placa e confirmar a extração
+* ✅ `perform_destroy` no ViewSet: ao excluir placa via API, amostras vinculadas voltam para `Aliquotada`
+* ℹ️ **Decisão de design:** Etapa "Submeter ao Termociclador" removida do fluxo — simplifica operação; o fluxo é: Salvar Placa (amostras → `Extração`) → Scan do código da placa após extração (amostras → `Extraída`)
+* ❌ **Não implementado: Listar/carregar placas existentes para edição** — o frontend lista placas mas não permite reabrir uma placa salva para editar poços
 * ❌ **Não implementado: Geração de PDF da placa (FR-HPV-001)** — reportlab instalado mas sem implementação
 * ❌ **Não implementado: Buscar amostra por outros campos** — `buscar-amostra` só aceita `codigo_interno` exato; não busca por `cod_amostra_gal` ou `cod_exame_gal`
 
@@ -299,13 +302,9 @@ Uma amostra pode aparecer em múltiplas placas ao longo do tempo (uma por tentat
 #### Fase 4B - Completar Placa e Extração (1-2 semanas)
 > Itens restantes da Fase 4 que precisam ser implementados antes de avançar para Resultados.
 
-* Listar placas existentes no frontend com filtro por status (aberta/submetida) e busca por código
+* Listar placas existentes no frontend com filtro por status e busca por código
 * Carregar placa salva para edição — ao selecionar, popular o grid com os poços já salvos
-* Endpoint e botão "Submeter ao Termociclador":
-  * `POST /api/placas/{id}/submeter/` — atualiza status da placa para `SUBMETIDA`
-  * No frontend: botão habilitado apenas quando a placa tem poços salvos
-  * Placa submetida não pode mais ter poços editados
-* Interface de confirmação de extração no frontend:
+* Interface de confirmação de extração no frontend (seção já existe, validar completude):
   * Campo de scanner para código da placa
   * Ao escanear: chama `POST /api/placas/confirmar-extracao/` → amostras → `Extraída`
   * Exibir feedback com lista de amostras atualizadas

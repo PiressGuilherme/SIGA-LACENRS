@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.db.models.expressions import RawSQL
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from rest_framework import status, viewsets, permissions
@@ -87,8 +88,14 @@ class AmostraViewSet(viewsets.ModelViewSet):
 
         # Ordenação
         ordering = self.request.query_params.get('ordering', '-criado_em')
-        if ordering.lstrip('-') in self._ORDENAVEIS:
-            qs = qs.order_by(ordering)
+        field = ordering.lstrip('-')
+        if field in self._ORDENAVEIS:
+            if field == 'codigo_interno':
+                # Ordenação numérica N/AA (ex: 2/26 antes de 10/26)
+                qs = qs.annotate(_ci_sort=RawSQL(self._CI_SORT_SQL, []))
+                qs = qs.order_by('-_ci_sort' if ordering.startswith('-') else '_ci_sort')
+            else:
+                qs = qs.order_by(ordering)
 
         return qs
 
@@ -96,6 +103,16 @@ class AmostraViewSet(viewsets.ModelViewSet):
         'codigo_interno', 'nome_paciente', 'status',
         'municipio', 'data_recebimento', 'criado_em',
     }
+
+    _CI_SORT_SQL = """
+        CASE
+            WHEN codigo_interno IS NULL OR codigo_interno = ''
+                THEN 'z'
+            ELSE LPAD(SPLIT_PART(codigo_interno, '/', 1), 10, '0')
+                 || '/'
+                 || LPAD(SPLIT_PART(codigo_interno, '/', 2), 4, '0')
+        END
+    """
 
     def perform_create(self, serializer):
         serializer.save(criado_por=self.request.user)
@@ -210,7 +227,8 @@ class AmostraViewSet(viewsets.ModelViewSet):
             )
 
         amostra.status = StatusAmostra.ALIQUOTADA
-        amostra.save(update_fields=['status', 'atualizado_em'])
+        amostra.recebido_por = request.user
+        amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
 
         return Response(
             {

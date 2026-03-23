@@ -119,6 +119,12 @@ class Amostra(models.Model):
         null=True, blank=True,
         related_name='amostras_criadas', verbose_name='Criado por',
     )
+    recebido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='amostras_recebidas', verbose_name='Recebido por',
+        help_text='Operador que confirmou o recebimento/aliquotagem.',
+    )
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
     atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
 

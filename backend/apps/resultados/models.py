@@ -20,10 +20,21 @@ class InterpretacaoChoices(models.TextChoices):
 
 
 class ResultadoFinalChoices(models.TextChoices):
-    HPV_DETECTADO = 'hpv_detectado', 'HPV Detectado'
-    HPV_NAO_DETECTADO = 'hpv_nao_detectado', 'HPV Não Detectado'
-    INVALIDO = 'invalido', 'Inválido'
-    PENDENTE = 'pendente', 'Pendente'
+    # Negativo
+    HPV_NAO_DETECTADO = 'hpv_nao_detectado', 'HPV não detectável'
+    # Positivos simples
+    HPV16             = 'hpv16',             'HPV-16 detectável'
+    HPV18             = 'hpv18',             'HPV-18 detectável'
+    HPV_AR            = 'hpv_ar',            'HPV AR detectável'
+    # Coinfecções
+    HPV18_AR          = 'hpv18_ar',          'HPV-18 e HPV AR detectáveis'
+    HPV16_AR          = 'hpv16_ar',          'HPV-16 e HPV AR detectáveis'
+    HPV16_18          = 'hpv16_18',          'HPV-16 e HPV-18 detectáveis'
+    HPV16_18_AR       = 'hpv16_18_ar',       'HPV-16, HPV-18 e HPV AR detectáveis'
+    # Exceções
+    INVALIDO          = 'invalido',          'Inválido'
+    INCONCLUSIVO      = 'inconclusivo',      'Inconclusivo'
+    PENDENTE          = 'pendente',          'Pendente'
 
 
 class ResultadoPoco(models.Model):
@@ -145,3 +156,27 @@ class ResultadoAmostra(models.Model):
             if original and original['imutavel']:
                 raise ValidationError('Resultado imutável não pode ser alterado após confirmação.')
         super().save(*args, **kwargs)
+
+    def recalcular_resultado_final(self):
+        """
+        Recalcula resultado_final e os campos de canal com base nas
+        interpretações efetivas (manual prevalece sobre automática) dos
+        ResultadoPoco associados.
+
+        Chamado automaticamente após override manual de um canal.
+        """
+        from apps.resultados.parser import calcular_resultado_final as _calcular
+        resultados = {r.canal: r.interpretacao_efetiva for r in self.poco.resultados.all()}
+        ci     = resultados.get('CI',     'invalido')
+        hpv16  = resultados.get('HPV16',  'negativo')
+        hpv18  = resultados.get('HPV18',  'negativo')
+        hpvar  = resultados.get('HPV_AR', 'negativo')
+        self.ci_resultado    = ci
+        self.hpv16_resultado = hpv16
+        self.hpv18_resultado = hpv18
+        self.hpvar_resultado = hpvar
+        self.resultado_final = _calcular(ci, hpv16, hpv18, hpvar)
+        self.save(update_fields=[
+            'ci_resultado', 'hpv16_resultado', 'hpv18_resultado',
+            'hpvar_resultado', 'resultado_final',
+        ])

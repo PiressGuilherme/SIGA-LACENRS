@@ -100,10 +100,12 @@ class Placa(models.Model):
         self.save(update_fields=['status_placa', 'atualizado_em'])
 
     def confirmar_extracao(self):
-        """Após scan do código da placa: todas as amostras → Extraída."""
+        """Após scan do código da placa: todas as amostras → Extraída; placa → Submetida."""
         Amostra.objects.filter(pk__in=self._amostras_ids()).update(
             status=StatusAmostra.EXTRAIDA,
         )
+        self.status_placa = StatusPlaca.SUBMETIDA
+        self.save(update_fields=['status_placa', 'atualizado_em'])
 
 
 class Poco(models.Model):

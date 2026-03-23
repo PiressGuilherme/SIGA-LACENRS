@@ -21,6 +21,7 @@ export default defineConfig({
         recebimento: resolve(__dirname, 'src/entries/recebimento.jsx'),
         plates: resolve(__dirname, 'src/entries/plates.jsx'),
         consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
+        resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
       },
     },
   },

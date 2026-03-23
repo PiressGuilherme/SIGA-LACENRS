@@ -9,8 +9,11 @@ from rest_framework_simplejwt.views import (
 
 from apps.amostras.urls import page_urlpatterns as amostras_pages
 from apps.placas.urls import page_urlpatterns as placas_pages
+from apps.resultados.urls import page_urlpatterns as resultados_pages
+from config.views import HomeView
 
 urlpatterns = [
+    path('', HomeView.as_view(), name='home'),
     path('admin/', admin.site.urls),
 
     # JWT auth
@@ -25,6 +28,7 @@ urlpatterns = [
     # Apps — Páginas web (Django Templates + React)
     *amostras_pages,
     *placas_pages,
+    *resultados_pages,
 ]
 
 if settings.DEBUG:

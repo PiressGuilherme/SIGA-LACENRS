@@ -22,6 +22,7 @@ export default defineConfig({
         plates: resolve(__dirname, 'src/entries/plates.jsx'),
         consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
         resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
+        gal_ws: resolve(__dirname, 'src/entries/gal_ws.jsx'),
       },
     },
   },

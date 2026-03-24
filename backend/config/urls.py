@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import (
 from apps.amostras.urls import page_urlpatterns as amostras_pages
 from apps.placas.urls import page_urlpatterns as placas_pages
 from apps.resultados.urls import page_urlpatterns as resultados_pages
+from apps.gal_ws.urls import page_urlpatterns as gal_ws_pages
 from config.views import HomeView
 
 urlpatterns = [
@@ -24,11 +25,13 @@ urlpatterns = [
     path('api/amostras/', include('apps.amostras.urls')),
     path('api/placas/', include('apps.placas.urls')),
     path('api/resultados/', include('apps.resultados.urls')),
+    path('api/gal-ws/', include('apps.gal_ws.urls')),
 
     # Apps — Páginas web (Django Templates + React)
     *amostras_pages,
     *placas_pages,
     *resultados_pages,
+    *gal_ws_pages,
 ]
 
 if settings.DEBUG:

@@ -1,42 +1,71 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.amostras.models import Amostra, StatusAmostra
 
 
+class TipoPlaca(models.TextChoices):
+    EXTRACAO = 'extracao', 'Extração'
+    PCR      = 'pcr',      'PCR'
+
+
 class StatusPlaca(models.TextChoices):
-    ABERTA = 'aberta', 'Aberta'
-    SUBMETIDA = 'submetida', 'Submetida ao termociclador'
-    RESULTADOS_IMPORTADOS = 'resultados_importados', 'Resultados importados'
+    ABERTA               = 'aberta',               'Aberta'
+    EXTRACAO_CONFIRMADA  = 'extracao_confirmada',  'Extração confirmada'   # só extração
+    SUBMETIDA            = 'submetida',             'Submetida ao termociclador'  # só PCR
+    RESULTADOS_IMPORTADOS = 'resultados_importados', 'Resultados importados'       # só PCR
 
 
 class TipoConteudoPoco(models.TextChoices):
-    AMOSTRA = 'amostra', 'Amostra'
-    CONTROLE_NEGATIVO = 'cn', 'Controle Negativo'
-    CONTROLE_POSITIVO = 'cp', 'Controle Positivo'
-    VAZIO = 'vazio', 'Vazio'
+    AMOSTRA            = 'amostra', 'Amostra'
+    CONTROLE_NEGATIVO  = 'cn',      'Controle Negativo'
+    CONTROLE_POSITIVO  = 'cp',      'Controle Positivo'
+    VAZIO              = 'vazio',   'Vazio'
 
 
 class Placa(models.Model):
     """
-    Placa de 96 poços (8 linhas × 12 colunas) utilizada nas etapas
-    de extração e PCR. Uma mesma placa abrange ambas as etapas.
+    Placa de 96 poços (8×12) utilizada nas etapas de extração e PCR.
 
-    Uma amostra pode estar em múltiplas placas ao longo do tempo (retestes).
+    tipo_placa = 'extracao': placa física usada para extração de DNA; é congelada
+                             e rastreada no BD. Ciclo: ABERTA → EXTRACAO_CONFIRMADA.
+    tipo_placa = 'pcr':      placa que vai ao termociclador. Pode ser criada a partir
+                             de uma placa de extração (placa_origem) ou do zero.
+                             Ciclo: ABERTA → SUBMETIDA → RESULTADOS_IMPORTADOS.
     """
 
     codigo = models.CharField(
         max_length=20, unique=True, blank=True,
         verbose_name='Código da Placa',
-        help_text='Código de barras gerado automaticamente (ex: PL2603-0001).',
+        help_text='Gerado automaticamente no formato HPV{DDMMAA}-{N} (ex: HPV240326-1).',
         db_index=True,
+    )
+    tipo_placa = models.CharField(
+        max_length=10, choices=TipoPlaca.choices,
+        default=TipoPlaca.EXTRACAO, verbose_name='Tipo de placa',
+        db_index=True,
+    )
+    placa_origem = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='placas_pcr_derivadas',
+        verbose_name='Placa de extração de origem',
+        help_text='Preenchido somente em placas PCR criadas a partir de uma extração.',
     )
     protocolo = models.CharField(max_length=50, blank=True, verbose_name='Protocolo')
     responsavel = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='placas', verbose_name='Responsável',
+    )
+    extracao_confirmada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='extracoes_confirmadas',
+        verbose_name='Extração confirmada por',
+        help_text='Operador que confirmou a extração (scan do crachá).',
     )
     status_placa = models.CharField(
         max_length=30, choices=StatusPlaca.choices,
@@ -58,12 +87,12 @@ class Placa(models.Model):
         super().save(*args, **kwargs)
 
     def _gerar_codigo(self):
-        """Gera código único no formato PL{AAMM}-{NNNN}."""
+        """Gera código único no formato HPV{DDMMAA}-{N}."""
         agora = timezone.now()
-        prefixo = f'PL{agora.strftime("%y%m")}-'
+        prefixo = f'HPV{agora.strftime("%d%m%y")}-'
         ultimo = (
             Placa.objects.filter(codigo__startswith=prefixo)
-            .order_by('-codigo')
+            .order_by('-data_criacao', '-id')
             .values_list('codigo', flat=True)
             .first()
         )
@@ -73,11 +102,12 @@ class Placa(models.Model):
                 seq = int(ultimo.split('-')[-1]) + 1
             except (ValueError, IndexError):
                 pass
-        return f'{prefixo}{seq:04d}'
+        return f'{prefixo}{seq}'
 
     def __str__(self):
         label = self.codigo or f'Placa #{self.pk}'
-        return f'{label} ({self.get_status_placa_display()})'
+        tipo = self.get_tipo_placa_display()
+        return f'{label} [{tipo}] ({self.get_status_placa_display()})'
 
     @property
     def total_amostras(self):
@@ -91,19 +121,27 @@ class Placa(models.Model):
             ).values_list('amostra_id', flat=True)
         )
 
-    def submeter(self):
-        """Marca a placa como submetida ao termociclador."""
-        Amostra.objects.filter(pk__in=self._amostras_ids()).update(
-            status=StatusAmostra.EXTRACAO,
-        )
-        self.status_placa = StatusPlaca.SUBMETIDA
-        self.save(update_fields=['status_placa', 'atualizado_em'])
+    # ------------------------------------------------------------------
+    # Módulo de Extração
+    # ------------------------------------------------------------------
 
-    def confirmar_extracao(self):
-        """Após scan do código da placa: todas as amostras → Extraída; placa → Submetida."""
-        Amostra.objects.filter(pk__in=self._amostras_ids()).update(
-            status=StatusAmostra.EXTRAIDA,
-        )
+    def confirmar_extracao(self, operador=None):
+        """Scan do código da placa após extração: amostras → Extraída; placa → Extração confirmada."""
+        with transaction.atomic():
+            for amostra in Amostra.objects.filter(pk__in=self._amostras_ids()):
+                amostra.status = StatusAmostra.EXTRAIDA
+                amostra.save(update_fields=['status', 'atualizado_em'])
+            self.status_placa = StatusPlaca.EXTRACAO_CONFIRMADA
+            if operador:
+                self.extracao_confirmada_por = operador
+            self.save(update_fields=['status_placa', 'extracao_confirmada_por', 'atualizado_em'])
+
+    # ------------------------------------------------------------------
+    # Módulo de PCR
+    # ------------------------------------------------------------------
+
+    def submeter_termociclador(self):
+        """Envia a placa PCR ao termociclador: placa → Submetida."""
         self.status_placa = StatusPlaca.SUBMETIDA
         self.save(update_fields=['status_placa', 'atualizado_em'])
 

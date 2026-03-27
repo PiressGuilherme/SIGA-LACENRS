@@ -17,9 +17,11 @@ export default defineConfig({
     manifest: true,
     rollupOptions: {
       input: {
+        login: resolve(__dirname, 'src/entries/login.jsx'),
         import: resolve(__dirname, 'src/entries/import.jsx'),
-        recebimento: resolve(__dirname, 'src/entries/recebimento.jsx'),
+        aliquotagem: resolve(__dirname, 'src/entries/aliquotagem.jsx'),
         plates: resolve(__dirname, 'src/entries/plates.jsx'),
+        pcr: resolve(__dirname, 'src/entries/pcr.jsx'),
         consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
         resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
         gal_ws: resolve(__dirname, 'src/entries/gal_ws.jsx'),

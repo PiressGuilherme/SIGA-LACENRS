@@ -114,7 +114,7 @@
 <div class="counters-bar">
   <div class="counter-item">
     <span class="counter-value" style="color:#0d6efd">{{ cnt.aguardando }}</span>
-    <span class="counter-label">Aguardando recebimento</span>
+    <span class="counter-label">Aguardando cadastramento</span>
   </div>
   <div class="counter-item">
     <span class="counter-value" style="color:#6f42c1">{{ cnt.aliquotadas }}</span>
@@ -156,7 +156,7 @@
   <a class="card" href="{% url 'importar-csv-page' %}">
     <div class="card-accent" style="background:#0d6efd"></div>
     <div class="card-icon">📥</div>
-    <div class="card-step">Fase 2 — Recebimento</div>
+    <div class="card-step">Recebimento</div>
     <div class="card-title">Importar CSV GAL</div>
     <div class="card-desc">
       Importa o arquivo CSV do sistema GAL com as requisições de amostras.
@@ -164,14 +164,14 @@
     </div>
   </a>
 
-  <a class="card" href="{% url 'recebimento-page' %}">
+  <a class="card" href="{% url 'aliquotagem-page' %}">
     <div class="card-accent" style="background:#6f42c1"></div>
     <div class="card-icon">🔬</div>
-    <div class="card-step">Fase 3 — Aliquotagem</div>
-    <div class="card-title">Recebimento e Aliquotagem</div>
+    <div class="card-step">Aliquotagem</div>
+    <div class="card-title">Aliquotagem de Amostras</div>
     <div class="card-desc">
-      Scanner de alíquota: confirma o recebimento físico das amostras
-      e registra a aliquotagem. Status → Aliquotada.
+      Scanner de alíquota: confirma a aliquotagem das amostras com
+      identificação do operador por crachá. Status → Aliquotada.
     </div>
     {% if cnt.aguardando %}
     <span class="card-badge" style="background:#ede9fe;color:#5b21b6">
@@ -183,7 +183,7 @@
   <a class="card" href="{% url 'montar-placa-page' %}">
     <div class="card-accent" style="background:#fd7e14"></div>
     <div class="card-icon">🧫</div>
-    <div class="card-step">Fase 4 — Extração</div>
+    <div class="card-step">Extração</div>
     <div class="card-title">Montagem de Placa</div>
     <div class="card-desc">
       Espelho de placa 8×12: posiciona amostras, controles, calcula
@@ -200,7 +200,7 @@
   <a class="card" href="{% url 'revisar-resultados-page' %}">
     <div class="card-accent" style="background:#198754"></div>
     <div class="card-icon">📊</div>
-    <div class="card-step">Fase 6 — Resultados</div>
+    <div class="card-step">Resultados</div>
     <div class="card-title">Revisão de Resultados PCR</div>
     <div class="card-desc">
       Importa o CSV do CFX Manager, valida controles (CP/CN),
@@ -228,7 +228,7 @@
   <a class="card" href="{% url 'consulta-amostras-page' %}">
     <div class="card-accent" style="background:#0dcaf0"></div>
     <div class="card-icon">🔍</div>
-    <div class="card-step">Fase 5 — Consulta</div>
+    <div class="card-step">Consulta</div>
     <div class="card-title">Consulta de Amostras</div>
     <div class="card-desc">
       Busca e filtra amostras por nome, CPF, CNS, código GAL ou

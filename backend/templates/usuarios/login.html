@@ -1,0 +1,26 @@
+{% load django_vite %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — SIGA-LACEN</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+  {% vite_hmr_client %}
+  {% vite_react_refresh %}
+  {% vite_asset 'entries/login.jsx' %}
+</head>
+<body>
+  <div id="login-app" data-csrf="{{ csrf_token }}" data-next="{{ request.GET.next|default:'/' }}"></div>
+</body>
+</html>

@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.placas.models import Placa, Poco, StatusPlaca, TipoConteudoPoco
+from apps.usuarios.permissions import IsPCROuSupervisor
 from .models import ResultadoAmostra, ResultadoPoco
 from .parser import (
     parse_cfx_csv, validar_cp, validar_cn,
@@ -44,7 +45,7 @@ class ResultadoPocoViewSet(viewsets.GenericViewSet,
         'poco__amostra', 'poco__resultado_amostra'
     ).all()
     serializer_class = ResultadoPocoSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsPCROuSupervisor]
     http_method_names = ['patch', 'head', 'options']
 
     def perform_update(self, serializer):
@@ -70,6 +71,13 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
     ).prefetch_related('poco__resultados').all()
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        # Import, confirmação, liberação e repetição: perfil PCR ou supervisor
+        if self.action in ('importar', 'confirmar', 'liberar', 'solicitar_repeticao'):
+            return [IsPCROuSupervisor()]
+        # list, retrieve: qualquer autenticado
+        return [permissions.IsAuthenticated()]
+
     def get_serializer_class(self):
         # Inclui canais aninhados em todas as leituras (list, retrieve, importar)
         # para que o frontend possa editar overrides sem chamadas adicionais.
@@ -82,6 +90,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         placa_id = self.request.query_params.get('placa_id')
         if placa_id:
             qs = qs.filter(poco__placa_id=placa_id)
+        amostra_id = self.request.query_params.get('amostra_id')
+        if amostra_id:
+            qs = qs.filter(poco__amostra_id=amostra_id)
         return qs
 
     # ------------------------------------------------------------------

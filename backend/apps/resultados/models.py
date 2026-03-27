@@ -144,6 +144,7 @@ class ResultadoAmostra(models.Model):
     class Meta:
         verbose_name = 'Resultado da amostra'
         verbose_name_plural = 'Resultados das amostras'
+        ordering = ['-confirmado_em', 'id']
 
     def __str__(self):
         amostra = self.poco.amostra

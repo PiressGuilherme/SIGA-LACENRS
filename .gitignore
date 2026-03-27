@@ -35,3 +35,7 @@ docker/nginx/certs/*.pem
 .coverage
 htmlcov/
 .pytest_cache/
+
+#diversos
+gal-bmh*
+*.csv

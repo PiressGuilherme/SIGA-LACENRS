@@ -2,6 +2,9 @@
 .env
 *.env.local
 
+# Arquivos CSV locais (podem conter dados sensíveis de pacientes)
+*.csv
+
 # Python
 __pycache__/
 *.py[cod]

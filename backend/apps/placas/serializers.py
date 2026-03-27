@@ -22,20 +22,27 @@ class PocoSerializer(serializers.ModelSerializer):
 class PlacaSerializer(serializers.ModelSerializer):
     pocos = PocoSerializer(many=True, read_only=True)
     status_display = serializers.CharField(source='get_status_placa_display', read_only=True)
+    tipo_placa_display = serializers.CharField(source='get_tipo_placa_display', read_only=True)
     total_amostras = serializers.ReadOnlyField()
     responsavel_nome = serializers.CharField(
         source='responsavel.nome_completo', read_only=True, default=None,
+    )
+    placa_origem_codigo = serializers.CharField(
+        source='placa_origem.codigo', read_only=True, allow_null=True,
     )
 
     class Meta:
         model = Placa
         fields = (
-            'id', 'codigo', 'protocolo', 'responsavel', 'responsavel_nome',
+            'id', 'codigo', 'tipo_placa', 'tipo_placa_display',
+            'placa_origem', 'placa_origem_codigo',
+            'protocolo', 'responsavel', 'responsavel_nome',
             'status_placa', 'status_display',
             'observacoes', 'total_amostras', 'data_criacao', 'pocos',
         )
         read_only_fields = (
-            'id', 'codigo', 'status_display', 'total_amostras', 'data_criacao',
+            'id', 'codigo', 'status_display', 'tipo_placa_display',
+            'total_amostras', 'data_criacao',
         )
 
 

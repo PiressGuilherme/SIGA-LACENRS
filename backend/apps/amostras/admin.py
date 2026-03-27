@@ -24,15 +24,16 @@ class AmostraAdmin(admin.ModelAdmin):
 
     list_display = (
         'codigo_interno_display', 'cod_exame_gal', 'nome_paciente',
-        'status_badge', 'municipio', 'data_recebimento', 'criado_por',
+        'status', 'municipio', 'data_recebimento', 'criado_por',
     )
+    list_editable = ('status',)
     list_filter = ('status', 'uf', 'municipio', 'material')
     search_fields = (
         'numero_gal', 'cod_exame_gal', 'cod_amostra_gal',
         'codigo_interno', 'nome_paciente', 'cpf', 'cns',
     )
     date_hierarchy = 'data_recebimento'
-    readonly_fields = ('criado_por', 'criado_em', 'atualizado_em')
+    readonly_fields = ('criado_por', 'recebido_por', 'criado_em', 'atualizado_em')
     ordering = ('-criado_em',)
 
     fieldsets = (
@@ -52,7 +53,7 @@ class AmostraAdmin(admin.ModelAdmin):
             'fields': ('status', 'observacoes'),
         }),
         ('Auditoria', {
-            'fields': ('criado_por', 'criado_em', 'atualizado_em'),
+            'fields': ('criado_por', 'recebido_por', 'criado_em', 'atualizado_em'),
             'classes': ('collapse',),
         }),
     )

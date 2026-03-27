@@ -8,6 +8,9 @@ class AmostraSerializer(serializers.ModelSerializer):
     criado_por_nome = serializers.CharField(
         source='criado_por.nome_completo', read_only=True, default=None,
     )
+    recebido_por_nome = serializers.CharField(
+        source='recebido_por.nome_completo', read_only=True, default=None,
+    )
 
     class Meta:
         model = Amostra

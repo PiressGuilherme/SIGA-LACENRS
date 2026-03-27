@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Início — SIGA-LACEN{% endblock %}
+
+{% block extra_style %}
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+.card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.card:hover {
+  box-shadow: 0 4px 20px rgba(26,58,92,0.12);
+  transform: translateY(-2px);
+}
+.card-accent {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: 10px 10px 0 0;
+}
+.card-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a3a5c;
+}
+.card-desc {
+  font-size: 0.82rem;
+  color: #6b7280;
+  line-height: 1.5;
+  flex: 1;
+}
+.card-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 0.25rem;
+  align-self: flex-start;
+}
+.card-step {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  margin: 1.75rem 0 0.75rem;
+}
+.counters-bar {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+.counter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.counter-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.counter-label {
+  font-size: 0.72rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1.5rem">
+  <h2 style="font-size:1.4rem;color:#1a3a5c;margin-bottom:0.25rem">
+    Olá, {{ user.nome_completo }}
+  </h2>
+  <p style="color:#6b7280;font-size:0.875rem">
+    Sistema de Informação e Gerenciamento de Amostras — Laboratório de HPV / LACEN-RS
+  </p>
+</div>
+
+<!-- Contadores de status -->
+<div class="counters-bar">
+  <div class="counter-item">
+    <span class="counter-value" style="color:#0d6efd">{{ cnt.aguardando }}</span>
+    <span class="counter-label">Aguardando cadastramento</span>
+  </div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#6f42c1">{{ cnt.aliquotadas }}</span>
+    <span class="counter-label">Aliquotadas</span>
+  </div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#fd7e14">{{ cnt.extracao }}</span>
+    <span class="counter-label">Em extração</span>
+  </div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#20c997">{{ cnt.resultado }}</span>
+    <span class="counter-label">Resultado pendente</span>
+  </div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#198754">{{ cnt.liberadas }}</span>
+    <span class="counter-label">Resultados liberados</span>
+  </div>
+  {% if cnt.repeticao %}
+  <div class="counter-item">
+    <span class="counter-value" style="color:#ffc107">{{ cnt.repeticao }}</span>
+    <span class="counter-label">Repetições solicitadas</span>
+  </div>
+  {% endif %}
+  <div style="width:1px;background:#e5e7eb;align-self:stretch"></div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#374151">{{ placas_abertas }}</span>
+    <span class="counter-label">Placas abertas</span>
+  </div>
+  <div class="counter-item">
+    <span class="counter-value" style="color:#fd7e14">{{ placas_submetidas }}</span>
+    <span class="counter-label">Placas aguardando resultado</span>
+  </div>
+</div>
+
+<!-- Fluxo laboratorial -->
+<p class="section-title">Fluxo Laboratorial</p>
+<div class="cards-grid">
+
+  <a class="card" href="{% url 'importar-csv-page' %}">
+    <div class="card-accent" style="background:#0d6efd"></div>
+    <div class="card-icon">📥</div>
+    <div class="card-step">Recebimento</div>
+    <div class="card-title">Importar CSV GAL</div>
+    <div class="card-desc">
+      Importa o arquivo CSV do sistema GAL com as requisições de amostras.
+      Cria as amostras no sistema e define o status inicial.
+    </div>
+  </a>
+
+  <a class="card" href="{% url 'aliquotagem-page' %}">
+    <div class="card-accent" style="background:#6f42c1"></div>
+    <div class="card-icon">🔬</div>
+    <div class="card-step">Aliquotagem</div>
+    <div class="card-title">Aliquotagem de Amostras</div>
+    <div class="card-desc">
+      Scanner de alíquota: confirma a aliquotagem das amostras com
+      identificação do operador por crachá. Status → Aliquotada.
+    </div>
+    {% if cnt.aguardando %}
+    <span class="card-badge" style="background:#ede9fe;color:#5b21b6">
+      {{ cnt.aguardando }} para receber
+    </span>
+    {% endif %}
+  </a>
+
+  <a class="card" href="{% url 'montar-placa-page' %}">
+    <div class="card-accent" style="background:#fd7e14"></div>
+    <div class="card-icon">🧫</div>
+    <div class="card-step">Extração</div>
+    <div class="card-title">Montagem de Placa</div>
+    <div class="card-desc">
+      Espelho de placa 8×12: posiciona amostras, controles, calcula
+      reagentes e exporta o PDF FR-HPV-001.
+      Confirma extração por scan do código da placa.
+    </div>
+    {% if cnt.aliquotadas %}
+    <span class="card-badge" style="background:#ffedd5;color:#9a3412">
+      {{ cnt.aliquotadas }} aliquotadas disponíveis
+    </span>
+    {% endif %}
+  </a>
+
+  <a class="card" href="{% url 'revisar-resultados-page' %}">
+    <div class="card-accent" style="background:#198754"></div>
+    <div class="card-icon">📊</div>
+    <div class="card-step">Resultados</div>
+    <div class="card-title">Revisão de Resultados PCR</div>
+    <div class="card-desc">
+      Importa o CSV do CFX Manager, valida controles (CP/CN),
+      classifica amostras pelos critérios IBMP e permite
+      confirmar ou solicitar repetição.
+    </div>
+    {% if placas_submetidas %}
+    <span class="card-badge" style="background:#d1fae5;color:#065f46">
+      {{ placas_submetidas }} placa{{ placas_submetidas|pluralize }} aguardando
+    </span>
+    {% endif %}
+    {% if cnt.resultado %}
+    <span class="card-badge" style="background:#d1fae5;color:#065f46">
+      {{ cnt.resultado }} resultado{{ cnt.resultado|pluralize }} pendente{{ cnt.resultado|pluralize }}
+    </span>
+    {% endif %}
+  </a>
+
+</div>
+
+<!-- Consulta -->
+<p class="section-title">Consulta</p>
+<div class="cards-grid">
+
+  <a class="card" href="{% url 'consulta-amostras-page' %}">
+    <div class="card-accent" style="background:#0dcaf0"></div>
+    <div class="card-icon">🔍</div>
+    <div class="card-step">Consulta</div>
+    <div class="card-title">Consulta de Amostras</div>
+    <div class="card-desc">
+      Busca e filtra amostras por nome, CPF, CNS, código GAL ou
+      código interno. Visualiza status e histórico de cada amostra.
+    </div>
+  </a>
+
+</div>
+
+{% if user.is_staff %}
+<!-- Administração -->
+<p class="section-title">Administração</p>
+<div class="cards-grid">
+
+  <a class="card" href="{% url 'gal-ws-page' %}">
+    <div class="card-accent" style="background:#0891b2"></div>
+    <div class="card-icon">🔗</div>
+    <div class="card-step">Integração</div>
+    <div class="card-title">GAL WebService</div>
+    <div class="card-desc">
+      Configura e testa a conexão direta com o sistema GAL-RS.
+      Permite buscar exames e futuramente enviar resultados automaticamente.
+    </div>
+  </a>
+
+  <a class="card" href="/admin/">
+    <div class="card-accent" style="background:#6c757d"></div>
+    <div class="card-icon">⚙️</div>
+    <div class="card-step">Admin</div>
+    <div class="card-title">Painel Administrativo</div>
+    <div class="card-desc">
+      Gerenciamento de usuários, grupos de acesso, auditoria de
+      alterações e edição direta de registros.
+    </div>
+  </a>
+
+</div>
+{% endif %}
+
+{% endblock %}

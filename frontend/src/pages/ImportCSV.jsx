@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 
 const STATUS_LABEL = {
   novo:        { text: 'Nova',        bg: '#d1fae5', color: '#065f46' },
@@ -7,15 +7,20 @@ const STATUS_LABEL = {
 }
 
 async function apiFetch(url, { csrfToken, body }) {
+  const headers = { 'X-CSRFToken': csrfToken }
+  const token = localStorage.getItem('access_token')
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'X-CSRFToken': csrfToken },
+    headers,
     body,
     credentials: 'same-origin',
   })
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Erro ${res.status}: ${text}`)
+    const data = await res.json().catch(() => null)
+    const msg = data?.erro || data?.detail || `Erro ${res.status}`
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -192,6 +197,14 @@ export default function ImportCSV({ csrfToken }) {
       {/* ETAPA 2: Preview */}
       {etapa === 'preview' && preview && (
         <div>
+          {/* Aviso de diagnóstico quando 0 amostras detectadas */}
+          {preview.aviso && (
+            <div style={{ background: '#fef3c7', color: '#92400e', padding: '0.75rem 1rem',
+                          borderRadius: 6, marginBottom: '1rem', fontSize: '0.88rem' }}>
+              ⚠️ {preview.aviso}
+            </div>
+          )}
+
           {/* Contadores */}
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             <Contador label="Total no arquivo" valor={preview.total} cor="#fff" />

@@ -25,11 +25,15 @@
   <header>
     <h1>SIGA-LACEN &mdash; Laboratório de HPV</h1>
     <nav>
-      <a href="/amostras/importar/">Importar CSV</a>
-      <a href="/amostras/recebimento/">Recebimento</a>
-      <a href="/placas/montar/">Montar Placa</a>
+      <a href="{% url 'home' %}">Início</a>
       <a href="/amostras/consulta/">Consulta</a>
+      <a href="/amostras/importar/">Importar CSV</a>
+      <a href="/amostras/aliquotagem/">Aliquotagem</a>
+      <a href="/placas/extracao/">Extração</a>
+      <a href="/placas/pcr/">PCR</a>
+      <a href="/resultados/revisar/">Resultados</a>
       {% if user.is_staff %}
+        <a href="{% url 'gal-ws-page' %}">GAL WS</a>
         <a href="/admin/">Admin</a>
       {% endif %}
       {% if user.is_authenticated %}

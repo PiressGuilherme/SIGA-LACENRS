@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -10,11 +11,77 @@ class StatusAmostra(models.TextChoices):
     ALIQUOTADA           = 'aliquotada',           'Aliquotada'
     EXTRACAO             = 'extracao',             'Extração'
     EXTRAIDA             = 'extraida',             'Extraída'
+    PCR                  = 'pcr',                  'PCR'
     RESULTADO            = 'resultado',            'Resultado'
     RESULTADO_LIBERADO   = 'resultado_liberado',   'Resultado Liberado'
     # Exceções
     CANCELADA            = 'cancelada',            'Cancelada'
     REPETICAO_SOLICITADA = 'repeticao_solicitada', 'Repetição Solicitada'
+
+
+# ---------------------------------------------------------------------------
+# State machine — transições de status permitidas
+# ---------------------------------------------------------------------------
+TRANSICOES_VALIDAS: dict[str, set[str]] = {
+    StatusAmostra.AGUARDANDO_TRIAGEM: {
+        StatusAmostra.EXAME_EM_ANALISE,
+        StatusAmostra.ALIQUOTADA,
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.EXAME_EM_ANALISE: {
+        StatusAmostra.ALIQUOTADA,
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.ALIQUOTADA: {
+        StatusAmostra.EXTRACAO,
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.EXTRACAO: {
+        StatusAmostra.ALIQUOTADA,            # placa de extração excluída
+        StatusAmostra.EXTRAIDA,              # scan confirma extração
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.EXTRAIDA: {
+        StatusAmostra.PCR,                       # amostra adicionada a placa PCR
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.PCR: {
+        StatusAmostra.EXTRAIDA,                  # placa PCR excluída
+        StatusAmostra.RESULTADO,                 # CSV do termociclador importado
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.RESULTADO: {
+        StatusAmostra.RESULTADO_LIBERADO,
+        StatusAmostra.REPETICAO_SOLICITADA,
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.RESULTADO_LIBERADO: {
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.REPETICAO_SOLICITADA: {
+        StatusAmostra.PCR,                   # amostra adicionada a nova placa PCR
+        StatusAmostra.CANCELADA,
+    },
+    StatusAmostra.CANCELADA: set(),          # status terminal
+}
+
+
+def validar_transicao(status_atual: str, novo_status: str) -> None:
+    """
+    Levanta ValidationError se a transição de status_atual → novo_status
+    não for permitida pelo fluxo laboratorial.
+
+    Use antes de qualquer chamada a save() que altere o campo status.
+    Operações bulk (Amostra.objects.filter().update()) não chamam este helper
+    automaticamente — cabe à view garantir a validação quando necessário.
+    """
+    permitidas = TRANSICOES_VALIDAS.get(status_atual, set())
+    if novo_status not in permitidas:
+        label_atual = StatusAmostra(status_atual).label if status_atual in StatusAmostra.values else status_atual
+        label_novo  = StatusAmostra(novo_status).label  if novo_status  in StatusAmostra.values else novo_status
+        raise ValidationError(
+            f'Transição de status inválida: "{label_atual}" → "{label_novo}".'
+        )
 
 
 class Amostra(models.Model):
@@ -37,6 +104,7 @@ class Amostra(models.Model):
       - No Módulo de Recebimento, após aliquotagem confirmada por scanner → Aliquotada.
       - Adicionada a placa de extração e placa salva → Extração.
       - Código da placa escaneado → Extraída.
+      - Adicionada a placa PCR e placa salva → PCR.
       - CSV do termociclador importado → Resultado.
       - Resultado publicado no GAL → Resultado Liberado.
       - Em reteste, a MESMA alíquota é reutilizada (não há nova aliquotagem).
@@ -118,6 +186,12 @@ class Amostra(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='amostras_criadas', verbose_name='Criado por',
+    )
+    recebido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='amostras_recebidas', verbose_name='Recebido por',
+        help_text='Operador que confirmou o recebimento/aliquotagem.',
     )
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
     atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')

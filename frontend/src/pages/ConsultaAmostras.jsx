@@ -175,7 +175,8 @@ function LinhaAmostra({ a, resultados }) {
 
       {aberta && (
         <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#f8faff' }}>
-          <td colSpan={numColunas} style={{ padding: '0.75rem 1rem 1rem 2rem' }}>
+          <td colSpan={numColunas} style={{ padding: 0 }}>
+            <div style={{ overflowX: 'auto', padding: '0.75rem 1rem 1rem 2rem' }}>
             {/* Dados básicos */}
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.75rem' }}>
               <span><b style={{ color: '#374151' }}>GAL:</b> {a.numero_gal}</span>
@@ -260,6 +261,7 @@ function LinhaAmostra({ a, resultados }) {
                 })}
               </div>
             )}
+            </div>
           </td>
         </tr>
       )}
@@ -395,10 +397,17 @@ export default function ConsultaAmostras() {
       )}
 
       {/* Tabela */}
-      <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb', marginBottom: '1rem' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+      <div style={{
+        overflow: 'auto',
+        maxHeight: 'calc(100vh - 220px)',
+        background: '#fff',
+        borderRadius: 8,
+        border: '1px solid #e5e7eb',
+        marginBottom: '1rem',
+      }}>
+        <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 2 }}>
               {COLUNAS_BASE.map(col => (
                 <th
                   key={col.key}

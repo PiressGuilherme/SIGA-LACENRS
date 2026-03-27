@@ -1,0 +1,60 @@
+{
+  "_client-DMp2t5-j.js": {
+    "file": "assets/client-DMp2t5-j.js",
+    "name": "client"
+  },
+  "entries/consulta.jsx": {
+    "file": "assets/consulta-DsgFEVZx.js",
+    "name": "consulta",
+    "src": "entries/consulta.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "entries/gal_ws.jsx": {
+    "file": "assets/gal_ws-sWY-X8ee.js",
+    "name": "gal_ws",
+    "src": "entries/gal_ws.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "entries/import.jsx": {
+    "file": "assets/import-C1cIw3V4.js",
+    "name": "import",
+    "src": "entries/import.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "entries/plates.jsx": {
+    "file": "assets/plates-DnLrJZK7.js",
+    "name": "plates",
+    "src": "entries/plates.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "entries/recebimento.jsx": {
+    "file": "assets/recebimento-BGF2Htfq.js",
+    "name": "recebimento",
+    "src": "entries/recebimento.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "entries/resultados.jsx": {
+    "file": "assets/resultados-DNtiggdp.js",
+    "name": "resultados",
+    "src": "entries/resultados.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  }
+}

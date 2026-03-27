@@ -35,6 +35,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(unique=True, verbose_name='E-mail')
     nome_completo = models.CharField(max_length=150, verbose_name='Nome completo')
+    numero_cracha = models.CharField(
+        max_length=50, unique=True, null=True, blank=True,
+        verbose_name='Número do crachá',
+        help_text='Código lido pelo leitor de crachá (barcode/RFID). Opcional.',
+        db_index=True,
+    )
     is_active = models.BooleanField(default=True, verbose_name='Ativo')
     is_staff = models.BooleanField(default=False, verbose_name='Acesso ao admin')
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')

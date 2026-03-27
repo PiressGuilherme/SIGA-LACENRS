@@ -8,14 +8,14 @@ from .models import Usuario
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     model = Usuario
-    list_display = ('email', 'nome_completo', 'perfil', 'is_active', 'is_staff', 'criado_em')
+    list_display = ('email', 'nome_completo', 'numero_cracha', 'perfil', 'is_active', 'is_staff', 'criado_em')
     list_filter = ('is_active', 'is_staff', 'groups')
-    search_fields = ('email', 'nome_completo')
+    search_fields = ('email', 'nome_completo', 'numero_cracha')
     ordering = ('nome_completo',)
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Informações pessoais'), {'fields': ('nome_completo',)}),
+        (_('Informações pessoais'), {'fields': ('nome_completo', 'numero_cracha')}),
         (_('Permissões'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         (_('Datas'), {'fields': ('last_login', 'criado_em')}),
     )
@@ -24,6 +24,6 @@ class UsuarioAdmin(UserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'nome_completo', 'password1', 'password2', 'groups', 'is_staff', 'is_active'),
+            'fields': ('email', 'nome_completo', 'numero_cracha', 'password1', 'password2', 'groups', 'is_staff', 'is_active'),
         }),
     )

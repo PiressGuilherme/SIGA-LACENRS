@@ -41,6 +41,7 @@ LOCAL_APPS = [
     'apps.amostras',
     'apps.placas',
     'apps.resultados',
+    'apps.gal_ws',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -103,6 +104,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ---------------------------------------------------------------------------
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
+LOGIN_URL = '/login/'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -140,7 +142,7 @@ DJANGO_VITE = {
         'dev_mode': False,  # sobrescrito em development.py
         'dev_server_host': 'localhost',
         'dev_server_port': 5173,
-        'manifest_path': BASE_DIR / 'staticfiles' / '.vite' / 'manifest.json',
+        'manifest_path': BASE_DIR / 'static' / '.vite' / 'manifest.json',
         'static_url_prefix': '',
     }
 }
@@ -192,3 +194,12 @@ CORS_ALLOWED_ORIGINS = config(
 # ---------------------------------------------------------------------------
 
 AUDITLOG_INCLUDE_ALL_MODELS = False  # Registramos explicitamente por app
+
+# ---------------------------------------------------------------------------
+# GAL WebService
+# ---------------------------------------------------------------------------
+
+GAL_WS_USUARIO   = config('GAL_WS_USUARIO', default='')
+GAL_WS_SENHA     = config('GAL_WS_SENHA', default='')
+GAL_WS_URL       = config('GAL_WS_URL', default='https://gal.riograndedosul.sus.gov.br/webservice/automacao')
+GAL_WS_VERIFY_SSL = config('GAL_WS_VERIFY_SSL', default=True, cast=bool)

@@ -9,15 +9,36 @@ from rest_framework.response import Response
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.amostras.serializers import AmostraSerializer
-from .models import Placa, Poco, StatusPlaca, TipoConteudoPoco
+from apps.usuarios.permissions import IsExtracaoOuSupervisor, IsPCROuSupervisor, IsLaboratorio
+from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
 from .pdf import gerar_pdf_placa
 from .serializers import PlacaSerializer, PocoInputSerializer
+
+# Statuses de amostra elegíveis para placa PCR (Extraída em diante, exceto cancelada)
+STATUS_ELEGIVEIS_PCR = {
+    StatusAmostra.EXTRAIDA,
+    StatusAmostra.RESULTADO,
+    StatusAmostra.RESULTADO_LIBERADO,
+    StatusAmostra.REPETICAO_SOLICITADA,
+}
+
+# Statuses que já têm resultado — exigem confirmação antes de adicionar ao PCR
+STATUS_COM_RESULTADO = {
+    StatusAmostra.RESULTADO,
+    StatusAmostra.RESULTADO_LIBERADO,
+}
 
 
 @method_decorator(login_required, name='dispatch')
 class MontarPlacaView(TemplateView):
-    """Página de montagem de placa de extração (React via django-vite)."""
+    """Página do módulo de Extração (React via django-vite)."""
     template_name = 'placas/montar.html'
+
+
+@method_decorator(login_required, name='dispatch')
+class PlacaPCRView(TemplateView):
+    """Página do módulo de PCR (React via django-vite)."""
+    template_name = 'placas/pcr.html'
 
 
 class PlacaViewSet(viewsets.ModelViewSet):
@@ -25,13 +46,27 @@ class PlacaViewSet(viewsets.ModelViewSet):
     serializer_class = PlacaSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        # Confirmar extração: perfil extração ou supervisor
+        if self.action == 'confirmar_extracao':
+            return [IsExtracaoOuSupervisor()]
+        # Enviar ao termociclador: perfil PCR ou supervisor
+        if self.action == 'submeter':
+            return [IsPCROuSupervisor()]
+        # Criar/editar/excluir placa e salvar poços: qualquer perfil de laboratório
+        if self.action in ('create', 'update', 'partial_update', 'destroy', 'salvar_pocos'):
+            return [IsLaboratorio()]
+        # PDF, list, retrieve, buscar_amostra, rascunho_pcr: qualquer autenticado
+        return [permissions.IsAuthenticated()]
+
     def get_queryset(self):
         qs = super().get_queryset()
-        # Filtro por status da placa
+        tipo = self.request.query_params.get('tipo_placa')
+        if tipo:
+            qs = qs.filter(tipo_placa=tipo)
         status_param = self.request.query_params.get('status_placa')
         if status_param:
             qs = qs.filter(status_placa=status_param)
-        # Busca por código
         search = self.request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(codigo__icontains=search)
@@ -41,58 +76,145 @@ class PlacaViewSet(viewsets.ModelViewSet):
         serializer.save(responsavel=self.request.user)
 
     def perform_destroy(self, instance):
-        """Ao excluir placa, reverte amostras vinculadas para Aliquotada."""
+        """Ao excluir placa, reverte amostras vinculadas ao status anterior."""
         amostra_ids = instance._amostras_ids()
-        if amostra_ids:
-            Amostra.objects.filter(pk__in=amostra_ids).update(
-                status=StatusAmostra.ALIQUOTADA,
-            )
-        instance.delete()
+        with transaction.atomic():
+            if amostra_ids:
+                if instance.tipo_placa == TipoPlaca.EXTRACAO:
+                    for amostra in Amostra.objects.filter(pk__in=amostra_ids):
+                        amostra.status = StatusAmostra.ALIQUOTADA
+                        amostra.save(update_fields=['status', 'atualizado_em'])
+                elif instance.tipo_placa == TipoPlaca.PCR:
+                    for amostra in Amostra.objects.filter(pk__in=amostra_ids, status=StatusAmostra.PCR):
+                        amostra.status = StatusAmostra.EXTRAIDA
+                        amostra.save(update_fields=['status', 'atualizado_em'])
+            instance.delete()
 
     # ------------------------------------------------------------------
-    # Buscar amostra elegível para a placa
+    # Buscar amostra elegível
     # ------------------------------------------------------------------
 
     @action(detail=False, methods=['get'], url_path='buscar-amostra')
     def buscar_amostra(self, request):
         """
-        GET /api/placas/buscar-amostra/?codigo=<valor>
+        GET /api/placas/buscar-amostra/?codigo=<valor>[&modulo=pcr]
 
-        Busca amostra por codigo_interno, cod_amostra_gal ou cod_exame_gal.
-        Só retorna amostras com status Aliquotada.
+        Sem modulo (padrão / extração): retorna amostras com status Aliquotada.
+        Com modulo=pcr: retorna amostras com status Extraída ou superior.
+          - Inclui flag 'tem_resultado': true se amostra já tem resultado
+            (exige confirmação no frontend antes de adicionar).
         """
         codigo = request.query_params.get('codigo', '').strip()
+        modulo = request.query_params.get('modulo', '').strip().lower()
+
         if not codigo:
             return Response(
                 {'erro': 'Parâmetro "codigo" obrigatório.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Buscar por múltiplos campos de identificação
-        amostra = (
-            Amostra.objects.filter(codigo_interno=codigo, status=StatusAmostra.ALIQUOTADA).first()
-            or Amostra.objects.filter(cod_amostra_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
-            or Amostra.objects.filter(cod_exame_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
-        )
-
-        if not amostra:
-            # Verificar se existe mas com status errado (feedback útil)
-            existe = (
-                Amostra.objects.filter(codigo_interno=codigo).first()
-                or Amostra.objects.filter(cod_amostra_gal=codigo).first()
-                or Amostra.objects.filter(cod_exame_gal=codigo).first()
+        if modulo == 'pcr':
+            # Buscar amostras com status elegível para PCR
+            amostra = (
+                Amostra.objects.filter(
+                    codigo_interno=codigo, status__in=STATUS_ELEGIVEIS_PCR
+                ).first()
+                or Amostra.objects.filter(
+                    cod_amostra_gal=codigo, status__in=STATUS_ELEGIVEIS_PCR
+                ).first()
+                or Amostra.objects.filter(
+                    cod_exame_gal=codigo, status__in=STATUS_ELEGIVEIS_PCR
+                ).first()
             )
-            if existe:
-                return Response(
-                    {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Aliquotada.'},
-                    status=status.HTTP_409_CONFLICT,
+            if not amostra:
+                existe = (
+                    Amostra.objects.filter(codigo_interno=codigo).first()
+                    or Amostra.objects.filter(cod_amostra_gal=codigo).first()
+                    or Amostra.objects.filter(cod_exame_gal=codigo).first()
                 )
+                if existe:
+                    return Response(
+                        {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Extraída ou superior.'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                return Response(
+                    {'erro': f'Amostra "{codigo}" não encontrada.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            data = AmostraSerializer(amostra).data
+            data['tem_resultado'] = amostra.status in STATUS_COM_RESULTADO
+            return Response(data)
+
+        else:
+            # Extração: só amostras Aliquotadas
+            amostra = (
+                Amostra.objects.filter(codigo_interno=codigo, status=StatusAmostra.ALIQUOTADA).first()
+                or Amostra.objects.filter(cod_amostra_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
+                or Amostra.objects.filter(cod_exame_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
+            )
+            if not amostra:
+                existe = (
+                    Amostra.objects.filter(codigo_interno=codigo).first()
+                    or Amostra.objects.filter(cod_amostra_gal=codigo).first()
+                    or Amostra.objects.filter(cod_exame_gal=codigo).first()
+                )
+                if existe:
+                    return Response(
+                        {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Aliquotada.'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                return Response(
+                    {'erro': f'Amostra "{codigo}" não encontrada.'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            return Response(AmostraSerializer(amostra).data)
+
+    # ------------------------------------------------------------------
+    # Rascunho PCR a partir de uma placa de extração
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='rascunho-pcr')
+    def rascunho_pcr(self, request, pk=None):
+        """
+        GET /api/placas/{id}/rascunho-pcr/
+
+        Retorna os poços de uma placa de extração formatados como rascunho
+        para uma nova placa PCR. Só inclui amostras com status elegível (Extraída+).
+        """
+        placa_ext = self.get_object()
+        if placa_ext.tipo_placa != TipoPlaca.EXTRACAO:
             return Response(
-                {'erro': f'Amostra "{codigo}" não encontrada.'},
-                status=status.HTTP_404_NOT_FOUND,
+                {'erro': 'Apenas placas de extração podem ser usadas como rascunho PCR.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(AmostraSerializer(amostra).data)
+        pocos_filtrados = []
+        for poco in placa_ext.pocos.all():
+            if poco.tipo_conteudo == TipoConteudoPoco.AMOSTRA:
+                if poco.amostra and poco.amostra.status in STATUS_ELEGIVEIS_PCR:
+                    pocos_filtrados.append({
+                        'posicao': poco.posicao,
+                        'tipo_conteudo': poco.tipo_conteudo,
+                        'amostra_codigo': poco.amostra.codigo_interno,
+                        'amostra_nome': poco.amostra.nome_paciente,
+                        'tem_resultado': poco.amostra.status in STATUS_COM_RESULTADO,
+                    })
+                # Amostras não elegíveis são omitidas (poço fica vazio no rascunho)
+            else:
+                # CN, CP e vazios são copiados
+                pocos_filtrados.append({
+                    'posicao': poco.posicao,
+                    'tipo_conteudo': poco.tipo_conteudo,
+                    'amostra_codigo': '',
+                    'amostra_nome': '',
+                    'tem_resultado': False,
+                })
+
+        return Response({
+            'placa_origem_id': placa_ext.id,
+            'placa_origem_codigo': placa_ext.codigo,
+            'pocos': pocos_filtrados,
+        })
 
     # ------------------------------------------------------------------
     # Salvar poços (bulk)
@@ -104,7 +226,8 @@ class PlacaViewSet(viewsets.ModelViewSet):
         POST /api/placas/{id}/salvar-pocos/
         Body: { "pocos": [{ "posicao": "A01", "tipo_conteudo": "amostra", "amostra_codigo": "42/26" }, ...] }
 
-        Substitui todos os poços da placa. Atualiza status das amostras para Extração.
+        Para placa de extração: atualiza status das amostras para Extração.
+        Para placa PCR: não altera status das amostras.
         """
         placa = self.get_object()
 
@@ -118,7 +241,6 @@ class PlacaViewSet(viewsets.ModelViewSet):
         serializer = PocoInputSerializer(data=pocos_data, many=True)
         serializer.is_valid(raise_exception=True)
 
-        # Resolver amostra_codigo → Amostra para cada poço de tipo 'amostra'
         pocos_to_create = []
         amostras_a_atualizar = []
         erros = []
@@ -134,19 +256,16 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 if not amostra:
                     erros.append(f'Poço {posicao}: amostra "{amostra_codigo}" não encontrada.')
                     continue
-                amostras_a_atualizar.append(amostra.pk)
+                if placa.tipo_placa in (TipoPlaca.EXTRACAO, TipoPlaca.PCR):
+                    amostras_a_atualizar.append(amostra.pk)
 
             pocos_to_create.append(Poco(
-                placa=placa,
-                posicao=posicao,
-                tipo_conteudo=tipo,
-                amostra=amostra,
+                placa=placa, posicao=posicao, tipo_conteudo=tipo, amostra=amostra,
             ))
 
         if erros:
             return Response({'erros': erros}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validar que há pelo menos um CN e um CP
         tipos = {item['tipo_conteudo'] for item in serializer.validated_data}
         if TipoConteudoPoco.CONTROLE_NEGATIVO not in tipos:
             return Response(
@@ -162,26 +281,24 @@ class PlacaViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
-
             if amostras_a_atualizar:
-                Amostra.objects.filter(pk__in=amostras_a_atualizar).update(
-                    status=StatusAmostra.EXTRACAO,
+                novo_status = (
+                    StatusAmostra.PCR if placa.tipo_placa == TipoPlaca.PCR
+                    else StatusAmostra.EXTRACAO
                 )
+                for amostra in Amostra.objects.filter(pk__in=amostras_a_atualizar):
+                    amostra.status = novo_status
+                    amostra.save(update_fields=['status', 'atualizado_em'])
 
         placa.refresh_from_db()
         return Response(PlacaSerializer(placa).data)
 
     # ------------------------------------------------------------------
-    # PDF do espelho de placa (FR-HPV-001)
+    # PDF do espelho de placa
     # ------------------------------------------------------------------
 
     @action(detail=True, methods=['get'], url_path='pdf')
     def pdf(self, request, pk=None):
-        """
-        GET /api/placas/{id}/pdf/
-
-        Gera e retorna o PDF do espelho de placa (FR-HPV-001).
-        """
         placa = self.get_object()
         pdf_bytes = gerar_pdf_placa(placa)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -189,16 +306,16 @@ class PlacaViewSet(viewsets.ModelViewSet):
         return response
 
     # ------------------------------------------------------------------
-    # Confirmar extração (scan do código da placa)
+    # Confirmar extração (só para placas de extração)
     # ------------------------------------------------------------------
 
     @action(detail=False, methods=['post'], url_path='confirmar-extracao')
     def confirmar_extracao(self, request):
         """
         POST /api/placas/confirmar-extracao/
-        Body: { "codigo": "PL2603-0001" }
+        Body: { "codigo": "HPV240326-1" }
 
-        Scan do código da placa → todas as amostras → Extraída.
+        Scan do código da placa de extração → amostras → Extraída; placa → Extração confirmada.
         """
         codigo = (request.data.get('codigo') or '').strip()
         if not codigo:
@@ -207,16 +324,68 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        placa = Placa.objects.prefetch_related('pocos__amostra').filter(codigo=codigo).first()
+        placa = Placa.objects.prefetch_related('pocos__amostra').filter(
+            codigo=codigo, tipo_placa=TipoPlaca.EXTRACAO,
+        ).first()
         if not placa:
             return Response(
-                {'erro': f'Placa "{codigo}" não encontrada.'},
+                {'erro': f'Placa de extração "{codigo}" não encontrada.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        placa.confirmar_extracao()
+        if placa.status_placa != StatusPlaca.ABERTA:
+            return Response(
+                {'erro': f'Placa "{codigo}" já foi processada (status: {placa.get_status_placa_display()}).'},
+                status=status.HTTP_409_CONFLICT,
+            )
 
-        return Response({
-            'sucesso': True,
-            'placa': PlacaSerializer(placa).data,
-        })
+        # Validação de crachá do operador
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        numero_cracha = (request.data.get('numero_cracha') or '').strip()
+        if numero_cracha:
+            try:
+                operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
+            except User.DoesNotExist:
+                return Response(
+                    {'erro': 'Crachá não reconhecido ou operador inativo.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif request.user.is_superuser:
+            operador = request.user
+        else:
+            return Response(
+                {'erro': 'Informe o código do crachá do operador para confirmar a extração.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        placa.confirmar_extracao(operador=operador)
+        return Response({'sucesso': True, 'placa': PlacaSerializer(placa).data})
+
+    # ------------------------------------------------------------------
+    # Submeter ao termociclador (só para placas PCR)
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['post'], url_path='submeter')
+    def submeter(self, request, pk=None):
+        """
+        POST /api/placas/{id}/submeter/
+
+        Envia a placa PCR ao termociclador (placa → Submetida).
+        """
+        placa = self.get_object()
+
+        if placa.tipo_placa != TipoPlaca.PCR:
+            return Response(
+                {'erro': 'Apenas placas PCR podem ser submetidas ao termociclador.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if placa.status_placa != StatusPlaca.ABERTA:
+            return Response(
+                {'erro': f'Placa já foi submetida (status: {placa.get_status_placa_display()}).'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        placa.submeter_termociclador()
+        return Response(PlacaSerializer(placa).data)

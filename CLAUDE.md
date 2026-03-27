@@ -167,9 +167,11 @@ make superuser
 |---|---|---|
 | Fase 1 — Infraestrutura | ✅ Concluída | Django, Docker, PostgreSQL, Nginx, modelos |
 | Fase 2 — Registro de amostras | ✅ Concluída | Import CSV GAL, tela preview, endpoint, fluxo de status refatorado |
-| Fase 3 — Módulo de Recebimento | ✅ Concluída | Tela React scanner de alíquota, endpoint receber, status → Aliquotada |
+| Fase 3 — Módulo de Aliquotagem | ✅ Concluída | Tela React scanner de alíquota + crachá, endpoint receber, status → Aliquotada |
 | Fase 4 — Placas/Extração | ✅ Concluída | Espelho de placa React 8×12, scan da placa, cálculo de reagentes, confirmar extração |
-| Fase 5 — Consulta de Amostras | 🔜 Próxima | Tela React de consulta/busca para o usuário final |
+| Fase 4B — Módulo de PCR | ✅ Concluída | Montar placa PCR, rascunho de extração, submeter ao termociclador |
+| Fase 5 — Consulta de Amostras e Placas | ✅ Concluída | Tela React com abas: consulta de amostras + consulta de placas com espelho expansível |
+| Fase 5.5 — Consolidação e Qualidade | ✅ Concluída | 36 testes automatizados, permissões por grupo, state machine, badge/crachá, auditlog |
 | Fase 6 — Resultados | 🔜 Aguarda critérios IBMP | Parser CFX Manager, classificação HPV, tela revisão |
 | Fase 7 — Auditoria/Relatórios | 🔜 Planejado | Admin avançado, PDF/Excel |
 | Fase 8 — Dashboard | 🔜 Planejado | Chart.js, alertas, contadores |

@@ -30,11 +30,19 @@ class ResultadoAmostraAdmin(admin.ModelAdmin):
     search_fields = ('poco__amostra__codigo_interno', 'poco__amostra__numero_gal')
     readonly_fields = ('poco', 'confirmado_em', 'confirmado_por', 'imutavel')
 
+    # Verde para negativo, vermelho para qualquer HPV detectado, amarelo para exceções
     RESULTADO_COLORS = {
-        ResultadoFinalChoices.HPV_DETECTADO: '#dc3545',
         ResultadoFinalChoices.HPV_NAO_DETECTADO: '#198754',
-        ResultadoFinalChoices.INVALIDO: '#ffc107',
-        ResultadoFinalChoices.PENDENTE: '#6c757d',
+        ResultadoFinalChoices.HPV16:             '#dc3545',
+        ResultadoFinalChoices.HPV18:             '#dc3545',
+        ResultadoFinalChoices.HPV_AR:            '#dc3545',
+        ResultadoFinalChoices.HPV18_AR:          '#dc3545',
+        ResultadoFinalChoices.HPV16_AR:          '#dc3545',
+        ResultadoFinalChoices.HPV16_18:          '#dc3545',
+        ResultadoFinalChoices.HPV16_18_AR:       '#dc3545',
+        ResultadoFinalChoices.INVALIDO:          '#ffc107',
+        ResultadoFinalChoices.INCONCLUSIVO:      '#fd7e14',
+        ResultadoFinalChoices.PENDENTE:          '#6c757d',
     }
 
     def has_add_permission(self, request):

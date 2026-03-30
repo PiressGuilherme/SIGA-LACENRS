@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -90,6 +91,9 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
 
 // ================================================================
 export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarDone }) {
+  // ---- State: operador (crachá) ----
+  const [operador, setOperador] = useState(null)
+
   // ---- State: lista de placas ----
   const [placas, setPlacas] = useState([])
   const [loadingList, setLoadingList] = useState(false)
@@ -331,7 +335,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
       }
 
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -364,7 +368,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
     try {
       const novaPlaca = await api('/api/placas/', { csrfToken, method: 'POST', body: {} })
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -410,6 +414,40 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
+
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Extração — Montar Placa" />
+      )}
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
+        </div>
+      )}
 
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (

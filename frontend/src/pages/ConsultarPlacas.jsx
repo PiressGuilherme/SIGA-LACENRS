@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import CrachaInput from '../components/CrachaInput'
+import CrachaModal from '../components/CrachaModal'
 
 const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
@@ -243,6 +243,7 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
 
   // Confirmar extração (scan global)
   const [operador, setOperador] = useState(null)
+  const [mostrarCrachaModal, setMostrarCrachaModal] = useState(false)
   const [codigoExtracao, setCodigoExtracao] = useState('')
   const [feedbackExtracao, setFeedbackExtracao] = useState(null)
   const [amostrasExtraidas, setAmostrasExtraidas] = useState([])
@@ -320,6 +321,16 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
   return (
     <div style={{ fontFamily: 'inherit' }}>
 
+      {/* Modal de crachá para confirmar extração */}
+      {mostrarCrachaModal && (
+        <CrachaModal
+          onValidado={(op) => { setOperador(op); setMostrarCrachaModal(false); setTimeout(() => extracaoRef.current?.focus(), 100) }}
+          modulo="Confirmar Extração"
+          operadorAtual={operador}
+          onManter={operador ? () => { setMostrarCrachaModal(false); setTimeout(() => extracaoRef.current?.focus(), 100) } : undefined}
+        />
+      )}
+
       {/* ---- Seção: Confirmar Extração ---- */}
       <div style={{
         background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: 8,
@@ -328,7 +339,43 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
         <h3 style={{ fontSize: '1rem', color: '#6f42c1', marginBottom: '0.5rem', marginTop: 0 }}>
           Confirmar Extração
         </h3>
-        <CrachaInput onValidado={setOperador} label="Operador Responsável" />
+
+        {/* Barra do operador ou botão para identificar */}
+        {operador ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.75rem',
+            background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+            padding: '0.6rem 1rem', marginBottom: '0.75rem',
+          }}>
+            <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+              Operador: {operador.nome_completo}
+            </span>
+            <span style={{
+              fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+              padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+            }}>
+              {operador.perfil}
+            </span>
+            <button
+              onClick={() => setMostrarCrachaModal(true)}
+              style={{
+                marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+                borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+                color: '#065f46', cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              Trocar operador
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setMostrarCrachaModal(true)}
+            style={{ ...btnStyle('#6f42c1'), marginBottom: '0.75rem' }}
+          >
+            Identificar operador para confirmar extração
+          </button>
+        )}
+
         <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
           Escaneie o código de barras da placa após a extração de DNA para marcar todas as amostras como <b>Extraída</b>.
         </p>
@@ -338,7 +385,7 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
             type="text"
             value={codigoExtracao}
             onChange={e => setCodigoExtracao(e.target.value)}
-            placeholder={operador ? 'Escanear código da placa...' : 'Identifique-se com o crachá primeiro'}
+            placeholder={operador ? 'Escanear código da placa...' : 'Identifique-se primeiro'}
             disabled={carregandoExtracao || !operador}
             autoComplete="off"
             style={{

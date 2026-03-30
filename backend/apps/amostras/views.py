@@ -279,9 +279,11 @@ class AmostraViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        from auditlog.context import set_actor
         amostra.status = StatusAmostra.ALIQUOTADA
         amostra.recebido_por = operador
-        amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
+        with set_actor(operador):
+            amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
 
         return Response(
             {

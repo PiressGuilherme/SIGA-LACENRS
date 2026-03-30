@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const STATUS_LABEL = {
   novo:        { text: 'Nova',        bg: '#d1fae5', color: '#065f46' },
@@ -67,7 +67,21 @@ export default function ImportCSV({ csrfToken }) {
   const [carregando, setCarregando] = useState(false)
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
+  const [countdown, setCountdown] = useState(null)
   const inputRef = useRef()
+
+  // Auto-reset 5 segundos após importação bem-sucedida
+  useEffect(() => {
+    if (etapa !== 'resultado') return
+    setCountdown(5)
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(interval); resetar(); return null }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [etapa])
 
   function handleSort(key) {
     if (sortKey === key) {
@@ -318,7 +332,7 @@ export default function ImportCSV({ csrfToken }) {
           )}
 
           <button onClick={resetar} style={btnStyle('#1a3a5c')}>
-            Importar outro arquivo
+            Importar outro arquivo{countdown != null ? ` (${countdown}s)` : ''}
           </button>
         </div>
       )}

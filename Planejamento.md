@@ -263,7 +263,7 @@ Uma amostra pode aparecer em múltiplas placas PCR ao longo do tempo (uma por te
 
 > Todos os perfis autenticados têm acesso à consulta de amostras e de placas.
 
-> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. Superusers não precisam bipe de crachá.
+> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. Superusers não precisam escanear o crachá.
 
 > **`numero_cracha`** é um campo do model `Usuario`. O endpoint `GET /api/auth/validar-cracha/?codigo=` retorna nome e perfil do operador para exibição no frontend.
 

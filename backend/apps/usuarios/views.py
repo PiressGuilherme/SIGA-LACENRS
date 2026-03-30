@@ -3,10 +3,16 @@ from django.views.generic import TemplateView
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    """Limita tentativas de login a 10/minuto por IP."""
+    rate = '10/minute'
 
 
 class LoginPageView(TemplateView):
@@ -21,6 +27,7 @@ class LoginEmailView(APIView):
     Retorna access + refresh tokens e dados básicos do usuário.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         email = request.data.get('email', '').strip().lower()
@@ -62,6 +69,7 @@ class LoginCrachaView(APIView):
     Autentica pelo número do crachá sem necessidade de senha.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         numero = request.data.get('numero_cracha', '').strip()

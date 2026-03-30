@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -93,6 +94,9 @@ const STATUS_PLACA = {
 
 // ================================================================
 export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDone }) {
+  // ---- State: operador (crachá) ----
+  const [operador, setOperador] = useState(null)
+
   // ---- State: escolha de origem ----
   const [modoInicio, setModoInicio] = useState(null)  // null | 'rascunho' | 'zero'
   const [placasExtracao, setPlacasExtracao] = useState([])
@@ -367,7 +371,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       }
 
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -387,7 +391,9 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
     setCarregando(true)
     setFeedback(null)
     try {
-      const data = await api(`/api/placas/${placa.id}/submeter/`, { csrfToken, method: 'POST' })
+      const data = await api(`/api/placas/${placa.id}/submeter/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
       setPlaca(data)
       setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} enviada ao termociclador.` })
     } catch (err) {
@@ -420,7 +426,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
         body: { tipo_placa: 'pcr', placa_origem: placa?.placa_origem || null },
       })
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -468,6 +474,40 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
+
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="PCR — Montar Placa" />
+      )}
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
+        </div>
+      )}
 
       {/* ---- Tela de escolha de início ---- */}
       {!placa && modoInicio === null && (

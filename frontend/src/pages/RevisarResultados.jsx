@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import CrachaModal from '../components/CrachaModal'
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ async function apiFetch(url, { csrfToken, method = 'GET', body, isMultipart = fa
 // ── Componente principal ───────────────────────────────────────────────────
 
 export default function RevisarResultados({ csrfToken }) {
+  const [operador, setOperador] = useState(null)
   const [placas, setPlacas] = useState([])
   const [placaSelecionada, setPlacaSelecionada] = useState(null)
   const [arquivo, setArquivo] = useState(null)
@@ -122,6 +124,7 @@ export default function RevisarResultados({ csrfToken }) {
       const form = new FormData()
       form.append('arquivo', arquivo)
       form.append('placa_id', placaSelecionada.id)
+      if (operador?.numero_cracha) form.append('numero_cracha', operador.numero_cracha)
       const data = await apiFetch('/api/resultados/importar/', {
         csrfToken, method: 'POST', body: form, isMultipart: true,
       })
@@ -144,7 +147,9 @@ export default function RevisarResultados({ csrfToken }) {
   async function confirmarResultado(id) {
     setActionLoading(p => ({ ...p, [id]: 'confirmar' }))
     try {
-      const updated = await apiFetch(`/api/resultados/${id}/confirmar/`, { csrfToken, method: 'POST' })
+      const updated = await apiFetch(`/api/resultados/${id}/confirmar/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
       setResultados(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
     } catch (err) {
       alert(err.data?.erro || 'Erro ao confirmar resultado.')
@@ -153,10 +158,21 @@ export default function RevisarResultados({ csrfToken }) {
     }
   }
 
+  async function confirmarTodos() {
+    const pendentes = resultados.filter(r => !r.imutavel)
+    if (pendentes.length === 0) return
+    if (!confirm(`Confirmar todos os ${pendentes.length} resultados pendentes desta placa?`)) return
+    for (const r of pendentes) {
+      await confirmarResultado(r.id)
+    }
+  }
+
   async function liberarResultado(id) {
     setActionLoading(p => ({ ...p, [id]: 'liberar' }))
     try {
-      const updated = await apiFetch(`/api/resultados/${id}/liberar/`, { csrfToken, method: 'POST' })
+      const updated = await apiFetch(`/api/resultados/${id}/liberar/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
       setResultados(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
     } catch (err) {
       alert(err.data?.erro || 'Erro ao liberar resultado.')
@@ -169,7 +185,9 @@ export default function RevisarResultados({ csrfToken }) {
     if (!confirm('Confirma solicitação de repetição para esta amostra?')) return
     setActionLoading(p => ({ ...p, [id]: 'repeticao' }))
     try {
-      await apiFetch(`/api/resultados/${id}/solicitar-repeticao/`, { csrfToken, method: 'POST' })
+      await apiFetch(`/api/resultados/${id}/solicitar-repeticao/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
       await carregarResultados(placaSelecionada.id)
     } catch (err) {
       alert(err.data?.erro || 'Erro ao solicitar repetição.')
@@ -214,9 +232,43 @@ export default function RevisarResultados({ csrfToken }) {
 
   return (
     <div style={{ fontFamily: 'inherit', maxWidth: 1200 }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Revisão de Resultados PCR" />
+      )}
+
       <h2 style={{ marginBottom: '1.25rem', fontSize: '1.3rem', color: '#1a3a5c' }}>
         Revisão de Resultados PCR
       </h2>
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
+        </div>
+      )}
 
       {/* Seletor de placa */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '1rem' }}>
@@ -308,6 +360,7 @@ export default function RevisarResultados({ csrfToken }) {
               resultados={resultados}
               actionLoading={actionLoading}
               onConfirmar={confirmarResultado}
+              onConfirmarTodos={confirmarTodos}
               onLiberar={liberarResultado}
               onRepeticao={solicitarRepeticao}
               onOverride={abrirOverride}
@@ -371,7 +424,7 @@ export default function RevisarResultados({ csrfToken }) {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────
 
-function ResultadosTable({ resultados, actionLoading, onConfirmar, onLiberar, onRepeticao, onOverride }) {
+function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTodos, onLiberar, onRepeticao, onOverride }) {
   if (resultados.length === 0) {
     return (
       <p style={{ color: '#9ca3af', fontSize: '0.9rem', padding: '1rem 0' }}>
@@ -381,12 +434,24 @@ function ResultadosTable({ resultados, actionLoading, onConfirmar, onLiberar, on
   }
 
   const totalConfirmados = resultados.filter(r => r.imutavel).length
+  const totalPendentes = resultados.length - totalConfirmados
 
   return (
     <>
-      <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-        {resultados.length} amostra{resultados.length !== 1 ? 's' : ''} •{' '}
-        {totalConfirmados} confirmada{totalConfirmados !== 1 ? 's' : ''}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+          {resultados.length} amostra{resultados.length !== 1 ? 's' : ''} •{' '}
+          {totalConfirmados} confirmada{totalConfirmados !== 1 ? 's' : ''}
+          {totalPendentes > 0 && ` • ${totalPendentes} pendente${totalPendentes !== 1 ? 's' : ''}`}
+        </span>
+        {totalPendentes > 0 && (
+          <button
+            onClick={onConfirmarTodos}
+            style={{ ...btnSmStyle('#0d6efd'), padding: '4px 12px', fontSize: '0.82rem' }}
+          >
+            Confirmar todos ({totalPendentes})
+          </button>
+        )}
       </div>
       <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, border: '1px solid #e5e7eb' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>

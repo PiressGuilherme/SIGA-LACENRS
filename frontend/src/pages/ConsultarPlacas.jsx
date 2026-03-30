@@ -234,16 +234,14 @@ function LinhaPlaca({ p, onEditar }) {
   )
 }
 
-// ================================================================
 export default function ConsultarPlacas({ csrfToken, onEditar }) {
   const [placas, setPlacas] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  // Confirmar extração (scan global)
+  // Confirmar extração (scan global) - operador é obrigatório
   const [operador, setOperador] = useState(null)
-  const [mostrarCrachaModal, setMostrarCrachaModal] = useState(false)
   const [codigoExtracao, setCodigoExtracao] = useState('')
   const [feedbackExtracao, setFeedbackExtracao] = useState(null)
   const [amostrasExtraidas, setAmostrasExtraidas] = useState([])
@@ -321,27 +319,25 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
   return (
     <div style={{ fontFamily: 'inherit' }}>
 
-      {/* Modal de crachá para confirmar extração */}
-      {mostrarCrachaModal && (
+      {/* Modal de crachá - SEMPRE bloqueante quando operador não identificado */}
+      {!operador && (
         <CrachaModal
-          onValidado={(op) => { setOperador(op); setMostrarCrachaModal(false); setTimeout(() => extracaoRef.current?.focus(), 100) }}
+          onValidado={(op) => { setOperador(op); setTimeout(() => extracaoRef.current?.focus(), 100) }}
           modulo="Confirmar Extração"
-          operadorAtual={operador}
-          onManter={operador ? () => { setMostrarCrachaModal(false); setTimeout(() => extracaoRef.current?.focus(), 100) } : undefined}
         />
       )}
 
-      {/* ---- Seção: Confirmar Extração ---- */}
-      <div style={{
-        background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: 8,
-        padding: '1.25rem', marginBottom: '1.75rem',
-      }}>
-        <h3 style={{ fontSize: '1rem', color: '#6f42c1', marginBottom: '0.5rem', marginTop: 0 }}>
-          Confirmar Extração
-        </h3>
+      {/* ---- Seção: Confirmar Extração (apenas após identificação) ---- */}
+      {operador && (
+        <div style={{
+          background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: 8,
+          padding: '1.25rem', marginBottom: '1.75rem',
+        }}>
+          <h3 style={{ fontSize: '1rem', color: '#6f42c1', marginBottom: '0.5rem', marginTop: 0 }}>
+            Confirmar Extração
+          </h3>
 
-        {/* Barra do operador ou botão para identificar */}
-        {operador ? (
+          {/* Barra do operador com opção de trocar */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '0.75rem',
             background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
@@ -357,7 +353,7 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
               {operador.perfil}
             </span>
             <button
-              onClick={() => setMostrarCrachaModal(true)}
+              onClick={() => setOperador(null)}
               style={{
                 marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
                 borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
@@ -367,59 +363,52 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
               Trocar operador
             </button>
           </div>
-        ) : (
-          <button
-            onClick={() => setMostrarCrachaModal(true)}
-            style={{ ...btnStyle('#6f42c1'), marginBottom: '0.75rem' }}
-          >
-            Identificar operador para confirmar extração
-          </button>
-        )}
 
-        <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          Escaneie o código de barras da placa após a extração de DNA para marcar todas as amostras como <b>Extraída</b>.
-        </p>
-        <form onSubmit={handleConfirmarExtracao} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
-          <input
-            ref={extracaoRef}
-            type="text"
-            value={codigoExtracao}
-            onChange={e => setCodigoExtracao(e.target.value)}
-            placeholder={operador ? 'Escanear código da placa...' : 'Identifique-se primeiro'}
-            disabled={carregandoExtracao || !operador}
-            autoComplete="off"
-            style={{
-              flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
-              border: '2px solid #c4b5fd', borderRadius: 6, outline: 'none',
-            }}
-          />
-          <button
-            type="submit"
-            disabled={carregandoExtracao || !codigoExtracao.trim() || !operador}
-            style={{
-              ...btnStyle('#6f42c1'),
-              opacity: (carregandoExtracao || !codigoExtracao.trim() || !operador) ? 0.5 : 1,
-            }}
-          >
-            {carregandoExtracao ? 'Confirmando...' : 'Confirmar'}
-          </button>
-        </form>
-        {feedbackExtracao && (
-          <div style={{ borderRadius: 6, overflow: 'hidden' }}>
-            <div style={{ padding: '0.6rem 1rem', ...feedbackStyles[feedbackExtracao.tipo] }}>
-              {feedbackExtracao.msg}
-            </div>
-            {feedbackExtracao.tipo === 'sucesso' && amostrasExtraidas.length > 0 && (
-              <div style={{
-                padding: '0.5rem 1rem', background: '#f0fdf4',
-                borderTop: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#065f46',
-              }}>
-                <b>Amostras extraídas:</b> {amostrasExtraidas.join(', ')}
+          <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+            Escaneie o código de barras da placa após a extração de DNA para marcar todas as amostras como <b>Extraída</b>.
+          </p>
+          <form onSubmit={handleConfirmarExtracao} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
+            <input
+              ref={extracaoRef}
+              type="text"
+              value={codigoExtracao}
+              onChange={e => setCodigoExtracao(e.target.value)}
+              placeholder="Escanear código da placa..."
+              disabled={carregandoExtracao}
+              autoComplete="off"
+              style={{
+                flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
+                border: '2px solid #c4b5fd', borderRadius: 6, outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={carregandoExtracao || !codigoExtracao.trim()}
+              style={{
+                ...btnStyle('#6f42c1'),
+                opacity: (carregandoExtracao || !codigoExtracao.trim()) ? 0.5 : 1,
+              }}
+            >
+              {carregandoExtracao ? 'Confirmando...' : 'Confirmar'}
+            </button>
+          </form>
+          {feedbackExtracao && (
+            <div style={{ borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ padding: '0.6rem 1rem', ...feedbackStyles[feedbackExtracao.tipo] }}>
+                {feedbackExtracao.msg}
               </div>
-            )}
-          </div>
-        )}
-      </div>
+              {feedbackExtracao.tipo === 'sucesso' && amostrasExtraidas.length > 0 && (
+                <div style={{
+                  padding: '0.5rem 1rem', background: '#f0fdf4',
+                  borderTop: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#065f46',
+                }}>
+                  <b>Amostras extraídas:</b> {amostrasExtraidas.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ---- Seção: Lista de placas ---- */}
       <div>

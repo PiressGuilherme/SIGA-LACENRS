@@ -269,6 +269,65 @@ Uma amostra pode aparecer em múltiplas placas PCR ao longo do tempo (uma por te
 
 ---
 
+### Sistema de Autenticação em Duas Camadas
+
+O SIGA-LACEN implementa um sistema de autenticação de duas camadas para garantir rastreabilidade completa das ações realizadas no laboratório:
+
+#### Camada 1: Login Web (Autenticação de Sessão)
+* **Objetivo:** Controlar o acesso ao sistema
+* **Método:** Login com e-mail/senha ou crachá diretamente na tela de login
+* **Resultado:** Geração de token JWT (`access_token` e `refresh_token`)
+* **Responsável pelo log:** `request.user` do Django (usuário logado na sessão)
+* **Quando é usado:** Para acessar o sistema, navegar entre módulos e operações de consulta
+
+#### Camada 2: Scan de Crachá (Autenticação de Ação)
+* **Objetivo:** Identificar quem está executando uma ação específica na bancada
+* **Método:** Modal bloqueante que exige escanear o crachá antes de iniciar qualquer operação
+* **Resultado:** Operador identificado por `numero_cracha` é enviado ao backend em cada requisição
+* **Responsável pelo log:** Campos de rastreamento (`confirmado_por`, `recebido_por`, `extracao_confirmada_por`)
+* **Quando é usado:** Em todas as operações críticas listadas abaixo
+
+#### Operações que exigem autenticação por crachá:
+
+| Módulo | Operação | Campo de Rastreamento |
+|--------|---------|----------------------|
+| Aliquotagem | Confirmar alíquota | `recebido_por` na `Amostra` |
+| Extração | Salvar placa | `responsavel` na `Placa` |
+| Extração | Confirmar extração | `extracao_confirmada_por` na `Placa` |
+| PCR | Salvar placa PCR | `responsavel` na `Placa` |
+| PCR | Enviar ao termociclador | `submetido_por` no registro |
+| Resultados | Importar CSV | `operador` no `auditlog` |
+| Resultados | Confirmar resultado | `confirmado_por` no `ResultadoAmostra` |
+| Resultados | Liberar resultado | `liberado_por` no registro |
+| Resultados | Solicitar repetição | `operador` no `auditlog` |
+
+#### Comportamento do Sistema
+
+1. **Modal Bloqueante:** Ao acessar qualquer módulo operacional (Aliquotagem, Extração, PCR, Resultados), um modal é exibido bloqueando a página até que o operador escaneie o crachá.
+
+2. **Exceção:** Superusers e usuários com `is_staff=True` podem fazer bypass do crachá (ação é registrada como o próprio usuário logado).
+
+3. **Troca de Operador:** O operador pode trocar o crachá a qualquer momento clicando em "Trocar operador". A partir desse ponto, todas as ações são registradas com o novo operador.
+
+4. **Persistência na Sessão:** O operador identificado permanece ativo durante toda a sessão do módulo.
+
+#### Implementação Técnica
+
+**Frontend:**
+* `CrachaModal.jsx` — componente React de modal bloqueante
+* Enviado `numero_cracha` em todas as requisições POST/PATCH que alteram dados
+
+**Backend:**
+* Função `_resolver_operador()` em cada ViewSet extrai o `numero_cracha` do request
+* `auditlog.context.set_actor(operador)` configura o ator correto no auditlog
+* Fallback para `request.user` quando crachá não é fornecido
+
+**Banco de Dados:**
+* Campo `numero_cracha` no model `Usuario`
+* Campos de rastreamento (`confirmado_por`, `recebido_por`, etc.) são ForeignKey para `Usuario`
+
+---
+
 ### Fases de Desenvolvimento
 
 #### Fase 1 - Infraestrutura e Contêineres ✅ Concluída

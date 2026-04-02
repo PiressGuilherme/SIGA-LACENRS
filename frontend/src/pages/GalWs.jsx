@@ -6,32 +6,6 @@ import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 const STATUS = { idle: 'idle', loading: 'loading', ok: 'ok', erro: 'erro' }
 
 // ---------------------------------------------------------------------------
-// Estilos inline compartilhados
-// ---------------------------------------------------------------------------
-const card = {
-  background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0',
-  padding: '1.5rem', marginBottom: '1.5rem',
-}
-const label = { display: 'block', fontSize: '0.8rem', fontWeight: 600,
-  color: '#374151', marginBottom: 4 }
-const input = {
-  width: '100%', padding: '0.5rem 0.75rem', borderRadius: 6,
-  border: '1px solid #d1d5db', fontSize: '0.9rem', marginBottom: '0.75rem',
-  boxSizing: 'border-box',
-}
-const btn = (color = '#1a3a5c') => ({
-  padding: '0.5rem 1.25rem', borderRadius: 6, border: 'none',
-  background: color, color: '#fff', fontWeight: 600, cursor: 'pointer',
-  fontSize: '0.875rem',
-})
-const badge = (ok) => ({
-  display: 'inline-block', padding: '2px 10px', borderRadius: 999,
-  fontSize: '0.75rem', fontWeight: 700,
-  background: ok ? '#d1fae5' : '#fee2e2',
-  color: ok ? '#065f46' : '#991b1b',
-})
-
-// ---------------------------------------------------------------------------
 // Tab: Configuração
 // ---------------------------------------------------------------------------
 function TabConfiguracao({ csrf }) {
@@ -80,55 +54,83 @@ function TabConfiguracao({ csrf }) {
 
   return (
     <div>
-      <div style={card}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '1rem' }}>
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <h3 className="text-base font-bold text-primary-700 mb-4">
           Credenciais e Endpoint
         </h3>
         <form onSubmit={salvar}>
-          <label style={label}>URL do WebService</label>
-          <input style={input} value={form.url_ws}
-            onChange={e => set('url_ws', e.target.value)} placeholder="https://..." />
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            URL do WebService
+          </label>
+          <input
+            className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm mb-3 box-border"
+            value={form.url_ws}
+            onChange={e => set('url_ws', e.target.value)}
+            placeholder="https://..."
+          />
 
-          <label style={label}>Usuário GAL</label>
-          <input style={input} value={form.usuario}
-            onChange={e => set('usuario', e.target.value)} placeholder="usuario_integracao" />
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Usuário GAL
+          </label>
+          <input
+            className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm mb-3 box-border"
+            value={form.usuario}
+            onChange={e => set('usuario', e.target.value)}
+            placeholder="usuario_integracao"
+          />
 
-          <label style={label}>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
             Senha GAL{' '}
             {senhaConfigurada
-              ? <span style={badge(true)}>configurada</span>
-              : <span style={badge(false)}>não configurada</span>}
+              ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-success-50 text-success-700">configurada</span>
+              : <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger-50 text-danger-700">não configurada</span>}
           </label>
-          <input style={input} type="password" value={form.senha}
+          <input
+            className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm mb-3 box-border"
+            type="password"
+            value={form.senha}
             onChange={e => set('senha', e.target.value)}
-            placeholder={senhaConfigurada ? 'Deixe em branco para manter a atual' : 'Nova senha'} />
+            placeholder={senhaConfigurada ? 'Deixe em branco para manter a atual' : 'Nova senha'}
+          />
 
-          <label style={label}>Código do Laboratório</label>
-          <input style={input} value={form.codigo_laboratorio}
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Código do Laboratório
+          </label>
+          <input
+            className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm mb-3 box-border"
+            value={form.codigo_laboratorio}
             onChange={e => set('codigo_laboratorio', e.target.value)}
-            placeholder="Ex: LACEN-RS ou código numérico do GAL" />
+            placeholder="Ex: LACEN-RS ou código numérico do GAL"
+          />
 
-          <label style={{ ...label, flexDirection: 'row', gap: 8, display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-            <input type="checkbox" checked={form.verificar_ssl}
-              onChange={e => set('verificar_ssl', e.target.checked)} />
+          <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-4">
+            <input
+              type="checkbox"
+              checked={form.verificar_ssl}
+              onChange={e => set('verificar_ssl', e.target.checked)}
+              className="rounded"
+            />
             Verificar certificado SSL{' '}
-            <span style={{ color: '#6b7280', fontWeight: 400 }}>
+            <span className="text-gray-500 font-normal">
               (desative se o servidor GAL usar certificado auto-assinado)
             </span>
           </label>
 
           {msg && (
-            <div style={{
-              padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem',
-              background: msg.tipo === 'ok' ? '#d1fae5' : '#fee2e2',
-              color: msg.tipo === 'ok' ? '#065f46' : '#991b1b',
-              fontSize: '0.875rem',
-            }}>
+            <div className={`px-4 py-2.5 rounded-md mb-4 text-sm ${
+              msg.tipo === 'ok'
+                ? 'bg-success-50 text-success-700'
+                : 'bg-danger-50 text-danger-700'
+            }`}>
               {msg.texto}
             </div>
           )}
 
-          <button type="submit" style={btn()} disabled={salvando}>
+          <button
+            type="submit"
+            disabled={salvando}
+            className="px-5 py-2 rounded-md bg-primary-700 text-white font-semibold text-sm cursor-pointer hover:bg-primary-800 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             {salvando ? 'Salvando…' : 'Salvar Configuração'}
           </button>
         </form>
@@ -158,25 +160,28 @@ function TabTestarConexao({ csrf }) {
   }
 
   return (
-    <div style={card}>
-      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '1rem' }}>
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 className="text-base font-bold text-primary-700 mb-4">
         Testar Conexão com o GAL WS
       </h3>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-        Executa em sequência: <code>autenticacao</code> → <code>mensagem</code> → <code>validaData</code>
+      <p className="text-sm text-gray-500 mb-4">
+        Executa em sequência: <code className="font-mono">autenticacao</code> → <code className="font-mono">mensagem</code> → <code className="font-mono">validaData</code>
       </p>
-      <button style={btn()} onClick={testar} disabled={st === STATUS.loading}>
+      <button
+        onClick={testar}
+        disabled={st === STATUS.loading}
+        className="px-5 py-2 rounded-md bg-primary-700 text-white font-semibold text-sm cursor-pointer hover:bg-primary-800 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
         {st === STATUS.loading ? 'Testando…' : '▶ Testar Agora'}
       </button>
 
       {resultado && (
-        <div style={{ marginTop: '1.25rem' }}>
-          <div style={{
-            padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '0.75rem',
-            background: resultado.ok ? '#d1fae5' : '#fee2e2',
-            color: resultado.ok ? '#065f46' : '#991b1b',
-            fontWeight: 700, fontSize: '0.875rem',
-          }}>
+        <div className="mt-5">
+          <div className={`px-4 py-2 rounded-md mb-3 font-bold text-sm ${
+            resultado.ok
+              ? 'bg-success-50 text-success-700'
+              : 'bg-danger-50 text-danger-700'
+          }`}>
             {resultado.ok ? '✓ Conexão bem-sucedida' : '✗ Falha na conexão'}
           </div>
           <ResultRow label="Autenticação" value={resultado.data.autenticacao} />
@@ -193,12 +198,9 @@ function TabTestarConexao({ csrf }) {
 
 function ResultRow({ label: l, value, erro }) {
   return (
-    <div style={{
-      display: 'flex', gap: '1rem', padding: '0.4rem 0',
-      borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem', alignItems: 'flex-start',
-    }}>
-      <span style={{ minWidth: 160, color: '#6b7280', fontWeight: 600 }}>{l}</span>
-      <span style={{ color: erro ? '#dc2626' : '#111827', fontFamily: 'monospace' }}>{value}</span>
+    <div className="flex gap-4 py-1.5 border-b border-gray-100 text-sm items-start">
+      <span className="min-w-[160px] text-gray-500 font-semibold">{l}</span>
+      <span className={`font-mono ${erro ? 'text-danger-600' : 'text-gray-900'}`}>{value}</span>
     </div>
   )
 }
@@ -228,54 +230,53 @@ function TabBuscarExames({ csrf }) {
   }
 
   return (
-    <div style={card}>
-      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '1rem' }}>
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 className="text-base font-bold text-primary-700 mb-4">
         Buscar Exames Pendentes
       </h3>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-        Chama <code>buscarExames(laboratorio)</code> no GAL WS. O retorno bruto é exibido para
+      <p className="text-sm text-gray-500 mb-4">
+        Chama <code className="font-mono">buscarExames(laboratorio)</code> no GAL WS. O retorno bruto é exibido para
         inspeção do schema antes de implementar a importação automática.
         Se o campo estiver vazio, usa o código configurado na aba Configuração.
       </p>
 
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1 }}>
-          <label style={label}>Código do Laboratório</label>
-          <input style={{ ...input, marginBottom: 0 }} value={laboratorio}
+      <div className="flex gap-3 mb-4 items-end">
+        <div className="flex-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Código do Laboratório
+          </label>
+          <input
+            className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm mb-0 box-border"
+            value={laboratorio}
             onChange={e => setLaboratorio(e.target.value)}
-            placeholder="Deixe vazio para usar o código configurado" />
+            placeholder="Deixe vazio para usar o código configurado"
+          />
         </div>
-        <button style={btn()} onClick={buscar} disabled={st === STATUS.loading}>
+        <button
+          onClick={buscar}
+          disabled={st === STATUS.loading}
+          className="px-5 py-2 rounded-md bg-primary-700 text-white font-semibold text-sm cursor-pointer hover:bg-primary-800 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           {st === STATUS.loading ? 'Buscando…' : '🔍 Buscar'}
         </button>
       </div>
 
       {resultado && (
-        <div style={{ marginTop: '0.75rem' }}>
+        <div className="mt-3">
           {resultado.ok ? (
             <>
-              <div style={{
-                padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '0.75rem',
-                background: '#d1fae5', color: '#065f46', fontWeight: 700, fontSize: '0.875rem',
-              }}>
+              <div className="px-4 py-2 rounded-md mb-3 bg-success-50 text-success-700 font-bold text-sm">
                 ✓ {resultado.data.total} exame{resultado.data.total !== 1 ? 's' : ''} encontrado{resultado.data.total !== 1 ? 's' : ''}
                 {resultado.data.laboratorio && ` — ${resultado.data.laboratorio}`}
               </div>
-              <pre style={{
-                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6,
-                padding: '1rem', fontSize: '0.78rem', overflowX: 'auto', maxHeight: 400,
-                whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-              }}>
+              <pre className="bg-gray-50 border border-gray-200 rounded-md p-4 text-xs overflow-x-auto max-h-[400px] whitespace-pre-wrap break-all">
                 {JSON.stringify(resultado.data.exames, null, 2)}
               </pre>
             </>
           ) : (
-            <div style={{
-              padding: '0.6rem 1rem', borderRadius: 6,
-              background: '#fee2e2', color: '#991b1b', fontSize: '0.875rem',
-            }}>
+            <div className="px-4 py-2.5 rounded-md bg-danger-50 text-danger-700 text-sm">
               ✗ {resultado.data.erro}
-              {resultado.data.etapa && <span style={{ marginLeft: 8, opacity: 0.7 }}>({resultado.data.etapa})</span>}
+              {resultado.data.etapa && <span className="ml-2 opacity-70">({resultado.data.etapa})</span>}
             </div>
           )}
         </div>
@@ -298,32 +299,33 @@ export default function GalWs({ csrfToken }) {
   const [aba, setAba] = useState('config')
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div className="max-w-[760px]">
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="GAL WebService" />
       )}
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.4rem', color: '#1a3a5c', marginBottom: '0.25rem' }}>
+      <div className="mb-6">
+        <h2 className="text-xl text-primary-700 mb-1 font-bold">
           Integração GAL WebService
         </h2>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+        <p className="text-gray-500 text-sm">
           Configure e teste a conexão direta com o sistema GAL do Rio Grande do Sul.
         </p>
       </div>
 
       {/* Abas */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0' }}>
+      <div className="flex gap-2 mb-6 border-b-2 border-gray-200">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setAba(t.id)}
-            style={{
-              padding: '0.5rem 1.25rem', border: 'none', background: 'none',
-              cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600,
-              color: aba === t.id ? '#1a3a5c' : '#6b7280',
-              borderBottom: aba === t.id ? '2px solid #1a3a5c' : '2px solid transparent',
-              marginBottom: -2,
-            }}>
+          <button
+            key={t.id}
+            onClick={() => setAba(t.id)}
+            className={`px-5 py-2 border-none bg-none cursor-pointer text-sm font-semibold transition-colors ${
+              aba === t.id
+                ? 'text-primary-700 border-b-2 border-primary-700 -mb-0.5'
+                : 'text-gray-500 border-b-2 border-transparent -mb-0.5'
+            }`}
+          >
             {t.label}
           </button>
         ))}

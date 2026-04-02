@@ -1,139 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-
-const s = {
-  wrapper: {
-    width: '100%', maxWidth: 420,
-    padding: '0 1rem',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: 14,
-    boxShadow: '0 4px 32px rgba(26,58,92,0.13)',
-    overflow: 'hidden',
-  },
-  header: {
-    background: '#1a3a5c',
-    padding: '2rem 2rem 1.5rem',
-    textAlign: 'center',
-    color: '#fff',
-  },
-  logo: {
-    fontSize: '2.2rem',
-    marginBottom: '0.5rem',
-  },
-  title: {
-    fontSize: '1.3rem',
-    fontWeight: 700,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    fontSize: '0.8rem',
-    color: '#adc8e6',
-    marginTop: '0.25rem',
-  },
-  body: {
-    padding: '1.75rem 2rem',
-  },
-  tabBar: {
-    display: 'flex',
-    borderBottom: '2px solid #e5e7eb',
-    marginBottom: '1.5rem',
-  },
-  tab: (active) => ({
-    flex: 1,
-    padding: '0.6rem 0',
-    border: 'none',
-    background: 'none',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: 600,
-    color: active ? '#1a3a5c' : '#9ca3af',
-    borderBottom: active ? '2px solid #1a3a5c' : '2px solid transparent',
-    marginBottom: -2,
-    transition: 'color 0.15s',
-  }),
-  label: {
-    display: 'block',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    color: '#374151',
-    marginBottom: 5,
-  },
-  input: {
-    width: '100%',
-    padding: '0.65rem 0.875rem',
-    borderRadius: 8,
-    border: '1.5px solid #d1d5db',
-    fontSize: '0.9rem',
-    marginBottom: '1rem',
-    outline: 'none',
-    transition: 'border-color 0.15s',
-  },
-  btnPrimary: {
-    width: '100%',
-    padding: '0.75rem',
-    background: '#1a3a5c',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-    marginTop: '0.25rem',
-    transition: 'background 0.15s',
-  },
-  erro: {
-    background: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: 8,
-    padding: '0.6rem 0.875rem',
-    fontSize: '0.85rem',
-    marginBottom: '1rem',
-  },
-  crachaArea: {
-    textAlign: 'center',
-    padding: '0.5rem 0 1rem',
-  },
-  crachaIcon: {
-    fontSize: '3.5rem',
-    marginBottom: '0.5rem',
-    opacity: 0.85,
-  },
-  crachaHint: {
-    fontSize: '0.82rem',
-    color: '#6b7280',
-    lineHeight: 1.5,
-    marginBottom: '1.25rem',
-  },
-  crachaInput: {
-    position: 'absolute',
-    left: -9999,
-    opacity: 0,
-    width: 1,
-    height: 1,
-  },
-  crachaStatus: (lendo) => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '0.6rem 1.25rem',
-    borderRadius: 999,
-    border: `2px solid ${lendo ? '#1a3a5c' : '#d1d5db'}`,
-    background: lendo ? '#eff6ff' : '#f9fafb',
-    color: lendo ? '#1a3a5c' : '#6b7280',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  }),
-  dot: (lendo) => ({
-    width: 10, height: 10,
-    borderRadius: '50%',
-    background: lendo ? '#22c55e' : '#d1d5db',
-    boxShadow: lendo ? '0 0 0 3px #bbf7d0' : 'none',
-    transition: 'all 0.3s',
-  }),
-}
+import { colors, typography, radius, shadow } from '../design-system'
+import { getCsrfToken } from '../utils/auth'
 
 // ---------------------------------------------------------------------------
 // Aba: email + senha
@@ -165,10 +32,16 @@ function TabEmail({ onSuccess, csrf }) {
 
   return (
     <form onSubmit={submeter}>
-      {erro && <div style={s.erro}>{erro}</div>}
-      <label style={s.label}>E-mail</label>
+      {erro && (
+        <div className="bg-danger-50 text-danger-700 rounded-lg px-3.5 py-2.5 text-sm mb-4">
+          {erro}
+        </div>
+      )}
+      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+        E-mail
+      </label>
       <input
-        style={s.input}
+        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm mb-4 outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
         type="email"
         autoFocus
         autoComplete="email"
@@ -177,9 +50,11 @@ function TabEmail({ onSuccess, csrf }) {
         placeholder="seu@email.com"
         required
       />
-      <label style={s.label}>Senha</label>
+      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+        Senha
+      </label>
       <input
-        style={s.input}
+        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm mb-4 outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
         type="password"
         autoComplete="current-password"
         value={form.senha}
@@ -187,7 +62,11 @@ function TabEmail({ onSuccess, csrf }) {
         placeholder="••••••••"
         required
       />
-      <button type="submit" style={s.btnPrimary} disabled={carregando}>
+      <button
+        type="submit"
+        disabled={carregando}
+        className="w-full py-3 bg-primary-700 text-white rounded-lg text-sm font-bold mt-1 transition-colors hover:bg-primary-800 disabled:opacity-60 disabled:cursor-not-allowed"
+      >
         {carregando ? 'Entrando…' : 'Entrar'}
       </button>
     </form>
@@ -261,25 +140,43 @@ function TabCracha({ onSuccess, csrf }) {
   }
 
   return (
-    <div style={s.crachaArea}>
-      {erro && <div style={{ ...s.erro, textAlign: 'left' }}>{erro}</div>}
+    <div className="text-center py-2 pb-4">
+      {erro && (
+        <div className="bg-danger-50 text-danger-700 rounded-lg px-3.5 py-2.5 text-sm mb-4 text-left">
+          {erro}
+        </div>
+      )}
 
-      <div style={s.crachaIcon}>ID</div>
-      <p style={s.crachaHint}>
+      <div className="text-5xl mb-2 opacity-85">ID</div>
+      <p className="text-sm text-gray-500 leading-relaxed mb-5">
         {lendo
           ? 'Passe o crachá no leitor agora…'
           : 'Clique no botão abaixo e passe o crachá no leitor.'}
       </p>
 
-      <button type="button" style={s.crachaStatus(lendo)} onClick={ativar}>
-        <span style={s.dot(lendo)} />
+      <button
+        type="button"
+        onClick={ativar}
+        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 text-sm font-semibold cursor-pointer transition-all ${
+          lendo
+            ? 'border-primary-700 bg-primary-50 text-primary-700'
+            : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
+        }`}
+      >
+        <span
+          className={`w-2.5 h-2.5 rounded-full transition-all ${
+            lendo
+              ? 'bg-success-500 shadow-[0_0_0_3px_rgba(34,197,94,0.3)]'
+              : 'bg-gray-300'
+          }`}
+        />
         {lendo ? 'Aguardando leitura…' : 'Ativar leitor de crachá'}
       </button>
 
       {/* Input oculto que captura o barcode */}
       <input
         ref={inputRef}
-        style={s.crachaInput}
+        className="absolute left-[-9999px] opacity-0 w-px h-px"
         onKeyDown={handleKeyDown}
         onBlur={() => setLendo(false)}
         readOnly
@@ -304,25 +201,42 @@ export default function Login({ csrfToken, nextUrl }) {
   }
 
   return (
-    <div style={s.wrapper}>
-      <div style={s.card}>
-        <div style={s.header}>
-          <div style={s.logo}>SIGA</div>
-          <div style={s.title}>SIGA-LACEN</div>
-          <div style={s.subtitle}>
+    <div className="w-full max-w-[420px] px-4">
+      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+        {/* Header */}
+        <div className="bg-primary-700 px-8 py-8 text-center text-white">
+          <div className="text-4xl mb-2">SIGA</div>
+          <div className="text-lg font-bold tracking-wide">SIGA-LACEN</div>
+          <div className="text-xs text-primary-200 mt-1">
             Sistema de Informação e Gerenciamento de Amostras
           </div>
-          <div style={{ ...s.subtitle, marginTop: '0.1rem' }}>
+          <div className="text-xs text-primary-200 mt-0.5">
             Laboratório de HPV · LACEN-RS / CEVS
           </div>
         </div>
 
-        <div style={s.body}>
-          <div style={s.tabBar}>
-            <button style={s.tab(aba === 'email')}  onClick={() => setAba('email')}>
+        {/* Body */}
+        <div className="px-8 py-7">
+          {/* Tab bar */}
+          <div className="flex border-b-2 border-gray-200 mb-6">
+            <button
+              className={`flex-1 py-2.5 border-none bg-none cursor-pointer text-sm font-semibold transition-colors ${
+                aba === 'email'
+                  ? 'text-primary-700 border-b-2 border-primary-700 -mb-0.5'
+                  : 'text-gray-400 border-b-2 border-transparent -mb-0.5'
+              }`}
+              onClick={() => setAba('email')}
+            >
               E-mail e Senha
             </button>
-            <button style={s.tab(aba === 'cracha')} onClick={() => setAba('cracha')}>
+            <button
+              className={`flex-1 py-2.5 border-none bg-none cursor-pointer text-sm font-semibold transition-colors ${
+                aba === 'cracha'
+                  ? 'text-primary-700 border-b-2 border-primary-700 -mb-0.5'
+                  : 'text-gray-400 border-b-2 border-transparent -mb-0.5'
+              }`}
+              onClick={() => setAba('cracha')}
+            >
               Crachá
             </button>
           </div>
@@ -332,7 +246,7 @@ export default function Login({ csrfToken, nextUrl }) {
         </div>
       </div>
 
-      <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+      <p className="text-center mt-5 text-xs text-gray-400">
         LACEN-RS · CEVS · Secretaria da Saúde do RS
       </p>
     </div>

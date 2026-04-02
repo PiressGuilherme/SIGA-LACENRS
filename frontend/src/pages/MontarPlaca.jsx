@@ -21,10 +21,10 @@ FILL_ORDER.forEach((gridIdx, fillPos) => { FILL_POS[gridIdx] = fillPos })
 const TIPO = { AMOSTRA: 'amostra', CN: 'cn', CP: 'cp', VAZIO: 'vazio' }
 
 const TIPO_COLORS = {
-  [TIPO.AMOSTRA]: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
-  [TIPO.CN]:      { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  [TIPO.CP]:      { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },
-  [TIPO.VAZIO]:   { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
+  [TIPO.AMOSTRA]: { bg: 'bg-info-100',    border: 'border-info-500',    text: 'text-info-700' },
+  [TIPO.CN]:      { bg: 'bg-warning-100', border: 'border-warning-500', text: 'text-warning-700' },
+  [TIPO.CP]:      { bg: 'bg-pink-100',    border: 'border-pink-500',    text: 'text-pink-700' },
+  [TIPO.VAZIO]:   { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400' },
 }
 
 const DEFAULT_CP_IDX = 6 * 12 + 11  // G12
@@ -37,10 +37,10 @@ const REAGENTES = [
 ]
 
 const STATUS_PLACA = {
-  aberta:                { bg: '#0d6efd', label: 'Aberta' },
-  extracao_confirmada:   { bg: '#6f42c1', label: 'Extração confirmada' },
-  submetida:             { bg: '#fd7e14', label: 'Submetida' },
-  resultados_importados: { bg: '#198754', label: 'Resultados' },
+  aberta:                { bg: 'bg-primary-500', label: 'Aberta' },
+  extracao_confirmada:   { bg: 'bg-purple-500',  label: 'Extração confirmada' },
+  submetida:             { bg: 'bg-warning-500', label: 'Submetida' },
+  resultados_importados: { bg: 'bg-success-600', label: 'Resultados' },
 }
 
 function emptyGrid() {
@@ -415,7 +415,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   // Render
   // ================================================================
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div>
       <NavigationButtons currentStep="extracao" />
 
       {/* Modal bloqueante de identificação */}
@@ -425,27 +425,16 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* Barra do operador */}
       {operador && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
-          padding: '0.6rem 1rem', marginBottom: '1rem',
-        }}>
-          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+        <div className="flex items-center gap-3 bg-success-50 border border-success-200 rounded-lg px-4 py-2.5 mb-4">
+          <span className="text-sm text-success-700 font-semibold">
             Operador: {operador.nome_completo}
           </span>
-          <span style={{
-            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
-            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
-          }}>
+          <span className="text-xs bg-success-100 text-success-700 px-1.5 py-0.5 rounded-full font-medium">
             {operador.perfil}
           </span>
           <button
             onClick={() => setOperador(null)}
-            style={{
-              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
-              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
-              color: '#065f46', cursor: 'pointer', fontWeight: 500,
-            }}
+            className="ml-auto bg-none border border-success-200 rounded-md px-3 py-1 text-xs text-success-700 cursor-pointer font-medium hover:bg-success-100"
           >
             Trocar operador
           </button>
@@ -454,40 +443,34 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+        <div className="mb-6">
+          <p className="text-gray-500 mb-4">
             Crie uma nova placa ou abra uma existente para editar.
           </p>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            <button onClick={criarPlaca} disabled={carregando} style={btnStyle('#1a3a5c')}>
+          <div className="flex gap-3 flex-wrap mb-4">
+            <button onClick={criarPlaca} disabled={carregando} className="px-5 py-2.5 rounded-md bg-primary-700 text-white font-medium text-sm cursor-pointer hover:bg-primary-800 disabled:opacity-60">
               {carregando ? 'Criando...' : 'Criar Nova Placa'}
             </button>
-            <button onClick={toggleList} disabled={carregando} style={btnStyle('#4b5563')}>
+            <button onClick={toggleList} disabled={carregando} className="px-5 py-2.5 rounded-md bg-gray-600 text-white font-medium text-sm cursor-pointer hover:bg-gray-700 disabled:opacity-60">
               {showList ? 'Fechar Lista' : 'Abrir Placa Existente'}
             </button>
           </div>
 
           {/* ---- Lista de placas (apenas ABERTA) ---- */}
           {showList && (
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', padding: '0.75rem', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+              <div className="flex gap-2 p-3 border-b border-gray-200 flex-wrap">
                 <input
                   type="text"
                   value={searchPlacas}
                   onChange={handleSearchPlacas}
                   placeholder="Buscar por código (ex: PL2603)"
-                  style={{
-                    flex: 1, minWidth: 200, padding: '0.45rem 0.75rem',
-                    border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem',
-                  }}
+                  className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded text-sm"
                 />
                 <select
                   value={statusFilterPlacas}
                   onChange={handleStatusFilterPlacas}
-                  style={{
-                    padding: '0.45rem 0.75rem', border: '1px solid #d1d5db',
-                    borderRadius: 5, fontSize: '0.85rem', background: '#fff',
-                  }}
+                  className="px-3 py-2 border border-gray-300 rounded text-sm bg-white"
                 >
                   <option value="">Todos os status</option>
                   <option value="aberta">Aberta</option>
@@ -497,43 +480,39 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                 </select>
               </div>
               {loadingList ? (
-                <p style={{ padding: '1rem', color: '#6b7280' }}>Carregando...</p>
+                <p className="p-4 text-gray-500">Carregando...</p>
               ) : placas.length === 0 ? (
-                <p style={{ padding: '1rem', color: '#9ca3af' }}>Nenhuma placa encontrada.</p>
+                <p className="p-4 text-gray-400">Nenhuma placa encontrada.</p>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={thStyle}>Código</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Amostras</th>
-                      <th style={thStyle}>Responsável</th>
-                      <th style={thStyle}>Data</th>
-                      <th style={thStyle}></th>
+                    <tr className="bg-gray-50 border-b-2 border-gray-200">
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Código</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Status</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Amostras</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Responsável</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Data</th>
+                      <th className="px-3 py-2.5"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {placas.map(p => {
-                      const badge = STATUS_PLACA[p.status_placa] || { bg: '#6c757d', label: p.status_display }
+                      const badge = STATUS_PLACA[p.status_placa] || { bg: 'bg-gray-500', label: p.status_display }
                       return (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                          <td style={{ ...tdStyle, fontWeight: 600 }}>{p.codigo}</td>
-                          <td style={tdStyle}>
-                            <span style={{
-                              background: badge.bg, color: '#fff',
-                              padding: '2px 8px', borderRadius: 4,
-                              fontSize: '0.78rem', fontWeight: 500,
-                            }}>
+                        <tr key={p.id} className="border-b border-gray-100">
+                          <td className="px-3 py-2 text-gray-700 font-semibold">{p.codigo}</td>
+                          <td className="px-3 py-2">
+                            <span className={`${badge.bg} text-white px-2 py-0.5 rounded text-xs font-medium`}>
                               {badge.label}
                             </span>
                           </td>
-                          <td style={tdStyle}>{p.total_amostras}</td>
-                          <td style={tdStyle}>{p.responsavel_nome || '—'}</td>
-                          <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
-                          <td style={tdStyle}>
+                          <td className="px-3 py-2 text-gray-700">{p.total_amostras}</td>
+                          <td className="px-3 py-2 text-gray-700">{p.responsavel_nome || '—'}</td>
+                          <td className="px-3 py-2 text-gray-700">{fmtDate(p.data_criacao)}</td>
+                          <td className="px-3 py-2">
                             <button
                               onClick={() => carregarPlaca(p.id)}
-                              style={{ ...btnStyle('#1a3a5c'), padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                              className="px-3 py-1 rounded bg-primary-700 text-white text-xs font-medium cursor-pointer border-none hover:bg-primary-800"
                             >
                               Abrir
                             </button>
@@ -551,25 +530,16 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* ---- Info da placa ativa ---- */}
       {placa && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '1rem',
-          marginBottom: '1rem', flexWrap: 'wrap',
-        }}>
-          <span style={{
-            background: '#1a3a5c', color: '#fff', padding: '0.4rem 1rem',
-            borderRadius: 6, fontWeight: 600, fontSize: '1rem', letterSpacing: 1,
-          }}>
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          <span className="bg-primary-700 text-white px-4 py-1.5 rounded-md font-semibold text-base tracking-wide">
             {placa.local ? 'Nova Placa' : placa.codigo}
           </span>
-          <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+          <span className="text-gray-500 text-sm">
             {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} reações
           </span>
-          {salva && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
+          {salva && <span className="text-success-700 font-medium text-sm">Salva</span>}
           {placa.status_placa && placa.status_placa !== 'aberta' && (
-            <span style={{
-              background: (STATUS_PLACA[placa.status_placa] || {}).bg || '#6c757d',
-              color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 500,
-            }}>
+            <span className={`${(STATUS_PLACA[placa.status_placa] || {}).bg || 'bg-gray-500'} text-white px-2.5 py-0.5 rounded text-xs font-medium`}>
               {(STATUS_PLACA[placa.status_placa] || {}).label || placa.status_display}
             </span>
           )}
@@ -578,16 +548,18 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* ---- Feedback ---- */}
       {feedback && (
-        <div style={{
-          padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem',
-          ...feedbackStyles[feedback.tipo],
-          display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-        }}>
+        <div className={`px-4 py-2.5 rounded-md mb-4 flex items-center gap-3 flex-wrap ${
+          feedback.tipo === 'sucesso'
+            ? 'bg-success-50 text-success-700 border border-success-200'
+            : feedback.tipo === 'aviso'
+            ? 'bg-warning-50 text-warning-700 border border-warning-200'
+            : 'bg-danger-50 text-danger-700 border border-danger-200'
+        }`}>
           <span>{feedback.msg}</span>
           {pendingDuplicate && (
             <button
               onClick={forceAddDuplicate}
-              style={{ ...btnStyle('#92400e'), padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+              className="px-3 py-1 rounded bg-warning-700 text-white text-xs font-medium cursor-pointer border-none hover:bg-warning-800"
             >
               Adicionar mesmo assim
             </button>
@@ -597,11 +569,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* ---- Aviso de controles ---- */}
       {placa && isEditable && !hasControls && (
-        <div style={{
-          padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '1rem',
-          background: '#fee2e2', color: '#b91c1c', fontSize: '0.85rem',
-          border: '1px solid #fca5a5',
-        }}>
+        <div className="px-4 py-2 rounded-md mb-4 bg-danger-50 text-danger-700 text-sm border border-danger-200">
           A placa precisa de pelo menos um CN e um CP para ser salva.
         </div>
       )}
@@ -610,8 +578,8 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
         <>
           {/* ---- Scanner + modo (só para placa aberta) ---- */}
           {isEditable && (
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: 280 }}>
+            <div className="flex gap-2 mb-4 flex-wrap items-center">
+              <form onSubmit={handleScan} className="flex gap-2 flex-1 min-w-[280px]">
                 <input
                   ref={inputRef}
                   type="text"
@@ -620,26 +588,23 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                   placeholder={modo === TIPO.AMOSTRA ? 'Escanear código da amostra...' : `Clique no poço ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
                   disabled={carregando}
                   autoComplete="off"
-                  style={{
-                    flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
-                    border: '2px solid #93c5fd', borderRadius: 6, outline: 'none',
-                  }}
+                  className="flex-1 px-3 py-2.5 text-sm border-2 border-info-300 rounded-md outline-none"
                 />
-                <button type="submit" disabled={carregando} style={btnStyle('#1a3a5c')}>
+                <button type="submit" disabled={carregando} className="px-5 py-2.5 rounded-md bg-primary-700 text-white font-medium text-sm cursor-pointer hover:bg-primary-800 disabled:opacity-60">
                   {modo === TIPO.AMOSTRA ? 'Buscar' : 'Inserir'}
                 </button>
               </form>
 
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <div className="flex gap-1">
                 {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => (
                   <button
                     key={t}
                     onClick={() => setModo(t)}
-                    style={{
-                      ...btnStyle(modo === t ? TIPO_COLORS[t].border : '#d1d5db'),
-                      color: modo === t ? '#fff' : '#374151',
-                      padding: '0.5rem 0.75rem', fontSize: '0.8rem',
-                    }}
+                    className={`px-3 py-2 rounded-md text-xs font-medium cursor-pointer border-none ${
+                      modo === t
+                        ? `${TIPO_COLORS[t].border} text-white bg-info-500`
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
                     {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
                   </button>
@@ -650,11 +615,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
           {/* ---- Reagentes ---- */}
           {totalReacoes > 0 && (
-            <div style={{
-              display: 'flex', gap: '1.5rem', marginBottom: '1rem', padding: '0.6rem 1rem',
-              background: '#f0f7ff', borderRadius: 6, fontSize: '0.85rem', color: '#1e40af',
-              flexWrap: 'wrap',
-            }}>
+            <div className="flex gap-6 mb-4 px-4 py-2.5 bg-info-50 rounded-md text-sm text-info-700 flex-wrap">
               {REAGENTES.map(r => (
                 <span key={r.nome}>
                   <b>{r.nome}:</b> {(totalReacoes * r.vol).toFixed(1)} uL ({r.vol} x {totalReacoes})
@@ -664,13 +625,13 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
           )}
 
           {/* ---- Grid 8x12 ---- */}
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-            <table style={{ borderCollapse: 'collapse' }}>
+          <div className="overflow-x-auto mb-6">
+            <table className="border-collapse">
               <thead>
                 <tr>
-                  <th style={{ width: 28 }} />
+                  <th className="w-[28px]" />
                   {COLS.map(c => (
-                    <th key={c} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#6b7280', padding: '2px 0 4px' }}>
+                    <th key={c} className="text-center text-xs text-gray-500 pb-1 pt-0.5">
                       {c}
                     </th>
                   ))}
@@ -679,7 +640,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
               <tbody>
                 {ROWS.map((row, ri) => (
                   <tr key={row}>
-                    <td style={{ fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', textAlign: 'center', paddingRight: 4 }}>
+                    <td className="font-semibold text-xs text-gray-500 text-center pr-1">
                       {row}
                     </td>
                     {COLS.map((col, ci) => {
@@ -689,7 +650,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                       const isSelected = idx === selected && isEditable
 
                       return (
-                        <td key={col} style={{ padding: 1.5 }}>
+                        <td key={col} className="p-[1.5px]">
                           <div
                             onClick={() => {
                               if (!isEditable) return
@@ -702,33 +663,19 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                             }}
                             onContextMenu={(e) => { e.preventDefault(); clearWell(idx) }}
                             title={w.amostra_codigo || w.tipo_conteudo}
-                            style={{
-                              width: 62, height: 40,
-                              background: colors.bg,
-                              border: `2px solid ${isSelected ? '#1a3a5c' : colors.border}`,
-                              borderRadius: 4,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: isEditable ? 'pointer' : 'default',
-                              fontSize: '0.7rem', lineHeight: 1.2,
-                              position: 'relative',
-                              boxShadow: isSelected ? '0 0 0 2px #3b82f6' : 'none',
-                            }}
+                            className={`w-[62px] h-[40px] ${colors.bg} ${isSelected ? `border-2 border-primary-700 shadow-[0_0_0_2px_#3b82f6]` : `${colors.border} border`} rounded flex items-center justify-center cursor-${isEditable ? 'pointer' : 'default'} text-xs leading-tight relative`}
                           >
                             {w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo && (
-                              <span style={{ fontWeight: 700, color: colors.text, fontSize: '0.7rem' }}>
+                              <span className={`font-bold ${colors.text} text-[0.7rem]`}>
                                 {w.amostra_codigo}
                               </span>
                             )}
-                            {w.tipo_conteudo === TIPO.CN && <span style={{ fontWeight: 700, color: colors.text }}>CN</span>}
-                            {w.tipo_conteudo === TIPO.CP && <span style={{ fontWeight: 700, color: colors.text }}>CP</span>}
+                            {w.tipo_conteudo === TIPO.CN && <span className={`font-bold ${colors.text}`}>CN</span>}
+                            {w.tipo_conteudo === TIPO.CP && <span className={`font-bold ${colors.text}`}>CP</span>}
                             {w.tipo_conteudo !== TIPO.VAZIO && isEditable && (
                               <span
                                 onClick={(e) => { e.stopPropagation(); clearWell(idx) }}
-                                style={{
-                                  position: 'absolute', top: 1, right: 3,
-                                  color: '#9ca3af', cursor: 'pointer', fontSize: '0.65rem',
-                                  lineHeight: 1,
-                                }}
+                                className="absolute top-[1px] right-[3px] text-gray-400 cursor-pointer text-[0.65rem] leading-none"
                               >
                                 x
                               </span>
@@ -744,12 +691,12 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
           </div>
 
           {/* ---- Ações ---- */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+          <div className="flex gap-3 flex-wrap mb-8">
             {isEditable && (
               <button
                 onClick={salvarPlaca}
                 disabled={carregando || totalAmostras === 0 || !hasControls}
-                style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
+                className={`px-5 py-2.5 rounded-md bg-success-700 text-white font-medium text-sm cursor-pointer hover:bg-success-800 ${(carregando || totalAmostras === 0 || !hasControls) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {carregando ? 'Salvando...' : 'Salvar Placa'}
               </button>
@@ -759,7 +706,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                 onClick={salvarComoNova}
                 disabled={carregando || totalAmostras === 0 || !hasControls}
                 title="Cria uma nova placa com os mesmos poços, sem alterar a original"
-                style={{ ...btnStyle('#1a3a5c'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
+                className={`px-5 py-2.5 rounded-md bg-primary-700 text-white font-medium text-sm cursor-pointer hover:bg-primary-800 ${(carregando || totalAmostras === 0 || !hasControls) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {carregando ? 'Salvando...' : 'Salvar como nova placa'}
               </button>
@@ -768,7 +715,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
               <button
                 onClick={excluirPlaca}
                 disabled={carregando}
-                style={{ ...btnStyle('#dc3545'), opacity: carregando ? 0.5 : 1 }}
+                className={`px-5 py-2.5 rounded-md bg-danger-600 text-white font-medium text-sm cursor-pointer hover:bg-danger-700 ${carregando ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Excluir Placa
               </button>
@@ -778,12 +725,12 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                 href={`/api/placas/${placa.id}/pdf/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ ...btnStyle('#4b5563'), textDecoration: 'none', display: 'inline-block' }}
+                className="px-5 py-2.5 rounded-md bg-gray-600 text-white font-medium text-sm no-underline inline-block hover:bg-gray-700"
               >
                 Exportar PDF
               </a>
             )}
-            <button onClick={resetar} style={btnStyle('#6b7280')}>
+            <button onClick={resetar} className="px-5 py-2.5 rounded-md bg-gray-500 text-white font-medium text-sm cursor-pointer hover:bg-gray-600">
               {placa ? 'Fechar Placa' : 'Nova Placa'}
             </button>
           </div>
@@ -793,29 +740,11 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   )
 }
 
-// ---- Helpers / Styles ----
+// ---- Helpers ----
 function fmtDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-const btnStyle = (bg) => ({
-  background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem',
-  borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,
-})
-
-const thStyle = {
-  padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600,
-  color: '#374151', whiteSpace: 'nowrap',
-}
-
-const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
-
-const feedbackStyles = {
-  sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },
-  aviso:   { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' },
-  erro:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
 }

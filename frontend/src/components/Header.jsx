@@ -17,44 +17,20 @@ export default function Header() {
   }
 
   return (
-    <header style={{
-      background: '#1a3a5c',
-      padding: '0.75rem 1.5rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottom: '3px solid #0d2137',
-    }}>
+    <header className="bg-brand-800 px-6 py-3 flex items-center justify-between border-b-[3px] border-brand-900">
       <a
         href="/"
-        style={{
-          color: '#fff',
-          textDecoration: 'none',
-          fontSize: '1.1rem',
-          fontWeight: 700,
-          letterSpacing: 0.5,
-        }}
+        className="text-white no-underline text-[1.1rem] font-bold tracking-wide"
       >
         SIGA-LACEN
       </a>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div className="flex items-center gap-4">
         {usuario && (
-          <span style={{
-            color: '#adc8e6',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-          }}>
+          <span className="text-brand-300 text-[0.85rem] font-medium">
             {usuario.nome_completo}
             {usuario.is_staff && (
-              <span style={{
-                marginLeft: '0.5rem',
-                background: 'rgba(255,255,255,0.2)',
-                padding: '1px 6px',
-                borderRadius: 4,
-                fontSize: '0.7rem',
-                fontWeight: 600,
-              }}>
+              <span className="ml-2 bg-white/20 px-1.5 py-0.5 rounded text-[0.7rem] font-semibold">
                 Admin
               </span>
             )}
@@ -62,16 +38,7 @@ export default function Header() {
         )}
         <button
           onClick={handleLogout}
-          style={{
-            background: 'rgba(255,255,255,0.15)',
-            color: '#fff',
-            border: '1px solid rgba(255,255,255,0.3)',
-            padding: '0.4rem 1rem',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-          }}
+          className="bg-white/15 text-white border border-white/30 px-4 py-1.5 rounded-md cursor-pointer text-[0.85rem] font-medium hover:bg-white/25 transition-colors"
         >
           Sair
         </button>

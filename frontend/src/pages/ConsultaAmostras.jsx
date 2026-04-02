@@ -3,30 +3,30 @@ import CrachaModal from '../components/CrachaModal'
 import { getOperadorInicial } from '../utils/auth'
 
 const STATUS_BADGE = {
-  aguardando_triagem:   { bg: '#6c757d', label: 'Aguardando Triagem' },
-  exame_em_analise:     { bg: '#0dcaf0', label: 'Exame em Análise' },
-  aliquotada:           { bg: '#0d6efd', label: 'Aliquotada' },
-  extracao:             { bg: '#fd7e14', label: 'Extração' },
-  extraida:             { bg: '#6f42c1', label: 'Extraída' },
-  pcr:                  { bg: '#e53e3e', label: 'PCR' },
-  resultado:            { bg: '#20c997', label: 'Resultado' },
-  resultado_liberado:   { bg: '#198754', label: 'Resultado Liberado' },
-  cancelada:            { bg: '#dc3545', label: 'Cancelada' },
-  repeticao_solicitada: { bg: '#ffc107', label: 'Repetição Solicitada' },
+  aguardando_triagem:   { bg: 'bg-gray-500',   label: 'Aguardando Triagem' },
+  exame_em_analise:     { bg: 'bg-info-500',    label: 'Exame em Análise' },
+  aliquotada:           { bg: 'bg-primary-500', label: 'Aliquotada' },
+  extracao:             { bg: 'bg-warning-500', label: 'Extração' },
+  extraida:             { bg: 'bg-purple-500',  label: 'Extraída' },
+  pcr:                  { bg: 'bg-danger-600',  label: 'PCR' },
+  resultado:            { bg: 'bg-teal-500',    label: 'Resultado' },
+  resultado_liberado:   { bg: 'bg-success-600', label: 'Resultado Liberado' },
+  cancelada:            { bg: 'bg-danger-500',  label: 'Cancelada' },
+  repeticao_solicitada: { bg: 'bg-warning-400', label: 'Repetição Solicitada' },
 }
 
 const RESULTADO_BADGE = {
-  hpv_nao_detectado: { label: 'Não Detectado',         color: '#065f46', bg: '#d1fae5' },
-  hpv16:             { label: 'HPV-16',                 color: '#92400e', bg: '#fef3c7' },
-  hpv18:             { label: 'HPV-18',                 color: '#92400e', bg: '#fef3c7' },
-  hpv_ar:            { label: 'HPV AR',                 color: '#92400e', bg: '#fef3c7' },
-  hpv18_ar:          { label: 'HPV-18 + AR',            color: '#92400e', bg: '#fef3c7' },
-  hpv16_ar:          { label: 'HPV-16 + AR',            color: '#92400e', bg: '#fef3c7' },
-  hpv16_18:          { label: 'HPV-16 + HPV-18',        color: '#92400e', bg: '#fef3c7' },
-  hpv16_18_ar:       { label: 'HPV-16, HPV-18 + AR',   color: '#92400e', bg: '#fef3c7' },
-  invalido:          { label: 'Inválido',               color: '#7f1d1d', bg: '#fee2e2' },
-  inconclusivo:      { label: 'Inconclusivo',           color: '#374151', bg: '#f3f4f6' },
-  pendente:          { label: 'Pendente',               color: '#374151', bg: '#f3f4f6' },
+  hpv_nao_detectado: { label: 'Não Detectado',         color: 'text-success-700', bg: 'bg-success-50' },
+  hpv16:             { label: 'HPV-16',                 color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv18:             { label: 'HPV-18',                 color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv_ar:            { label: 'HPV AR',                 color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv18_ar:          { label: 'HPV-18 + AR',            color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv16_ar:          { label: 'HPV-16 + AR',            color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv16_18:          { label: 'HPV-16 + HPV-18',        color: 'text-warning-700', bg: 'bg-warning-50' },
+  hpv16_18_ar:       { label: 'HPV-16, HPV-18 + AR',   color: 'text-warning-700', bg: 'bg-warning-50' },
+  invalido:          { label: 'Inválido',               color: 'text-danger-700',  bg: 'bg-danger-50' },
+  inconclusivo:      { label: 'Inconclusivo',           color: 'text-gray-700',    bg: 'bg-gray-100' },
+  pendente:          { label: 'Pendente',               color: 'text-gray-700',    bg: 'bg-gray-100' },
 }
 
 const STATUS_COM_RESULTADO = new Set(['resultado', 'resultado_liberado'])
@@ -48,19 +48,15 @@ const COLUNAS_BASE = [
 
 // ── Canal chip individual ─────────────────────────────────────────────────────
 function CanalChip({ canal }) {
-  if (!canal) return <span style={{ color: '#9ca3af' }}>—</span>
+  if (!canal) return <span className="text-gray-300">—</span>
   const interp = canal.interpretacao_efetiva
   const pos = interp === 'positivo'
   const neg = interp === 'negativo'
   return (
-    <span style={{
-      fontWeight: 600,
-      color: pos ? '#dc2626' : neg ? '#059669' : '#9ca3af',
-      fontSize: '0.78rem',
-    }}>
+    <span className={`font-semibold text-xs ${pos ? 'text-danger-600' : neg ? 'text-success-600' : 'text-gray-400'}`}>
       {pos ? '+' : neg ? '−' : '?'}
       {canal.cq != null && (
-        <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.73rem' }}>
+        <span className="font-normal text-gray-500 text-[0.73rem]">
           {' '}{canal.cq.toFixed(1)}
         </span>
       )}
@@ -74,12 +70,12 @@ function LinhaAmostra({ a, resultados }) {
   const [historico, setHistorico] = useState(null)
   const [carregandoHist, setCarregandoHist] = useState(false)
 
-  const badge = STATUS_BADGE[a.status] || { bg: '#6c757d', label: a.status }
+  const badge = STATUS_BADGE[a.status] || { bg: 'bg-gray-500', label: a.status }
 
   // Resultado mais recente (já vem pré-carregado do pai)
   const ultimoRes = resultados?.[0] || null
   const resBadge = ultimoRes
-    ? (RESULTADO_BADGE[ultimoRes.resultado_final] || { label: ultimoRes.resultado_final_display, color: '#374151', bg: '#f3f4f6' })
+    ? (RESULTADO_BADGE[ultimoRes.resultado_final] || { label: ultimoRes.resultado_final_display, color: 'text-gray-700', bg: 'bg-gray-100' })
     : null
 
   function canalDe(res, nome) {
@@ -108,152 +104,120 @@ function LinhaAmostra({ a, resultados }) {
     <>
       <tr
         onClick={toggle}
-        style={{
-          borderBottom: aberta ? 'none' : '1px solid #f0f0f0',
-          cursor: 'pointer',
-          background: aberta ? '#f8faff' : undefined,
-          transition: 'background 0.15s',
-        }}
+        className={`cursor-pointer transition-colors ${aberta ? 'bg-primary-50 border-b-0' : 'border-b border-gray-100'}`}
         title="Clique para ver histórico"
       >
         {/* Num. Interno */}
-        <td style={{ ...tdStyle, fontWeight: 600, whiteSpace: 'nowrap' }}>
-          <span style={{ marginRight: 5, fontSize: '0.7rem', color: '#6b7280' }}>
+        <td className="px-3 py-2 text-gray-700 font-semibold whitespace-nowrap">
+          <span className="mr-1.5 text-xs text-gray-500">
             {aberta ? '▼' : '▶'}
           </span>
           {a.codigo_interno || '—'}
         </td>
         {/* Requisição */}
-        <td style={{ ...tdStyle, color: '#6b7280' }}>{a.numero_gal}</td>
+        <td className="px-3 py-2 text-gray-500">{a.numero_gal}</td>
         {/* Paciente (truncado) */}
-        <td style={tdStyle} title={a.nome_paciente}>
+        <td className="px-3 py-2 text-gray-700" title={a.nome_paciente}>
           {a.nome_paciente?.length > 25 ? a.nome_paciente.slice(0, 25) + '...' : a.nome_paciente}
         </td>
         {/* CPF */}
-        <td style={{ ...tdStyle, color: '#6b7280' }}>{a.cpf || '—'}</td>
+        <td className="px-3 py-2 text-gray-500">{a.cpf || '—'}</td>
         {/* Município */}
-        <td style={tdStyle}>{a.municipio || '—'}</td>
+        <td className="px-3 py-2 text-gray-700">{a.municipio || '—'}</td>
         {/* Status */}
-        <td style={tdStyle}>
-          <span style={{
-            background: badge.bg, color: '#fff',
-            padding: '2px 8px', borderRadius: 4,
-            fontSize: '0.78rem', fontWeight: 500, whiteSpace: 'nowrap',
-          }}>
+        <td className="px-3 py-2">
+          <span className={`${badge.bg} text-white px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap`}>
             {badge.label}
           </span>
         </td>
         {/* Dt. Recebimento */}
-        <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(a.data_recebimento)}</td>
+        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{fmtDate(a.data_recebimento)}</td>
         {/* Resultado */}
-        <td style={tdStyle}>
+        <td className="px-3 py-2">
           {resBadge ? (
-            <span style={{
-              background: resBadge.bg, color: resBadge.color,
-              padding: '2px 8px', borderRadius: 4,
-              fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap',
-            }}>
+            <span className={`${resBadge.bg} ${resBadge.color} px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap`}>
               {resBadge.label}
             </span>
-          ) : <span style={{ color: '#d1d5db' }}>—</span>}
+          ) : <span className="text-gray-300">—</span>}
         </td>
         {/* CI */}
-        <td style={{ ...tdStyle, textAlign: 'center' }}>
-          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'CI')} /> : <span style={{ color: '#d1d5db' }}>—</span>}
+        <td className="px-3 py-2 text-center">
+          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'CI')} /> : <span className="text-gray-300">—</span>}
         </td>
         {/* HPV-16 */}
-        <td style={{ ...tdStyle, textAlign: 'center' }}>
-          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV16')} /> : <span style={{ color: '#d1d5db' }}>—</span>}
+        <td className="px-3 py-2 text-center">
+          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV16')} /> : <span className="text-gray-300">—</span>}
         </td>
         {/* HPV-18 */}
-        <td style={{ ...tdStyle, textAlign: 'center' }}>
-          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV18')} /> : <span style={{ color: '#d1d5db' }}>—</span>}
+        <td className="px-3 py-2 text-center">
+          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV18')} /> : <span className="text-gray-300">—</span>}
         </td>
         {/* HPV AR */}
-        <td style={{ ...tdStyle, textAlign: 'center' }}>
-          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV_AR')} /> : <span style={{ color: '#d1d5db' }}>—</span>}
+        <td className="px-3 py-2 text-center">
+          {ultimoRes ? <CanalChip canal={canalDe(ultimoRes, 'HPV_AR')} /> : <span className="text-gray-300">—</span>}
         </td>
       </tr>
 
       {aberta && (
-        <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#f8faff' }}>
-          <td colSpan={numColunas} style={{ padding: 0 }}>
-            <div style={{ overflowX: 'auto', padding: '0.75rem 1rem 1rem 2rem' }}>
+        <tr className="border-b border-gray-100 bg-primary-50">
+          <td colSpan={numColunas} className="p-0">
+            <div className="overflow-x-auto px-4 py-3 pl-8">
             {/* Dados básicos */}
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-              <span><b style={{ color: '#374151' }}>GAL:</b> {a.numero_gal}</span>
-              <span><b style={{ color: '#374151' }}>Cód. Amostra:</b> {a.cod_amostra_gal || '—'}</span>
-              {a.recebido_por_nome && <span><b style={{ color: '#374151' }}>Recebido por:</b> {a.recebido_por_nome}</span>}
-              {a.data_recebimento && <span><b style={{ color: '#374151' }}>Recebido em:</b> {fmtDate(a.data_recebimento)}</span>}
-              {a.material && <span><b style={{ color: '#374151' }}>Material:</b> {a.material}</span>}
-              {a.unidade_solicitante && <span><b style={{ color: '#374151' }}>Solicitante:</b> {a.unidade_solicitante}</span>}
+            <div className="flex gap-6 flex-wrap text-xs text-gray-500 mb-3">
+              <span><b className="text-gray-700">GAL:</b> {a.numero_gal}</span>
+              <span><b className="text-gray-700">Cód. Amostra:</b> {a.cod_amostra_gal || '—'}</span>
+              {a.recebido_por_nome && <span><b className="text-gray-700">Recebido por:</b> {a.recebido_por_nome}</span>}
+              {a.data_recebimento && <span><b className="text-gray-700">Recebido em:</b> {fmtDate(a.data_recebimento)}</span>}
+              {a.material && <span><b className="text-gray-700">Material:</b> {a.material}</span>}
+              {a.unidade_solicitante && <span><b className="text-gray-700">Solicitante:</b> {a.unidade_solicitante}</span>}
             </div>
 
             {/* Timeline do histórico */}
-            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#1a3a5c', marginBottom: '0.5rem' }}>
+            <div className="font-semibold text-xs text-primary-700 mb-2">
               Histórico da amostra
             </div>
 
             {carregandoHist && (
-              <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>Carregando...</span>
+              <span className="text-gray-500 text-xs">Carregando...</span>
             )}
 
             {!carregandoHist && historico !== null && historico.length === 0 && (
-              <span style={{ color: '#9ca3af', fontSize: '0.82rem' }}>Sem histórico registrado.</span>
+              <span className="text-gray-400 text-xs">Sem histórico registrado.</span>
             )}
 
             {!carregandoHist && historico !== null && historico.length > 0 && (
-              <div style={{ position: 'relative', paddingLeft: '1.5rem' }}>
+              <div className="relative pl-6">
                 {/* Linha vertical da timeline */}
-                <div style={{
-                  position: 'absolute', left: 7, top: 4, bottom: 4, width: 2,
-                  background: '#d1d5db',
-                }} />
+                <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-300" />
 
                 {historico.map((h, idx) => {
-                  const statusBadge = STATUS_BADGE[h.para_valor] || { bg: '#6c757d', label: h.para }
+                  const statusBadge = STATUS_BADGE[h.para_valor] || { bg: 'bg-gray-500', label: h.para }
                   const isLast = idx === historico.length - 1
                   return (
-                    <div key={idx} style={{
-                      position: 'relative',
-                      paddingBottom: isLast ? 0 : '0.6rem',
-                      fontSize: '0.8rem',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.6rem',
-                    }}>
+                    <div key={idx} className={`relative ${isLast ? '' : 'pb-2'} text-xs flex items-start gap-2`}>
                       {/* Bolinha da timeline */}
-                      <div style={{
-                        position: 'absolute', left: '-1.5rem', top: 3,
-                        width: 10, height: 10, borderRadius: '50%',
-                        background: statusBadge.bg, border: '2px solid #fff',
-                        boxShadow: '0 0 0 1px #d1d5db', zIndex: 1,
-                      }} />
+                      <div className={`absolute -left-6 top-[3px] w-2.5 h-2.5 rounded-full ${statusBadge.bg} border-2 border-white shadow-[0_0_0_1px_#d1d5db] z-[1]`} />
 
                       {/* Conteúdo */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{
-                          background: statusBadge.bg, color: '#fff',
-                          padding: '1px 8px', borderRadius: 4,
-                          fontSize: '0.73rem', fontWeight: 600, whiteSpace: 'nowrap',
-                        }}>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className={`${statusBadge.bg} text-white px-2 py-[1px] rounded text-[0.73rem] font-semibold whitespace-nowrap`}>
                           {statusBadge.label}
                         </span>
                         {h.de && (
-                          <span style={{ color: '#9ca3af', fontSize: '0.73rem' }}>
+                          <span className="text-gray-400 text-[0.73rem]">
                             ← {h.de}
                           </span>
                         )}
                         {h.tipo === 'criacao' && (
-                          <span style={{ color: '#059669', fontSize: '0.73rem', fontWeight: 500 }}>
+                          <span className="text-success-600 text-[0.73rem] font-medium">
                             Importada no sistema
                           </span>
                         )}
-                        <span style={{ color: '#6b7280', fontSize: '0.73rem', whiteSpace: 'nowrap' }}>
+                        <span className="text-gray-500 text-[0.73rem] whitespace-nowrap">
                           {fmtDate(h.timestamp)}
                         </span>
                         {h.actor && (
-                          <span style={{ color: '#374151', fontSize: '0.73rem' }}>
+                          <span className="text-gray-700 text-[0.73rem]">
                             · {h.actor}
                           </span>
                         )}
@@ -360,31 +324,36 @@ export default function ConsultaAmostras() {
   const totalPages = Math.ceil(total / pageSize)
 
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div>
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Consulta de Amostras" />
       )}
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
         <input
           ref={searchRef}
           type="text"
           placeholder="Buscar por nome, CPF, CNS, código interno, GAL..."
           onChange={handleSearchInput}
-          style={{
-            flex: 1, minWidth: 260, padding: '0.6rem 0.75rem', fontSize: '0.95rem',
-            border: '1px solid #d1d5db', borderRadius: 6, outline: 'none',
-          }}
+          className="flex-1 min-w-[260px] px-3 py-2.5 text-sm border border-gray-300 rounded-md outline-none"
         />
-        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }} style={selectStyle}>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+          className="px-3 py-2.5 text-sm border border-gray-300 rounded-md bg-white text-gray-700 outline-none min-w-[150px]"
+        >
           <option value="">Todos os status</option>
           {(filtros?.status_choices || []).map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
-        <select value={municipioFilter} onChange={e => { setMunicipioFilter(e.target.value); setPage(1) }} style={selectStyle}>
+        <select
+          value={municipioFilter}
+          onChange={e => { setMunicipioFilter(e.target.value); setPage(1) }}
+          className="px-3 py-2.5 text-sm border border-gray-300 rounded-md bg-white text-gray-700 outline-none min-w-[150px]"
+        >
           <option value="">Todos os municípios</option>
           {(filtros?.municipios || []).map(m => (
             <option key={m} value={m}>{m}</option>
@@ -393,46 +362,33 @@ export default function ConsultaAmostras() {
       </div>
 
       {/* Contador */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+      <div className="flex items-center gap-4 mb-3 text-sm text-gray-500">
         <span><b>{total}</b> amostra{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}</span>
-        {carregando && <span style={{ color: '#3b82f6' }}>Carregando...</span>}
+        {carregando && <span className="text-primary-500">Carregando...</span>}
       </div>
 
       {erro && (
-        <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem' }}>
+        <div className="bg-danger-50 text-danger-700 px-4 py-2.5 rounded-md mb-4">
           {erro}
         </div>
       )}
 
       {/* Tabela */}
-      <div style={{
-        overflow: 'auto',
-        maxHeight: 'calc(100vh - 220px)',
-        background: '#fff',
-        borderRadius: 8,
-        border: '1px solid #e5e7eb',
-        marginBottom: '1rem',
-      }}>
-        <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+      <div className="overflow-auto max-h-[calc(100vh-220px)] bg-white rounded-lg border border-gray-200 mb-4">
+        <table className="w-max min-w-full border-collapse text-sm">
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 2 }}>
+            <tr className="bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-[2]">
               {COLUNAS_BASE.map(col => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable && handleSort(col.key)}
-                  style={{
-                    ...thStyle,
-                    cursor: col.sortable ? 'pointer' : 'default',
-                    userSelect: 'none',
-                    whiteSpace: 'nowrap',
-                    // destaca colunas de resultado
-                    borderLeft: col.key === '_resultado' ? '2px solid #e5e7eb' : undefined,
-                    color: col.key.startsWith('_') ? '#059669' : '#374151',
-                  }}
+                  className={`px-3 py-2.5 text-left font-semibold whitespace-nowrap select-none ${
+                    col.sortable ? 'cursor-pointer' : ''
+                  } ${col.key.startsWith('_') ? 'text-success-600 border-l-2 border-gray-200' : 'text-gray-700'}`}
                 >
                   {col.label}
                   {col.sortable && (
-                    <span style={{ marginLeft: 4, opacity: ordering.replace('-', '') === col.key ? 1 : 0.25 }}>
+                    <span className={`ml-1 ${ordering.replace('-', '') === col.key ? 'opacity-100' : 'opacity-25'}`}>
                       {ordering === `-${col.key}` ? '▼' : '▲'}
                     </span>
                   )}
@@ -443,7 +399,7 @@ export default function ConsultaAmostras() {
           <tbody>
             {amostras.length === 0 && !carregando && (
               <tr>
-                <td colSpan={COLUNAS_BASE.length} style={{ ...tdStyle, textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                <td colSpan={COLUNAS_BASE.length} className="px-3 py-8 text-center text-gray-400">
                   Nenhuma amostra encontrada.
                 </td>
               </tr>
@@ -461,14 +417,26 @@ export default function ConsultaAmostras() {
 
       {/* Paginação */}
       {totalPages > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={pageBtnStyle(page <= 1)}>
+        <div className="flex items-center gap-2 justify-center">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className={`px-4 py-1.5 text-sm rounded-md border border-gray-300 ${
+              page <= 1 ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-white text-gray-700 cursor-pointer'
+            }`}
+          >
             Anterior
           </button>
-          <span style={{ fontSize: '0.85rem', color: '#374151' }}>
+          <span className="text-sm text-gray-700">
             Página {page} de {totalPages}
           </span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} style={pageBtnStyle(page >= totalPages)}>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-4 py-1.5 text-sm rounded-md border border-gray-300 ${
+              page >= totalPages ? 'bg-gray-100 text-gray-400 cursor-default' : 'bg-white text-gray-700 cursor-pointer'
+            }`}
+          >
             Próxima
           </button>
         </div>
@@ -485,24 +453,4 @@ function fmtDate(iso) {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-const thStyle = {
-  padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151',
-}
-
-const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
-
-const selectStyle = {
-  padding: '0.6rem 0.5rem', fontSize: '0.85rem',
-  border: '1px solid #d1d5db', borderRadius: 6, background: '#fff',
-  color: '#374151', outline: 'none', minWidth: 150,
-}
-
-function pageBtnStyle(disabled) {
-  return {
-    padding: '0.4rem 1rem', fontSize: '0.85rem', borderRadius: 6,
-    border: '1px solid #d1d5db', background: disabled ? '#f3f4f6' : '#fff',
-    color: disabled ? '#9ca3af' : '#374151', cursor: disabled ? 'default' : 'pointer',
-  }
 }

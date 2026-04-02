@@ -6,16 +6,16 @@ const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
 
 const STATUS_PLACA = {
-  aberta:                { bg: '#0d6efd', label: 'Aberta' },
-  submetida:             { bg: '#fd7e14', label: 'Submetida' },
-  resultados_importados: { bg: '#198754', label: 'Resultados' },
+  aberta:                { bg: 'bg-primary-500', label: 'Aberta' },
+  submetida:             { bg: 'bg-warning-500', label: 'Submetida' },
+  resultados_importados: { bg: 'bg-success-600', label: 'Resultados' },
 }
 
 const POCO_COR = {
-  amostra:           { bg: '#dbeafe', border: '#93c5fd', text: '#1e3a5f' },
-  controle_positivo: { bg: '#fef3c7', border: '#fbbf24', text: '#78350f' },
-  controle_negativo: { bg: '#f3e8ff', border: '#c084fc', text: '#4c1d95' },
-  vazio:             { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
+  amostra:           { bg: 'bg-info-100',    border: 'border-info-300',    text: 'text-info-800' },
+  controle_positivo: { bg: 'bg-warning-100', border: 'border-warning-300', text: 'text-warning-800' },
+  controle_negativo: { bg: 'bg-purple-100',  border: 'border-purple-300',  text: 'text-purple-800' },
+  vazio:             { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400' },
 }
 
 async function api(url, { csrfToken, method = 'GET', body } = {}) {
@@ -44,13 +44,13 @@ function EspelhoPlaca({ pocos }) {
   for (const p of pocos) mapa[p.posicao] = p
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', tableLayout: 'fixed' }}>
+    <div className="overflow-x-auto">
+      <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
         <thead>
           <tr>
-            <th style={{ width: 22, padding: '2px 4px', color: '#9ca3af', fontWeight: 400 }}></th>
+            <th className="w-[22px] p-0.5 text-gray-400 font-normal"></th>
             {COLS.map(c => (
-              <th key={c} style={{ width: 68, padding: '2px 4px', textAlign: 'center', color: '#9ca3af', fontWeight: 500 }}>
+              <th key={c} className="w-[68px] p-0.5 text-center text-gray-400 font-medium">
                 {parseInt(c, 10)}
               </th>
             ))}
@@ -59,7 +59,7 @@ function EspelhoPlaca({ pocos }) {
         <tbody>
           {ROWS.map(row => (
             <tr key={row}>
-              <td style={{ padding: '2px 4px', fontWeight: 600, color: '#9ca3af', textAlign: 'center' }}>
+              <td className="p-0.5 font-semibold text-gray-400 text-center">
                 {row}
               </td>
               {COLS.map(col => {
@@ -73,23 +73,10 @@ function EspelhoPlaca({ pocos }) {
                   : tipo === 'controle_negativo' ? 'CN'
                   : ''
                 return (
-                  <td key={col} style={{ padding: '2px 3px' }}>
+                  <td key={col} className="p-[2px]">
                     <div
                       title={tipo === 'amostra' && p?.amostra_nome ? `${p.amostra_codigo} — ${p.amostra_nome}` : pos}
-                      style={{
-                        background: cor.bg,
-                        border: `1px solid ${cor.border}`,
-                        borderRadius: 3,
-                        padding: '3px 4px',
-                        textAlign: 'center',
-                        color: cor.text,
-                        fontWeight: tipo === 'amostra' ? 600 : 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        minHeight: 22,
-                        lineHeight: '16px',
-                      }}
+                      className={`${cor.bg} ${cor.border} ${cor.text} border rounded-[3px] px-1 py-[3px] text-center font-${tipo === 'amostra' ? 'semibold' : 'medium'} overflow-hidden text-ellipsis whitespace-nowrap min-h-[22px] leading-4`}
                     >
                       {label}
                     </div>
@@ -104,13 +91,13 @@ function EspelhoPlaca({ pocos }) {
   )
 }
 
-// ── Linha de placa PCR com expandável ─────────────────────────────────────────
+// ── Linha de placa PCR com expandível ─────────────────────────────────────────
 function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
   const [aberta, setAberta] = useState(false)
   const [submetendo, setSubmetendo] = useState(false)
   const [feedback, setFeedback] = useState(null)
 
-  const badge = STATUS_PLACA[p.status_placa] || { bg: '#6c757d', label: p.status_display }
+  const badge = STATUS_PLACA[p.status_placa] || { bg: 'bg-gray-500', label: p.status_display }
 
   const amostras = (p.pocos || [])
     .filter(w => w.tipo_conteudo === 'amostra' && w.amostra_codigo)
@@ -135,38 +122,29 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
     <>
       <tr
         onClick={() => setAberta(v => !v)}
-        style={{
-          borderBottom: (aberta || feedback) ? 'none' : '1px solid #f0f0f0',
-          cursor: 'pointer',
-          background: aberta ? '#fff7ed' : undefined,
-          transition: 'background 0.15s',
-        }}
+        className={`cursor-pointer transition-colors ${aberta ? 'bg-warning-50 border-b-0' : 'border-b border-gray-100'}`}
         title="Clique para ver as amostras na placa"
       >
-        <td style={{ ...tdStyle, fontWeight: 600 }}>
-          <span style={{ marginRight: 5, fontSize: '0.7rem', color: '#6b7280' }}>
+        <td className="px-3 py-2 text-gray-700 font-semibold">
+          <span className="mr-1.5 text-xs text-gray-500">
             {aberta ? '▼' : '▶'}
           </span>
           {p.codigo}
         </td>
-        <td style={{ ...tdStyle, color: '#6b7280' }}>{p.placa_origem_codigo || '—'}</td>
-        <td style={tdStyle}>
-          <span style={{
-            background: badge.bg, color: '#fff',
-            padding: '2px 8px', borderRadius: 4,
-            fontSize: '0.78rem', fontWeight: 500, whiteSpace: 'nowrap',
-          }}>
+        <td className="px-3 py-2 text-gray-500">{p.placa_origem_codigo || '—'}</td>
+        <td className="px-3 py-2">
+          <span className={`${badge.bg} text-white px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap`}>
             {badge.label}
           </span>
         </td>
-        <td style={tdStyle}>{p.total_amostras}</td>
-        <td style={tdStyle}>{p.responsavel_nome || '—'}</td>
-        <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
-        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <td className="px-3 py-2 text-gray-700">{p.total_amostras}</td>
+        <td className="px-3 py-2 text-gray-700">{p.responsavel_nome || '—'}</td>
+        <td className="px-3 py-2 text-gray-700">{fmtDate(p.data_criacao)}</td>
+        <td className="px-3 py-2 whitespace-nowrap">
+          <div className="flex gap-1.5">
             <button
               onClick={e => { e.stopPropagation(); onEditar(p.id) }}
-              style={btnSmall('#065f46')}
+              className="px-2 py-1 rounded bg-success-700 text-white text-xs font-medium cursor-pointer border-none hover:bg-success-800"
             >
               Editar
             </button>
@@ -176,7 +154,7 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                style={{ ...btnSmall('#4b5563'), textDecoration: 'none', display: 'inline-block' }}
+                className="px-2 py-1 rounded bg-gray-600 text-white text-xs font-medium no-underline inline-block hover:bg-gray-700"
               >
                 PDF
               </a>
@@ -185,7 +163,7 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
               <button
                 onClick={handleSubmeter}
                 disabled={submetendo}
-                style={{ ...btnSmall('#fd7e14'), opacity: submetendo ? 0.6 : 1 }}
+                className={`px-2 py-1 rounded bg-warning-500 text-white text-xs font-medium cursor-pointer border-none hover:bg-warning-600 ${submetendo ? 'opacity-60' : ''}`}
               >
                 {submetendo ? 'Enviando...' : 'Enviar ao termociclador'}
               </button>
@@ -195,9 +173,13 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
       </tr>
 
       {feedback && (
-        <tr style={{ borderBottom: aberta ? 'none' : '1px solid #f0f0f0', background: aberta ? '#fff7ed' : undefined }}>
-          <td colSpan={7} style={{ padding: '0 0.75rem 0.5rem' }}>
-            <div style={{ padding: '0.4rem 0.75rem', borderRadius: 5, fontSize: '0.8rem', ...feedbackStyles[feedback.tipo] }}>
+        <tr className={`${aberta ? 'border-b-0' : 'border-b border-gray-100'} ${aberta ? 'bg-warning-50' : ''}`}>
+          <td colSpan={7} className="px-3 py-0 pb-2">
+            <div className={`px-3 py-1.5 rounded text-xs ${
+              feedback.tipo === 'sucesso'
+                ? 'bg-success-50 text-success-700 border border-success-200'
+                : 'bg-danger-50 text-danger-700 border border-danger-200'
+            }`}>
               {feedback.msg}
             </div>
           </td>
@@ -205,10 +187,10 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
       )}
 
       {aberta && (
-        <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#fff7ed' }}>
-          <td colSpan={7} style={{ padding: '0.75rem 1rem 1rem 1.25rem' }}>
+        <tr className="border-b border-gray-100 bg-warning-50">
+          <td colSpan={7} className="px-4 py-3 pl-5">
             {/* Legenda */}
-            <div style={{ marginBottom: '0.6rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="mb-2.5 flex gap-4 flex-wrap items-center">
               {[
                 { tipo: 'amostra',           label: 'Amostra' },
                 { tipo: 'controle_positivo', label: 'CP' },
@@ -217,16 +199,13 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
               ].map(({ tipo, label }) => {
                 const cor = POCO_COR[tipo]
                 return (
-                  <span key={tipo} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#374151' }}>
-                    <span style={{
-                      display: 'inline-block', width: 12, height: 12, borderRadius: 2,
-                      background: cor.bg, border: `1px solid ${cor.border}`,
-                    }} />
+                  <span key={tipo} className="flex items-center gap-1 text-xs text-gray-700">
+                    <span className={`inline-block w-3 h-3 rounded-[2px] ${cor.bg} ${cor.border} border`} />
                     {label}
                   </span>
                 )
               })}
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>
+              <span className="text-xs text-gray-400 ml-auto">
                 Passe o mouse sobre uma célula para ver o nome da paciente
               </span>
             </div>
@@ -235,23 +214,16 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
 
             {/* Lista compacta de amostras */}
             {amostras.length > 0 && (
-              <details style={{ marginTop: '0.75rem' }}>
-                <summary style={{ cursor: 'pointer', fontSize: '0.8rem', color: '#fd7e14', userSelect: 'none' }}>
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs text-warning-600 select-none">
                   Lista de amostras ({amostras.length})
                 </summary>
-                <div style={{
-                  marginTop: '0.4rem',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: '0.25rem 1rem',
-                  fontSize: '0.8rem',
-                  color: '#374151',
-                }}>
+                <div className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-y-1 gap-x-4 text-xs text-gray-700">
                   {amostras.map(w => (
-                    <div key={w.id} style={{ display: 'flex', gap: '0.4rem' }}>
-                      <span style={{ color: '#9ca3af', minWidth: 30 }}>{w.posicao}</span>
-                      <span style={{ fontWeight: 600, color: '#1e3a5f', minWidth: 60 }}>{w.amostra_codigo}</span>
-                      <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div key={w.id} className="flex gap-1">
+                      <span className="text-gray-400 min-w-[30px]">{w.posicao}</span>
+                      <span className="font-semibold text-info-800 min-w-[60px]">{w.amostra_codigo}</span>
+                      <span className="text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
                         {w.amostra_nome || ''}
                       </span>
                     </div>
@@ -293,51 +265,51 @@ export default function ConsultarPCR({ csrfToken, onEditar }) {
   }
 
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div>
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Consultar Placas PCR" />
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
         <input
           type="text"
           value={search}
           onChange={e => { setSearch(e.target.value); fetchPlacas(e.target.value, statusFilter) }}
           placeholder="Buscar por código..."
-          style={{ flex: 1, minWidth: 200, padding: '0.45rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem' }}
+          className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded text-sm"
         />
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); fetchPlacas(search, e.target.value) }}
-          style={{ padding: '0.45rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem', background: '#fff' }}
+          className="px-3 py-2 border border-gray-300 rounded text-sm bg-white"
         >
           <option value="">Todos os status</option>
           <option value="aberta">Aberta</option>
           <option value="submetida">Submetida</option>
           <option value="resultados_importados">Resultados</option>
         </select>
-        <button onClick={() => fetchPlacas()} style={{ ...btnStyle('#4b5563'), padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+        <button onClick={() => fetchPlacas()} className="px-4 py-2 rounded-md bg-gray-600 text-white font-medium text-sm cursor-pointer hover:bg-gray-700">
           Atualizar
         </button>
       </div>
 
       {loading ? (
-        <p style={{ color: '#6b7280', padding: '1rem 0' }}>Carregando...</p>
+        <p className="text-gray-500 py-4">Carregando...</p>
       ) : placas.length === 0 ? (
-        <p style={{ color: '#9ca3af', padding: '1rem 0' }}>Nenhuma placa PCR encontrada.</p>
+        <p className="text-gray-400 py-4">Nenhuma placa PCR encontrada.</p>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                <th style={thStyle}>Código PCR</th>
-                <th style={thStyle}>Extração base</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Amostras</th>
-                <th style={thStyle}>Responsável</th>
-                <th style={thStyle}>Data</th>
-                <th style={thStyle}>Ações</th>
+              <tr className="bg-gray-50 border-b-2 border-gray-200">
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Código PCR</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Extração base</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Status</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Amostras</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Responsável</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Data</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -355,13 +327,4 @@ export default function ConsultarPCR({ csrfToken, onEditar }) {
 function fmtDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-
-const btnStyle = (bg) => ({ background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem', borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 })
-const btnSmall = (bg) => ({ background: bg, color: '#fff', border: 'none', padding: '0.25rem 0.65rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 500 })
-const thStyle = { padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }
-const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
-const feedbackStyles = {
-  sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },
-  erro:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
 }

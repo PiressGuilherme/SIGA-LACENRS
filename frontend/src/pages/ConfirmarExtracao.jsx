@@ -6,10 +6,10 @@ const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
 
 const POCO_COR = {
-  amostra:           { bg: '#dbeafe', border: '#93c5fd', text: '#1e3a5f' },
-  controle_positivo: { bg: '#fef3c7', border: '#fbbf24', text: '#78350f' },
-  controle_negativo: { bg: '#f3e8ff', border: '#c084fc', text: '#4c1d95' },
-  vazio:             { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
+  amostra:           { bg: 'bg-info-100',    border: 'border-info-300',    text: 'text-info-800' },
+  controle_positivo: { bg: 'bg-warning-100', border: 'border-warning-300', text: 'text-warning-800' },
+  controle_negativo: { bg: 'bg-purple-100',  border: 'border-purple-300',  text: 'text-purple-800' },
+  vazio:             { bg: 'bg-gray-50',     border: 'border-gray-200',    text: 'text-gray-400' },
 }
 
 async function api(url, { csrfToken, method = 'GET', body } = {}) {
@@ -37,13 +37,13 @@ function EspelhoPlaca({ pocos }) {
   for (const p of pocos) mapa[p.posicao] = p
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', tableLayout: 'fixed' }}>
+    <div className="overflow-x-auto">
+      <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
         <thead>
           <tr>
-            <th style={{ width: 22, padding: '2px 4px', color: '#9ca3af', fontWeight: 400 }}></th>
+            <th className="w-[22px] p-0.5 text-gray-400 font-normal"></th>
             {COLS.map(c => (
-              <th key={c} style={{ width: 68, padding: '2px 4px', textAlign: 'center', color: '#9ca3af', fontWeight: 500 }}>
+              <th key={c} className="w-[68px] p-0.5 text-center text-gray-400 font-medium">
                 {parseInt(c, 10)}
               </th>
             ))}
@@ -52,7 +52,7 @@ function EspelhoPlaca({ pocos }) {
         <tbody>
           {ROWS.map(row => (
             <tr key={row}>
-              <td style={{ padding: '2px 4px', fontWeight: 600, color: '#9ca3af', textAlign: 'center' }}>
+              <td className="p-0.5 font-semibold text-gray-400 text-center">
                 {row}
               </td>
               {COLS.map(col => {
@@ -66,27 +66,14 @@ function EspelhoPlaca({ pocos }) {
                   : tipo === 'controle_negativo' ? 'CN'
                   : ''
                 return (
-                  <td key={col} style={{ padding: '2px 3px' }}>
+                  <td key={col} className="p-[2px]">
                     <div
                       title={
                         tipo === 'amostra' && p?.amostra_nome
                           ? `${p.amostra_codigo} — ${p.amostra_nome}`
                           : pos
                       }
-                      style={{
-                        background: cor.bg,
-                        border: `1px solid ${cor.border}`,
-                        borderRadius: 3,
-                        padding: '3px 4px',
-                        textAlign: 'center',
-                        color: cor.text,
-                        fontWeight: tipo === 'amostra' ? 600 : 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        minHeight: 22,
-                        lineHeight: '16px',
-                      }}
+                      className={`${cor.bg} ${cor.border} ${cor.text} border rounded-[3px] px-1 py-[3px] text-center font-${tipo === 'amostra' ? 'semibold' : 'medium'} overflow-hidden text-ellipsis whitespace-nowrap min-h-[22px] leading-4`}
                     >
                       {label}
                     </div>
@@ -112,26 +99,21 @@ function LinhaPlaca({ p, onConfirmar }) {
     <>
       <tr
         onClick={() => setAberta(v => !v)}
-        style={{
-          borderBottom: aberta ? 'none' : '1px solid #f0f0f0',
-          cursor: 'pointer',
-          background: aberta ? '#f5f3ff' : undefined,
-          transition: 'background 0.15s',
-        }}
+        className={`cursor-pointer transition-colors ${aberta ? 'bg-purple-50 border-b-0' : 'border-b border-gray-100'}`}
       >
-        <td style={{ ...tdStyle, fontWeight: 600 }}>
-          <span style={{ marginRight: 5, fontSize: '0.7rem', color: '#6b7280' }}>
+        <td className="px-3 py-2 text-gray-700 font-semibold">
+          <span className="mr-1.5 text-xs text-gray-500">
             {aberta ? '▼' : '▶'}
           </span>
           {p.codigo}
         </td>
-        <td style={tdStyle}>{p.total_amostras}</td>
-        <td style={tdStyle}>{p.responsavel_nome || '—'}</td>
-        <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
-        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+        <td className="px-3 py-2 text-gray-700">{p.total_amostras}</td>
+        <td className="px-3 py-2 text-gray-700">{p.responsavel_nome || '—'}</td>
+        <td className="px-3 py-2 text-gray-700">{fmtDate(p.data_criacao)}</td>
+        <td className="px-3 py-2 whitespace-nowrap">
           <button
             onClick={e => { e.stopPropagation(); onConfirmar(p.codigo) }}
-            style={btnSmall('#6f42c1')}
+            className="px-2 py-1 rounded bg-purple-500 text-white text-xs font-medium cursor-pointer border-none hover:bg-purple-600"
           >
             Confirmar Extração
           </button>
@@ -139,9 +121,9 @@ function LinhaPlaca({ p, onConfirmar }) {
       </tr>
 
       {aberta && (
-        <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#f5f3ff' }}>
-          <td colSpan={5} style={{ padding: '0.75rem 1rem 1rem 1.25rem' }}>
-            <div style={{ marginBottom: '0.6rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <tr className="border-b border-gray-100 bg-purple-50">
+          <td colSpan={5} className="px-4 py-3 pl-5">
+            <div className="mb-2.5 flex gap-4 flex-wrap items-center">
               {[
                 { tipo: 'amostra',           label: 'Amostra' },
                 { tipo: 'controle_positivo', label: 'CP' },
@@ -150,16 +132,13 @@ function LinhaPlaca({ p, onConfirmar }) {
               ].map(({ tipo, label }) => {
                 const cor = POCO_COR[tipo]
                 return (
-                  <span key={tipo} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#374151' }}>
-                    <span style={{
-                      display: 'inline-block', width: 12, height: 12, borderRadius: 2,
-                      background: cor.bg, border: `1px solid ${cor.border}`,
-                    }} />
+                  <span key={tipo} className="flex items-center gap-1 text-xs text-gray-700">
+                    <span className={`inline-block w-3 h-3 rounded-[2px] ${cor.bg} ${cor.border} border`} />
                     {label}
                   </span>
                 )
               })}
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: 'auto' }}>
+              <span className="text-xs text-gray-400 ml-auto">
                 Passe o mouse sobre uma célula para ver o nome da paciente
               </span>
             </div>
@@ -167,23 +146,16 @@ function LinhaPlaca({ p, onConfirmar }) {
             <EspelhoPlaca pocos={p.pocos || []} />
 
             {amostras.length > 0 && (
-              <details style={{ marginTop: '0.75rem' }}>
-                <summary style={{ cursor: 'pointer', fontSize: '0.8rem', color: '#6f42c1', userSelect: 'none' }}>
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs text-purple-600 select-none">
                   Lista de amostras ({amostras.length})
                 </summary>
-                <div style={{
-                  marginTop: '0.4rem',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: '0.25rem 1rem',
-                  fontSize: '0.8rem',
-                  color: '#374151',
-                }}>
+                <div className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-y-1 gap-x-4 text-xs text-gray-700">
                   {amostras.map(w => (
-                    <div key={w.id} style={{ display: 'flex', gap: '0.4rem' }}>
-                      <span style={{ color: '#9ca3af', minWidth: 30 }}>{w.posicao}</span>
-                      <span style={{ fontWeight: 600, color: '#1e3a5f', minWidth: 60 }}>{w.amostra_codigo}</span>
-                      <span style={{ color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div key={w.id} className="flex gap-1">
+                      <span className="text-gray-400 min-w-[30px]">{w.posicao}</span>
+                      <span className="font-semibold text-info-800 min-w-[60px]">{w.amostra_codigo}</span>
+                      <span className="text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">
                         {w.amostra_nome || ''}
                       </span>
                     </div>
@@ -267,7 +239,7 @@ export default function ConfirmarExtracao({ csrfToken }) {
   }
 
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div>
       {!operador && (
         <CrachaModal
           onValidado={(op) => { setOperador(op); setTimeout(() => extracaoRef.current?.focus(), 100) }}
@@ -276,44 +248,30 @@ export default function ConfirmarExtracao({ csrfToken }) {
       )}
 
       {operador && (
-        <div style={{
-          background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: 8,
-          padding: '1.25rem', marginBottom: '1.75rem',
-        }}>
-          <h3 style={{ fontSize: '1rem', color: '#6f42c1', marginBottom: '0.5rem', marginTop: 0 }}>
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-5 mb-7">
+          <h3 className="text-base font-bold text-purple-600 mb-2 mt-0">
             Confirmar Extração
           </h3>
 
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.75rem',
-            background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
-            padding: '0.6rem 1rem', marginBottom: '0.75rem',
-          }}>
-            <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+          <div className="flex items-center gap-3 bg-success-50 border border-success-200 rounded-lg px-4 py-2.5 mb-3">
+            <span className="text-sm text-success-700 font-semibold">
               Operador: {operador.nome_completo}
             </span>
-            <span style={{
-              fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
-              padding: '1px 6px', borderRadius: 10, fontWeight: 500,
-            }}>
+            <span className="text-xs bg-success-100 text-success-700 px-1.5 py-0.5 rounded-full font-medium">
               {operador.perfil}
             </span>
             <button
               onClick={() => setOperador(null)}
-              style={{
-                marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
-                borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
-                color: '#065f46', cursor: 'pointer', fontWeight: 500,
-              }}
+              className="ml-auto bg-none border border-success-200 rounded-md px-3 py-1 text-xs text-success-700 cursor-pointer font-medium hover:bg-success-100"
             >
               Trocar operador
             </button>
           </div>
 
-          <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          <p className="text-gray-500 text-sm mb-3">
             Escaneie o código de barras da placa após a extração de DNA para marcar todas as amostras como <b>Extraída</b>.
           </p>
-          <form onSubmit={e => { e.preventDefault(); handleConfirmarExtracao() }} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
+          <form onSubmit={e => { e.preventDefault(); handleConfirmarExtracao() }} className="flex gap-2 max-w-[500px] mb-3">
             <input
               ref={extracaoRef}
               type="text"
@@ -322,32 +280,29 @@ export default function ConfirmarExtracao({ csrfToken }) {
               placeholder="Escanear código da placa..."
               disabled={carregandoExtracao}
               autoComplete="off"
-              style={{
-                flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
-                border: '2px solid #c4b5fd', borderRadius: 6, outline: 'none',
-              }}
+              className="flex-1 px-3 py-2.5 text-sm border-2 border-purple-300 rounded-md outline-none"
             />
             <button
               type="submit"
               disabled={carregandoExtracao || !codigoExtracao.trim()}
-              style={{
-                ...btnStyle('#6f42c1'),
-                opacity: (carregandoExtracao || !codigoExtracao.trim()) ? 0.5 : 1,
-              }}
+              className={`px-5 py-2.5 rounded-md bg-purple-500 text-white font-medium text-sm cursor-pointer hover:bg-purple-600 ${
+                (carregandoExtracao || !codigoExtracao.trim()) ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               {carregandoExtracao ? 'Confirmando...' : 'Confirmar'}
             </button>
           </form>
           {feedbackExtracao && (
-            <div style={{ borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ padding: '0.6rem 1rem', ...feedbackStyles[feedbackExtracao.tipo] }}>
+            <div className="rounded-md overflow-hidden">
+              <div className={`px-4 py-2.5 ${
+                feedbackExtracao.tipo === 'sucesso'
+                  ? 'bg-success-50 text-success-700 border border-success-200'
+                  : 'bg-danger-50 text-danger-700 border border-danger-200'
+              }`}>
                 {feedbackExtracao.msg}
               </div>
               {feedbackExtracao.tipo === 'sucesso' && amostrasExtraidas.length > 0 && (
-                <div style={{
-                  padding: '0.5rem 1rem', background: '#f0fdf4',
-                  borderTop: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#065f46',
-                }}>
+                <div className="px-4 py-2 bg-success-50 border-t border-success-200 text-xs text-success-700">
                   <b>Amostras extraídas:</b> {amostrasExtraidas.join(', ')}
                 </div>
               )}
@@ -357,40 +312,37 @@ export default function ConfirmarExtracao({ csrfToken }) {
       )}
 
       <div>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="flex gap-2 mb-4 flex-wrap items-center">
           <input
             type="text"
             value={search}
             onChange={handleSearch}
             placeholder="Buscar por código (ex: PL2603)"
-            style={{
-              flex: 1, minWidth: 200, padding: '0.45rem 0.75rem',
-              border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem',
-            }}
+            className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded text-sm"
           />
-          <button onClick={() => fetchPlacas()} style={{ ...btnStyle('#4b5563'), padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
+          <button onClick={() => fetchPlacas()} className="px-4 py-2 rounded-md bg-gray-600 text-white font-medium text-sm cursor-pointer hover:bg-gray-700">
             Atualizar
           </button>
         </div>
 
-        <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+        <p className="text-gray-500 text-sm mb-4">
           Placas com status <b>Aberta</b> aguardando confirmação de extração.
         </p>
 
         {loading ? (
-          <p style={{ color: '#6b7280', padding: '1rem 0' }}>Carregando...</p>
+          <p className="text-gray-500 py-4">Carregando...</p>
         ) : placas.length === 0 ? (
-          <p style={{ color: '#9ca3af', padding: '1rem 0' }}>Nenhuma placa pendente de confirmação.</p>
+          <p className="text-gray-400 py-4">Nenhuma placa pendente de confirmação.</p>
         ) : (
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={thStyle}>Código</th>
-                  <th style={thStyle}>Amostras</th>
-                  <th style={thStyle}>Responsável</th>
-                  <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Ação</th>
+                <tr className="bg-gray-50 border-b-2 border-gray-200">
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Código</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Amostras</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Responsável</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Data</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -412,27 +364,4 @@ function fmtDate(iso) {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-const btnStyle = (bg) => ({
-  background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem',
-  borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,
-})
-
-const btnSmall = (bg) => ({
-  background: bg, color: '#fff', border: 'none', padding: '0.25rem 0.65rem',
-  borderRadius: 4, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 500,
-})
-
-const thStyle = {
-  padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 600,
-  color: '#374151', whiteSpace: 'nowrap',
-}
-
-const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
-
-const feedbackStyles = {
-  sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },
-  aviso:   { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' },
-  erro:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
 }

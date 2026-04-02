@@ -44,17 +44,11 @@ export default function NavigationButtons({ currentStep }) {
   if (!etapa) return null
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '0.75rem',
-      marginBottom: '1.5rem',
-      flexWrap: 'wrap',
-      alignItems: 'center'
-    }}>
+    <div className="flex gap-3 mb-6 flex-wrap items-center">
       {/* Botão Início */}
       <button
         onClick={() => window.location.href = '/'}
-        style={btnStyle('#6b7280')}
+        className="bg-neutral-500 text-white border-none px-4 py-2 rounded-md cursor-pointer text-[0.85rem] font-medium transition-opacity hover:opacity-80"
         title="Voltar à página inicial"
       >
         Início
@@ -64,7 +58,7 @@ export default function NavigationButtons({ currentStep }) {
       {etapa.anterior && (
         <button
           onClick={() => window.location.href = etapa.anterior.path}
-          style={btnStyle('#1a3a5c')}
+          className="bg-brand-800 text-white border-none px-4 py-2 rounded-md cursor-pointer text-[0.85rem] font-medium transition-opacity hover:opacity-80"
           title={etapa.anterior.label}
         >
           ← {etapa.anterior.label}
@@ -75,7 +69,7 @@ export default function NavigationButtons({ currentStep }) {
       {etapa.proxima && (
         <button
           onClick={() => window.location.href = etapa.proxima.path}
-          style={btnStyle('#065f46')}
+          className="bg-success-800 text-white border-none px-4 py-2 rounded-md cursor-pointer text-[0.85rem] font-medium transition-opacity hover:opacity-80"
           title={etapa.proxima.label}
         >
           {etapa.proxima.label} →
@@ -83,28 +77,9 @@ export default function NavigationButtons({ currentStep }) {
       )}
 
       {/* Indicador de etapa atual */}
-      <span style={{
-        marginLeft: 'auto',
-        fontSize: '0.85rem',
-        color: '#6b7280',
-        fontWeight: 500
-      }}>
-        Etapa: <strong style={{ color: '#1a3a5c' }}>{etapa.label}</strong>
+      <span className="ml-auto text-[0.85rem] text-neutral-500 font-medium">
+        Etapa: <strong className="text-brand-800">{etapa.label}</strong>
       </span>
     </div>
   )
-}
-
-function btnStyle(bg) {
-  return {
-    background: bg,
-    color: '#fff',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    fontWeight: 500,
-    transition: 'opacity 0.15s'
-  }
 }

@@ -71,25 +71,27 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
   }
 
   return (
-    <div style={s.overlay}>
-      <div style={s.card}>
+    <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[9999] backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-xl overflow-hidden w-full max-w-[420px] mx-4">
         {/* Header */}
-        <div style={s.header}>
-          <div style={s.icon}>ID</div>
-          <div style={s.title}>Identificação do Operador</div>
+        <div className="bg-brand-800 px-8 pt-7 pb-5 text-center text-white">
+          <div className="text-[2.8rem] mb-1">ID</div>
+          <div className="text-[1.2rem] font-bold tracking-wide">Identificação do Operador</div>
           {modulo && (
-            <div style={s.subtitle}>Módulo: {modulo}</div>
+            <div className="text-[0.8rem] text-brand-300 mt-1">Módulo: {modulo}</div>
           )}
         </div>
 
         {/* Body */}
-        <div style={s.body}>
-          <p style={s.hint}>
+        <div className="px-8 py-6">
+          <p className="text-[0.88rem] text-neutral-500 text-center mb-5 leading-relaxed">
             Escaneie ou digite o código do crachá para iniciar.
           </p>
 
           {erro && (
-            <div style={s.erro}>{erro}</div>
+            <div className="bg-danger-100 text-danger-800 rounded-lg px-3.5 py-2.5 text-[0.85rem] text-center mb-4">
+              {erro}
+            </div>
           )}
 
           <form onSubmit={handleSubmit}>
@@ -101,15 +103,12 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
               placeholder="Escanear crachá..."
               disabled={carregando}
               autoComplete="off"
-              style={s.input}
+              className="w-full px-3.5 py-3 rounded-lg border-2 border-neutral-300 text-base text-center tracking-wider mb-3 outline-none transition-colors focus:border-brand-500 box-border"
             />
             <button
               type="submit"
               disabled={carregando || !codigo.trim()}
-              style={{
-                ...s.btnPrimary,
-                opacity: (carregando || !codigo.trim()) ? 0.6 : 1,
-              }}
+              className={`w-full py-3 bg-brand-800 text-white border-none rounded-lg text-[0.95rem] font-bold cursor-pointer transition-opacity ${(carregando || !codigo.trim()) ? 'opacity-60 cursor-default' : 'hover:bg-brand-700'}`}
             >
               {carregando ? 'Validando...' : 'Validar crachá'}
             </button>
@@ -117,165 +116,32 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
 
           {/* Manter operador anterior */}
           {operadorAtual && onManter && (
-            <div style={s.manterSection}>
-              <div style={s.manterDivider}>
-                <span style={s.manterDividerText}>ou</span>
+            <div className="mt-4">
+              <div className="text-center relative mb-3">
+                <span className="bg-white px-3 text-[0.8rem] text-neutral-400 relative z-[1]">ou</span>
               </div>
-              <button onClick={onManter} style={s.btnManter}>
+              <button onClick={onManter} className="w-full py-2.5 bg-success-50 text-success-800 border-2 border-success-400 rounded-lg text-[0.88rem] font-medium cursor-pointer transition-colors hover:bg-success-100">
                 Continuar como <strong>{operadorAtual.nome_completo}</strong>
               </button>
             </div>
           )}
 
           {/* Botão cancelar */}
-          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <div className="mt-4 text-center">
             <button
               type="button"
               onClick={handleCancelar}
-              style={s.btnCancelar}
+              className="bg-none border-none text-neutral-500 text-[0.85rem] cursor-pointer py-2 px-4 underline transition-colors hover:text-neutral-700"
             >
               Cancelar e voltar ao início
             </button>
           </div>
         </div>
 
-        <div style={s.footer}>
+        <div className="text-center py-3 text-[0.7rem] text-neutral-400 border-t border-neutral-100">
           SIGA-LACEN · Laboratório de HPV
         </div>
       </div>
     </div>
   )
-}
-
-// ── Estilos ──────────────────────────────────────────────────────────────────
-
-const s = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0, 0, 0, 0.55)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-    backdropFilter: 'blur(3px)',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: 14,
-    boxShadow: '0 8px 40px rgba(26,58,92,0.2)',
-    overflow: 'hidden',
-    width: '100%',
-    maxWidth: 420,
-    margin: '0 1rem',
-  },
-  header: {
-    background: '#1a3a5c',
-    padding: '1.75rem 2rem 1.25rem',
-    textAlign: 'center',
-    color: '#fff',
-  },
-  icon: {
-    fontSize: '2.8rem',
-    marginBottom: '0.4rem',
-  },
-  title: {
-    fontSize: '1.2rem',
-    fontWeight: 700,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    fontSize: '0.8rem',
-    color: '#adc8e6',
-    marginTop: '0.25rem',
-  },
-  body: {
-    padding: '1.5rem 2rem',
-  },
-  hint: {
-    fontSize: '0.88rem',
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: '1.25rem',
-    lineHeight: 1.5,
-  },
-  erro: {
-    background: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: 8,
-    padding: '0.6rem 0.875rem',
-    fontSize: '0.85rem',
-    marginBottom: '1rem',
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    padding: '0.75rem 0.875rem',
-    borderRadius: 8,
-    border: '2px solid #d1d5db',
-    fontSize: '1rem',
-    marginBottom: '0.75rem',
-    outline: 'none',
-    transition: 'border-color 0.15s',
-    textAlign: 'center',
-    letterSpacing: '0.05em',
-    boxSizing: 'border-box',
-  },
-  btnPrimary: {
-    width: '100%',
-    padding: '0.75rem',
-    background: '#1a3a5c',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  },
-  manterSection: {
-    marginTop: '1rem',
-  },
-  manterDivider: {
-    textAlign: 'center',
-    position: 'relative',
-    marginBottom: '0.75rem',
-  },
-  manterDividerText: {
-    background: '#fff',
-    padding: '0 0.75rem',
-    fontSize: '0.8rem',
-    color: '#9ca3af',
-    position: 'relative',
-    zIndex: 1,
-  },
-  btnManter: {
-    width: '100%',
-    padding: '0.65rem',
-    background: '#f0fdf4',
-    color: '#065f46',
-    border: '2px solid #6ee7b7',
-    borderRadius: 8,
-    fontSize: '0.88rem',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  },
-  footer: {
-    textAlign: 'center',
-    padding: '0.75rem',
-    fontSize: '0.7rem',
-    color: '#9ca3af',
-    borderTop: '1px solid #f3f4f6',
-  },
-  btnCancelar: {
-    background: 'none',
-    border: 'none',
-    color: '#6b7280',
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    padding: '0.5rem 1rem',
-    textDecoration: 'underline',
-    transition: 'color 0.15s',
-  },
 }

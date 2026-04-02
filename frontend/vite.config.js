@@ -11,12 +11,19 @@ export default defineConfig({
 
   root: resolve(__dirname, 'src'),
 
+  resolve: {
+    alias: {
+      '@design-system': resolve(__dirname, 'src/design-system'),
+    },
+  },
+
   build: {
     outDir: resolve(__dirname, '../backend/static'),
     emptyOutDir: true,
     manifest: true,
     rollupOptions: {
       input: {
+        index: resolve(__dirname, 'src/index.css'),
         login: resolve(__dirname, 'src/entries/login.jsx'),
         import: resolve(__dirname, 'src/entries/import.jsx'),
         aliquotagem: resolve(__dirname, 'src/entries/aliquotagem.jsx'),

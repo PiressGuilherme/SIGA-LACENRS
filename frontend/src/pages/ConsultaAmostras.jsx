@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import { getOperadorInicial } from '../utils/auth'
 
 const STATUS_BADGE = {
   aguardando_triagem:   { bg: '#6c757d', label: 'Aguardando Triagem' },
@@ -271,6 +273,7 @@ function LinhaAmostra({ a, resultados }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ConsultaAmostras() {
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [amostras, setAmostras] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -358,6 +361,11 @@ export default function ConsultaAmostras() {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Consulta de Amostras" />
+      )}
+
       {/* Filtros */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input

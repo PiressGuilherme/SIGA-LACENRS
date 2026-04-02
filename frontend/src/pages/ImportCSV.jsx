@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const STATUS_LABEL = {
   novo:        { text: 'Nova',        bg: '#d1fae5', color: '#065f46' },
@@ -7,7 +9,7 @@ const STATUS_LABEL = {
 }
 
 async function apiFetch(url, { csrfToken, body }) {
-  const headers = { 'X-CSRFToken': csrfToken }
+  const headers = { 'X-CSRFToken': getCsrfToken() }
   const token = localStorage.getItem('access_token')
   if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -59,6 +61,7 @@ function sortRows(rows, key, dir) {
 }
 
 export default function ImportCSV({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [etapa, setEtapa] = useState('upload')   // upload | preview | resultado
   const [arquivo, setArquivo] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -150,6 +153,11 @@ export default function ImportCSV({ csrfToken }) {
   // ------------------------------------------------------------------ render
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Importar CSV" />
+      )}
+
       <h2 style={{ marginBottom: '1.5rem', fontSize: '1.3rem', color: '#1a3a5c' }}>
         Importar CSV do GAL
       </h2>
@@ -181,7 +189,7 @@ export default function ImportCSV({ csrfToken }) {
               style={{ display: 'none' }}
               onChange={e => handleArquivo(e.target.files[0])}
             />
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📂</div>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📁</div>
             <p style={{ color: '#1e40af', fontWeight: 500 }}>
               Clique ou arraste o arquivo CSV ou ZIP do GAL aqui
             </p>
@@ -205,12 +213,28 @@ export default function ImportCSV({ csrfToken }) {
               </button>
             </div>
           )}
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <a href="/" style={{ color: '#6b7280', fontSize: '0.9rem', textDecoration: 'underline' }}>
+              Voltar ao início
+            </a>
+          </div>
         </div>
       )}
 
       {/* ETAPA 2: Preview */}
       {etapa === 'preview' && preview && (
         <div>
+          {/* Botões de ação no topo */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <button onClick={resetar} style={btnStyle('#6b7280')}>← Voltar</button>
+            {(preview.novos > 0 || preview.atualizaveis > 0) && (
+              <button onClick={handleImportar} disabled={carregando} style={btnStyle('#065f46')}>
+                {carregando ? 'Importando…' : `Confirmar importação (${preview.novos + preview.atualizaveis} registros)`}
+              </button>
+            )}
+          </div>
+
           {/* Aviso de diagnóstico quando 0 amostras detectadas */}
           {preview.aviso && (
             <div style={{ background: '#fef3c7', color: '#92400e', padding: '0.75rem 1rem',
@@ -245,13 +269,14 @@ export default function ImportCSV({ csrfToken }) {
                       </span>
                     </th>
                   ))}
+                  <th style={thStyle}>Ação</th>
                 </tr>
               </thead>
               <tbody>
                 {(sortKey ? sortRows(preview.amostras, sortKey, sortDir) : preview.amostras).map((a, i) => {
                   const st = STATUS_LABEL[a._status_importacao] || STATUS_LABEL.duplicado
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <tr key={i} style={{ borderBottom: '1px solid #f0f0f0', textDecoration: a._ignorar ? 'line-through' : 'none', opacity: a._ignorar ? 0.5 : 1 }}>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <span style={{ background: st.bg, color: st.color,
                                        padding: '2px 8px', borderRadius: 4,
@@ -270,6 +295,34 @@ export default function ImportCSV({ csrfToken }) {
                       <td style={tdStyle}>{a.municipio}</td>
                       <td style={tdStyle}>{fmtDate(a.data_coleta)}</td>
                       <td style={tdStyle}>{fmtDate(a.data_recebimento)}</td>
+                      <td style={tdStyle}>
+                        {a._status_importacao === 'novo' && (
+                          <button
+                            onClick={() => {
+                              const newPreview = {...preview}
+                              newPreview.amostras = [...preview.amostras]
+                              newPreview.amostras[i] = {...a, _ignorar: !a._ignorar}
+                              if (newPreview.amostras[i]._ignorar) {
+                                newPreview.novos = Math.max(0, newPreview.novos - 1)
+                              } else {
+                                newPreview.novos = newPreview.novos + 1
+                              }
+                              setPreview(newPreview)
+                            }}
+                            style={{
+                              background: a._ignorar ? '#065f46' : '#dc3545',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {a._ignorar ? 'Restaurar' : 'Ignorar'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -277,14 +330,6 @@ export default function ImportCSV({ csrfToken }) {
             </table>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={resetar} style={btnStyle('#6b7280')}>← Voltar</button>
-            {(preview.novos > 0 || preview.atualizaveis > 0) && (
-              <button onClick={handleImportar} disabled={carregando} style={btnStyle('#065f46')}>
-                {carregando ? 'Importando…' : `Confirmar importação (${preview.novos + preview.atualizaveis} registros)`}
-              </button>
-            )}
-          </div>
         </div>
       )}
 

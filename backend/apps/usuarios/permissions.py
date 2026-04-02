@@ -2,9 +2,10 @@
 Permissões por grupo para o SIGA-LACEN.
 
 Grupos disponíveis (definidos em fixtures/grupos_iniciais.json):
-  extracao   — Import CSV GAL, recebimento, montagem e confirmação de placa de extração
-  pcr        — Montagem placa PCR, import resultado, revisão e confirmação
-  supervisor — Todas as operações acima + edição manual + auditoria
+  tecnico      — Consulta, Import CSV, Aliquotagem, Extração, Montagem PCR
+                 (NÃO pode submeter ao termociclador nem acessar Resultados)
+  especialista — Todas as permissões do Técnico + Termociclador + Resultados
+  supervisor   — is_staff + is_superuser, acesso total ao Django Admin
 
 Superusuários Django têm acesso irrestrito.
 """
@@ -20,24 +21,35 @@ def _in_groups(user, *group_names: str) -> bool:
     return user.groups.filter(name__in=group_names).exists()
 
 
-class IsExtracaoOuSupervisor(BasePermission):
-    """Perfis: extracao, supervisor."""
-    message = 'Acesso restrito ao perfil Extração ou Supervisor.'
+class IsTecnico(BasePermission):
+    """Perfil: tecnico, especialista, supervisor.
+
+    Técnico tem acesso a: Consulta, Import CSV, Aliquotagem, Extração, Montagem PCR.
+    NÃO pode submeter ao termociclador nem acessar Resultados.
+    """
+    message = 'Acesso restrito ao perfil Técnico, Especialista ou Supervisor.'
 
     def has_permission(self, request, view):
-        return _in_groups(request.user, 'extracao', 'supervisor')
+        return _in_groups(request.user, 'tecnico', 'especialista', 'supervisor')
 
 
-class IsPCROuSupervisor(BasePermission):
-    """Perfis: pcr, supervisor."""
-    message = 'Acesso restrito ao perfil PCR ou Supervisor.'
+class IsEspecialista(BasePermission):
+    """Perfil: especialista, supervisor.
+
+    Especialista tem acesso a todas as operações laboratoriais incluindo
+    termociclador e resultados, mas não tem privilégios de administração.
+    """
+    message = 'Acesso restrito ao perfil Especialista ou Supervisor.'
 
     def has_permission(self, request, view):
-        return _in_groups(request.user, 'pcr', 'supervisor')
+        return _in_groups(request.user, 'especialista', 'supervisor')
 
 
 class IsSupervisor(BasePermission):
-    """Perfil: supervisor (somente)."""
+    """Perfil: supervisor (somente).
+
+    Supervisor tem is_staff + is_superuser e acesso total ao sistema.
+    """
     message = 'Acesso restrito ao perfil Supervisor.'
 
     def has_permission(self, request, view):
@@ -45,8 +57,8 @@ class IsSupervisor(BasePermission):
 
 
 class IsLaboratorio(BasePermission):
-    """Qualquer perfil de laboratório (extracao, pcr ou supervisor)."""
+    """Qualquer perfil de laboratório (tecnico, especialista, supervisor)."""
     message = 'Acesso restrito a usuários com perfil de laboratório.'
 
     def has_permission(self, request, view):
-        return _in_groups(request.user, 'extracao', 'pcr', 'supervisor')
+        return _in_groups(request.user, 'tecnico', 'especialista', 'supervisor')

@@ -91,7 +91,7 @@ Instruções IBMP:
 ------Anotações------
 -Exames cancelados entram no db?
 -Arrumar a tag de aliquota ja feita ✅
--#PLACA: Fix placement de amostras e Controle (default G-H 12) -!!!Não permitir salvamento de placa SEM CONTROLE
+-#PLACA: Fix placement de amostras e Controle (default G-H 12) -!!!Não permitir salvamento de placa SEM CONTROLE ✅
 -#PLACA: Reconhecimento e flag de duplicatas ✅
 -#PLACA: Alterar nome PACIENTE (não aparecer) e Fluxo de adição de amostras vertical (atualmente cada amostra é adicionada horizontalmente)✅
 
@@ -121,3 +121,5 @@ Formato pdf placas
 
 
 # IMPORTANTE: refomular sistema de login e autenticação de ações: o registro do log hoje é feito pelo login e não pela autenticação de etapa que estamos implementando, isso deve ser revisto e bem documentado para que as ações feitas sejam registradas no nome do usuário que foi autenticado para cada modulo/ação e não pelo que fez o login inicial. Talvez fazer login por laboratório e depois os logs internos pelo código do crachá (id funcional)
+
+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

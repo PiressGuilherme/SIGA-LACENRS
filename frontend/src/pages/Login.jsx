@@ -264,7 +264,7 @@ function TabCracha({ onSuccess, csrf }) {
     <div style={s.crachaArea}>
       {erro && <div style={{ ...s.erro, textAlign: 'left' }}>{erro}</div>}
 
-      <div style={s.crachaIcon}>🪪</div>
+      <div style={s.crachaIcon}>ID</div>
       <p style={s.crachaHint}>
         {lendo
           ? 'Passe o crachá no leitor agora…'
@@ -307,7 +307,7 @@ export default function Login({ csrfToken, nextUrl }) {
     <div style={s.wrapper}>
       <div style={s.card}>
         <div style={s.header}>
-          <div style={s.logo}>🔬</div>
+          <div style={s.logo}>SIGA</div>
           <div style={s.title}>SIGA-LACEN</div>
           <div style={s.subtitle}>
             Sistema de Informação e Gerenciamento de Amostras

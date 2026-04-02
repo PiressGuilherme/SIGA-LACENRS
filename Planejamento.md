@@ -253,19 +253,30 @@ Uma amostra pode aparecer em múltiplas placas PCR ao longo do tempo (uma por te
 
 ---
 
-### Perfis de Acesso
+### Perfis de Acesso (RBAC)
 
-| Perfil | Permissões |
-| :--- | :--- |
-| `extracao` | Importar CSV GAL; aliquotagem (scan de alíquota com crachá); montar e editar placas de extração; confirmar extração (scan de crachá + código de placa); exportar PDF da placa |
-| `pcr` | Montar placa PCR; enviar ao termociclador; importar CSV do termociclador; revisar e confirmar resultados |
-| `supervisor` | Todas as operações acima + editar amostras manualmente + cancelar amostras + acessar auditoria; bypass de crachá (ação executada com identidade do próprio supervisor) |
+| Perfil | Permissões | Restrições |
+| :--- | :--- | :--- |
+| `admin` | Acesso irrestrito a todas as funcionalidades do sistema | — |
+| `especialista` | Todas as operações laboratoriais (extração + PCR + resultados) | Não tem privilégios de administração do sistema |
+| `tecnico` | Operações até extração (importar CSV, aliquotagem, montar placa, confirmar extração) | **NÃO pode fazer PCR nem liberar resultados** (restrição de conselho de classe) |
+| `extracao` | Importar CSV GAL; aliquotagem; montar e editar placas de extração; confirmar extração | Perfil legado |
+| `pcr` | Montar placa PCR; enviar ao termociclador; importar CSV do termociclador; revisar e confirmar resultados | Perfil legado |
+| `supervisor` | Todas as operações + editar amostras manualmente + cancelar amostras + acessar auditoria | Perfil legado |
 
 > Todos os perfis autenticados têm acesso à consulta de amostras e de placas.
 
-> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. Superusers não precisam escanear o crachá.
+> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. **Administradores (`is_staff=True`) não precisam escanear o crachá** — o sistema automaticamente preenche o operador com os dados do próprio administrador logado.
 
 > **`numero_cracha`** é um campo do model `Usuario`. O endpoint `GET /api/auth/validar-cracha/?codigo=` retorna nome e perfil do operador para exibição no frontend.
+
+#### Usuários de Teste
+
+| Nome | E-mail | Perfil | Crachá |
+| :--- | :--- | :--- | :--- |
+| Admin (superuser) | admin@lacen.gov.br | admin | — |
+| Daniela | daniela@lacen.gov.br | especialista | DAN2026 |
+| Teste | teste@lacen.gov.br | tecnico | TST2026 |
 
 ---
 
@@ -305,26 +316,33 @@ O SIGA-LACEN implementa um sistema de autenticação de duas camadas para garant
 
 1. **Modal Bloqueante:** Ao acessar qualquer módulo operacional (Aliquotagem, Extração, PCR, Resultados), um modal é exibido bloqueando a página até que o operador escaneie o crachá.
 
-2. **Exceção:** Superusers e usuários com `is_staff=True` podem fazer bypass do crachá (ação é registrada como o próprio usuário logado).
+2. **Bypass para Administradores:** Usuários com `is_staff=True` (administradores) **não precisam escanear o crachá**. O sistema automaticamente preenche o operador com os dados do próprio administrador logado. Isso permite que supervisores/administradores acessem os módulos operacionais sem necessidade de crachá físico, mantendo a rastreabilidade (ações são registradas com o nome do admin).
 
-3. **Troca de Operador:** O operador pode trocar o crachá a qualquer momento clicando em "Trocar operador". A partir desse ponto, todas as ações são registradas com o novo operador.
+3. **Troca de Operador:** O operador pode trocar o crachá a qualquer momento clicando em "Trocar operador". A partir desse ponto, todas as ações são registradas com o novo operador. Para administradores, o botão "Trocar operador" permite alternar entre o modo admin (sem crachá) e o modo operador (com crachá).
 
 4. **Persistência na Sessão:** O operador identificado permanece ativo durante toda a sessão do módulo.
 
 #### Implementação Técnica
 
 **Frontend:**
-* `CrachaModal.jsx` — componente React de modal bloqueante
-* Enviado `numero_cracha` em todas as requisições POST/PATCH que alteram dados
+* `CrachaModal.jsx` — componente React de modal bloqueante com botão de cancelar (redireciona para `/`)
+* `NavigationButtons.jsx` — componente de navegação com botões "Início", "Anterior" e "Próxima Etapa"
+* `frontend/src/utils/auth.js` — utilitários de autenticação:
+  * `getUsuarioAtual()` — retorna dados do usuário logado do localStorage
+  * `isAdmin()` — verifica se o usuário é admin (`is_staff=True`)
+  * `getOperadorInicial()` — retorna operador inicial (admin bypass ou null para crachá)
+* Cada módulo usa `useState(() => getOperadorInicial())` para inicializar o operador
+* Enviado `numero_cracha` em todas as requisições POST/PATCH que alteram dados (null para admins)
 
 **Backend:**
 * Função `_resolver_operador()` em cada ViewSet extrai o `numero_cracha` do request
 * `auditlog.context.set_actor(operador)` configura o ator correto no auditlog
-* Fallback para `request.user` quando crachá não é fornecido
+* Fallback para `request.user` quando crachá não é fornecido (caso de admin)
 
 **Banco de Dados:**
 * Campo `numero_cracha` no model `Usuario`
-* Campos de rastreamento (`confirmado_por`, `recebido_por`, etc.) são ForeignKey para `Usuario`
+* Campos de rastreamento (`confirmado_por`, `recebido_por`, `extracao_confirmada_por`, etc.) são ForeignKey para `Usuario`
+* Grupos de permissão: `admin`, `especialista`, `tecnico`, `extracao`, `pcr`, `supervisor`
 
 ---
 

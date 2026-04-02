@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const STATUS_BADGE = {
   aguardando_triagem:   { bg: '#6c757d', label: 'Aguardando Triagem' },
@@ -19,7 +21,7 @@ export default function Aliquotagem({ csrfToken }) {
   const [carregando, setCarregando] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [confirmadas, setConfirmadas] = useState([])
-  const [operador, setOperador] = useState(null)   // operador atual (validado por crachá)
+  const [operador, setOperador] = useState(() => getOperadorInicial())   // operador atual (validado por crachá ou admin)
   const inputRef = useRef()
 
   // Re-foca o input de amostra após cada ação (se operador validado)
@@ -41,7 +43,7 @@ export default function Aliquotagem({ csrfToken }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
+          'X-CSRFToken': getCsrfToken(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ codigo: val, numero_cracha: operador.numero_cracha }),
@@ -73,6 +75,8 @@ export default function Aliquotagem({ csrfToken }) {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      <NavigationButtons currentStep="aliquotagem" />
+      
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Aliquotagem" />

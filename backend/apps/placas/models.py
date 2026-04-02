@@ -46,7 +46,7 @@ class Placa(models.Model):
     codigo = models.CharField(
         max_length=20, unique=True, blank=True,
         verbose_name='Código da Placa',
-        help_text='Gerado automaticamente no formato HPV{DDMMAA}-{N} (ex: HPV240326-1).',
+        help_text='Gerado automaticamente: HPVe{DDMMAA}-{N} para extração (ex: HPVe010426-1) ou HPVp{DDMMAA}-{N} para PCR (ex: HPVp010426-1).',
         db_index=True,
     )
     tipo_placa = models.CharField(
@@ -95,9 +95,10 @@ class Placa(models.Model):
         super().save(*args, **kwargs)
 
     def _gerar_codigo(self):
-        """Gera código único no formato HPV{DDMMAA}-{N}."""
+        """Gera código único: HPVe{DDMMAA}-{N} para extração, HPVp{DDMMAA}-{N} para PCR."""
         agora = timezone.now()
-        prefixo = f'HPV{agora.strftime("%d%m%y")}-'
+        tipo_letra = 'p' if self.tipo_placa == TipoPlaca.PCR else 'e'
+        prefixo = f'HPV{tipo_letra}{agora.strftime("%d%m%y")}-'
         ultimo = (
             Placa.objects.filter(codigo__startswith=prefixo)
             .order_by('-data_criacao', '-id')

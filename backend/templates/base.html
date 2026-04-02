@@ -32,15 +32,27 @@
       <a href="/placas/extracao/">Extração</a>
       <a href="/placas/pcr/">PCR</a>
       <a href="/resultados/revisar/">Resultados</a>
-      {% if user.is_staff %}
+      {% if user.is_superuser %}
         <a href="{% url 'gal-ws-page' %}">GAL WS</a>
         <a href="/admin/">Admin</a>
       {% endif %}
       {% if user.is_authenticated %}
-        <span style="color:#adc8e6;margin-left:1.5rem;font-size:0.85rem">{{ user.nome_completo }}</span>
+        <span id="header-usuario" style="color:#adc8e6;margin-left:1.5rem;font-size:0.85rem">{{ user.nome_completo }}</span>
+        <button onclick="logout()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:0.35rem 0.85rem;border-radius:6px;cursor:pointer;font-size:0.8rem;margin-left:0.75rem;">Sair</button>
       {% endif %}
     </nav>
   </header>
+  <script>
+    function logout() {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('usuario')
+      fetch('/api/auth/logout/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)||[])[1]||'' },
+      }).finally(() => { window.location.href = '/login/' })
+    }
+  </script>
   <main>
     {% block content %}{% endblock %}
   </main>

@@ -12,7 +12,7 @@
  */
 import { useState, useRef, useEffect } from 'react'
 
-export default function CrachaModal({ onValidado, modulo = '', operadorAtual = null, onManter }) {
+export default function CrachaModal({ onValidado, modulo = '', operadorAtual = null, onManter, gruposRequeridos = [] }) {
   const [codigo, setCodigo]       = useState('')
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro]           = useState(null)
@@ -21,6 +21,10 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
+
+  function handleCancelar() {
+    window.location.href = '/'
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,7 +36,10 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
 
     try {
       const token = localStorage.getItem('access_token')
-      const res = await fetch(`/api/auth/validar-cracha/?codigo=${encodeURIComponent(val)}`, {
+      const params = new URLSearchParams({ codigo: val })
+      if (gruposRequeridos.length) params.set('grupos', gruposRequeridos.join(','))
+
+      const res = await fetch(`/api/auth/validar-cracha/?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: 'same-origin',
       })
@@ -42,7 +49,18 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
         throw new Error(data.erro || 'Crachá não reconhecido.')
       }
 
-      onValidado({ ...data, numero_cracha: val })
+      // Switch de sessão: atualiza tokens e identidade no localStorage
+      if (data.access && data.refresh && data.usuario) {
+        localStorage.setItem('access_token', data.access)
+        localStorage.setItem('refresh_token', data.refresh)
+        localStorage.setItem('usuario', JSON.stringify(data.usuario))
+
+        // Atualiza o nome do operador no header da página
+        const elHeader = document.getElementById('header-usuario')
+        if (elHeader) elHeader.textContent = data.usuario.nome_completo
+      }
+
+      onValidado({ id: data.id, nome_completo: data.nome_completo, perfil: data.perfil, numero_cracha: val })
     } catch (err) {
       setErro(err.message)
       setCodigo('')
@@ -57,7 +75,7 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
       <div style={s.card}>
         {/* Header */}
         <div style={s.header}>
-          <div style={s.icon}>🪪</div>
+          <div style={s.icon}>ID</div>
           <div style={s.title}>Identificação do Operador</div>
           {modulo && (
             <div style={s.subtitle}>Módulo: {modulo}</div>
@@ -108,6 +126,17 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
               </button>
             </div>
           )}
+
+          {/* Botão cancelar */}
+          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={handleCancelar}
+              style={s.btnCancelar}
+            >
+              Cancelar e voltar ao início
+            </button>
+          </div>
         </div>
 
         <div style={s.footer}>
@@ -238,5 +267,15 @@ const s = {
     fontSize: '0.7rem',
     color: '#9ca3af',
     borderTop: '1px solid #f3f4f6',
+  },
+  btnCancelar: {
+    background: 'none',
+    border: 'none',
+    color: '#6b7280',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    padding: '0.5rem 1rem',
+    textDecoration: 'underline',
+    transition: 'color 0.15s',
   },
 }

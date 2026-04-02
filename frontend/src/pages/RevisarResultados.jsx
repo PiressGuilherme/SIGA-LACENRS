@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ const INTERP_STYLE = {
 async function apiFetch(url, { csrfToken, method = 'GET', body, isMultipart = false } = {}) {
   const opts = {
     method,
-    headers: { 'X-CSRFToken': csrfToken },
+    headers: { 'X-CSRFToken': getCsrfToken() },
     credentials: 'same-origin',
   }
   if (body && !isMultipart) {
@@ -55,7 +57,7 @@ async function apiFetch(url, { csrfToken, method = 'GET', body, isMultipart = fa
 // ── Componente principal ───────────────────────────────────────────────────
 
 export default function RevisarResultados({ csrfToken }) {
-  const [operador, setOperador] = useState(null)
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [placas, setPlacas] = useState([])
   const [placaSelecionada, setPlacaSelecionada] = useState(null)
   const [arquivo, setArquivo] = useState(null)
@@ -232,9 +234,11 @@ export default function RevisarResultados({ csrfToken }) {
 
   return (
     <div style={{ fontFamily: 'inherit', maxWidth: 1200 }}>
+      <NavigationButtons currentStep="resultados" />
+
       {/* Modal bloqueante de identificação */}
       {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="Revisão de Resultados PCR" />
+        <CrachaModal onValidado={setOperador} modulo="Revisão de Resultados PCR" gruposRequeridos={['especialista', 'supervisor']} />
       )}
 
       <h2 style={{ marginBottom: '1.25rem', fontSize: '1.3rem', color: '#1a3a5c' }}>

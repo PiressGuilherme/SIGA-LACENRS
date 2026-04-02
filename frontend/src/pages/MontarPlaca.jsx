@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -76,7 +78,7 @@ function gridFromPocos(pocos) {
 async function api(url, { csrfToken, method = 'GET', body } = {}) {
   const opts = {
     method,
-    headers: { 'X-CSRFToken': csrfToken },
+    headers: { 'X-CSRFToken': getCsrfToken() },
     credentials: 'same-origin',
   }
   if (body) {
@@ -91,8 +93,8 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
 
 // ================================================================
 export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarDone }) {
-  // ---- State: operador (crachá) ----
-  const [operador, setOperador] = useState(null)
+  // ---- State: operador (crachá ou admin) ----
+  const [operador, setOperador] = useState(() => getOperadorInicial())
 
   // ---- State: lista de placas ----
   const [placas, setPlacas] = useState([])
@@ -414,6 +416,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      <NavigationButtons currentStep="extracao" />
 
       {/* Modal bloqueante de identificação */}
       {!operador && (

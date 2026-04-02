@@ -118,7 +118,7 @@ class ValidarCrachaView(APIView):
     pelo módulo (ex: grupos=especialista,supervisor). Se informado e o operador
     não pertencer a nenhum deles, retorna 403.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         codigo = request.query_params.get('codigo', '').strip()

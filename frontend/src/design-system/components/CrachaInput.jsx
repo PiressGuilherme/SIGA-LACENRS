@@ -1,22 +1,13 @@
 /**
  * CrachaInput — validação de crachá por leitura ou digitação.
- *
- * Props:
- *   onValidado(user | null)  chamado após cada tentativa de validação
- *   label                    texto do painel (default: 'Identificação do Operador')
- *
- * Comportamento:
- *   - Ao validar com sucesso: chama onValidado({ id, nome_completo, perfil, numero_cracha })
- *   - Ao escanear um novo crachá: chama onValidado com o novo operador (swap sem perda de dados)
- *   - Foco automático no input ao montar
  */
 import { useState, useRef, useEffect } from 'react'
 
 export default function CrachaInput({ onValidado, label = 'Identificação do Operador' }) {
-  const [codigo, setCodigo]       = useState('')
-  const [operador, setOperador]   = useState(null)
+  const [codigo, setCodigo]         = useState('')
+  const [operador, setOperador]     = useState(null)
   const [carregando, setCarregando] = useState(false)
-  const [erro, setErro]           = useState(null)
+  const [erro, setErro]             = useState(null)
   const inputRef = useRef()
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -46,11 +37,9 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
       onValidado(novoOperador)
     } catch (err) {
       setErro(err.message)
-      // Não limpa o operador anterior — operador atual continua válido
     } finally {
       setCodigo('')
       setCarregando(false)
-      // Re-foca para a próxima leitura
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }
@@ -70,18 +59,17 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
           placeholder="Escaneie ou digite o código do crachá..."
           disabled={carregando}
           autoComplete="off"
-          className="flex-1 px-3 py-2 text-[0.95rem] border-2 border-neutral-300 rounded-md outline-none bg-white focus:border-brand-500 transition-colors"
+          className="flex-1 px-3 py-2 text-[0.95rem] border-2 border-neutral-300 rounded-md outline-none bg-white focus:border-rs-red transition-colors"
         />
         <button
           type="submit"
           disabled={carregando || !codigo.trim()}
-          className={`px-3.5 py-2 text-[0.85rem] font-semibold bg-brand-800 text-white border-none rounded-md whitespace-nowrap transition-opacity ${(carregando || !codigo.trim()) ? 'cursor-default opacity-50' : 'cursor-pointer hover:bg-brand-700'}`}
+          className={`px-3.5 py-2 text-[0.85rem] font-semibold bg-rs-red text-white border-none rounded-md whitespace-nowrap transition-opacity ${(carregando || !codigo.trim()) ? 'cursor-default opacity-50' : 'cursor-pointer hover:bg-danger-700'}`}
         >
           {carregando ? '...' : 'Validar'}
         </button>
       </form>
 
-      {/* Operador atual */}
       {operador && (
         <div className="mt-2 flex items-center gap-2">
           <span className="text-[0.9rem] text-success-800 font-semibold">
@@ -96,7 +84,6 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
         </div>
       )}
 
-      {/* Erro de validação */}
       {erro && (
         <div className="mt-1.5 text-[0.82rem] text-danger-700">
           ⚠ {erro}

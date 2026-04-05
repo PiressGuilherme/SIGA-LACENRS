@@ -1,16 +1,9 @@
-from contextlib import contextmanager
-
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 
-
-@contextmanager
-def _noop_ctx():
-    """Context manager vazio — usado quando não há operador para o set_actor."""
-    yield
-
 from apps.amostras.models import Amostra, StatusAmostra
+from apps.core.utils import noop_ctx
 
 
 class TipoPlaca(models.TextChoices):
@@ -137,7 +130,7 @@ class Placa(models.Model):
     def confirmar_extracao(self, operador=None):
         """Scan do código da placa após extração: amostras → Extraída; placa → Extração confirmada."""
         from auditlog.context import set_actor
-        ctx = set_actor(operador) if operador else _noop_ctx()
+        ctx = set_actor(operador) if operador else noop_ctx()
         with transaction.atomic(), ctx:
             for amostra in Amostra.objects.filter(pk__in=self._amostras_ids()):
                 amostra.status = StatusAmostra.EXTRAIDA

@@ -58,7 +58,7 @@ export default function NavigationButtons({ currentStep }) {
       {etapa.anterior && (
         <button
           onClick={() => window.location.href = etapa.anterior.path}
-          className="bg-brand-800 text-white border-none px-4 py-2 rounded-md cursor-pointer text-[0.85rem] font-medium transition-opacity hover:opacity-80"
+          className="bg-neutral-700 text-white border-none px-4 py-2 rounded-md cursor-pointer text-[0.85rem] font-medium transition-opacity hover:opacity-80"
           title={etapa.anterior.label}
         >
           ← {etapa.anterior.label}
@@ -78,7 +78,7 @@ export default function NavigationButtons({ currentStep }) {
 
       {/* Indicador de etapa atual */}
       <span className="ml-auto text-[0.85rem] text-neutral-500 font-medium">
-        Etapa: <strong className="text-brand-800">{etapa.label}</strong>
+        Etapa: <strong className="text-rs-red">{etapa.label}</strong>
       </span>
     </div>
   )

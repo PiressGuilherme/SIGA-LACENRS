@@ -1,18 +1,16 @@
-import React from 'react'
-import { createRoot } from 'react-dom/client'
-import Login from '../pages/Login'
+import React from "react";
+import { createRoot } from "react-dom/client";
+import "../index.css";
+import Login from "../pages/Login";
 
-const el = document.getElementById('login-app')
+const el = document.getElementById("login-app");
 
 if (!el) {
-  console.error('[SIGA] #login-app não encontrado no DOM')
+  console.error("[SIGA] #login-app não encontrado no DOM");
 } else {
   createRoot(el).render(
     <React.StrictMode>
-      <Login
-        csrfToken={el.dataset.csrf}
-        nextUrl={el.dataset.next || '/'}
-      />
-    </React.StrictMode>
-  )
+      <Login csrfToken={el.dataset.csrf} nextUrl={el.dataset.next || "/"} />
+    </React.StrictMode>,
+  );
 }

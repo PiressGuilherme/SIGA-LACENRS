@@ -12,7 +12,7 @@ export const colors = {
   // Usadas em: TopNav (borda inferior tricolor), separadores, detalhes de logo,
   // faixas decorativas de cabeçalho. NÃO usar como cor de fundo de área de conteúdo.
   rs: {
-    red:    '#CC2529',   // vermelho da bandeira
+    red:    '#7f1d1d',   // vermelho institucional RS (tonalidade escura)
     yellow: '#FFC72C',   // amarelo da bandeira
     green:  '#009B3A',   // verde da bandeira
   },
@@ -71,7 +71,7 @@ export const colors = {
 
   // Vermelho funcional (≠ vermelho RS #CC2529) — status Cancelada, HPV Positivo, Erros
   danger: {
-    800: '#7f1d1d',
+    800: '#4c0f0f',
     700: '#b91c1c',
     600: '#e53e3e',
     500: '#fc8181',

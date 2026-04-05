@@ -1,124 +1,274 @@
 # SIGA-LACENRS
-LIMS direcionado ao recebimento e processamento de amostras de HPV.
 
-#Baixar data.csv o gal
-Entrar no gal com suas credenciais.
-Acessar pasta consultas -> Consultar Exames.
-Digitar no campo exame HPV e selecionar o primeiro.
-Selecionar o período de início e fim de 1 mês.
-desbarcar caixa de exame cancelado.
-Filtrar
-Levar o mouse até qualquer cabeçalho e clicar na seta para baixo que surgirá.
-levar o mouse até colunas e selecionar em adição as seguintes colunas: Cod. Exame, Num.Interno, Nome Social.
-Gerar arquivo csv na parte inferior da tela onde diz Exportar listagem.
+Sistema de Informação e Gerenciamento de Amostras do Laboratório de HPV — LACEN/CEVS-RS.
+
+## Visão Geral
+
+O SIGA-LACENRS é uma aplicação web para rastreamento completo do fluxo laboratorial de exames de HPV, desde a importação dos dados do sistema GAL (Gestão de Atividades Laboratoriais) até a liberação dos resultados. O sistema gerencia amostras, placas de extração, placas de PCR, resultados e integra-se ao GAL via WebService SOAP.
+
+### Funcionalidades Principais
+
+- **Importação de Amostras** — Upload de CSV exportado pelo GAL com preview e detecção automática de duplicatas
+- **Aliquotagem** — Recebimento físico de amostras com leitura de código de barras e checkpoint de crachá
+- **Extração** — Montagem de placas de extração de DNA (96 poços), cálculo de reagentes, exportação em PDF
+- **PCR** — Montagem de placas PCR a partir de extrações ou do zero, submissão ao termociclador
+- **Resultados** — Importação de CSV do CFX Manager (Bio-Rad), classificação automática por critérios IBMP, revisão e confirmação
+- **Consulta** — Busca avançada de amostras e placas com filtros e espelho expansível
+- **Integração GAL** — WebService SOAP para buscar exames e enviar resultados
+- **Auditoria** — Histórico completo de alterações via django-auditlog
+
+## Stack Tecnológica
+
+| Camada         | Tecnologia                                     |
+| -------------- | ---------------------------------------------- |
+| Backend        | Python 3.11, Django 5.1, Django REST Framework |
+| Banco de Dados | PostgreSQL 15                                  |
+| Frontend       | React 18, Vite, TailwindCSS, Zustand           |
+| Autenticação   | JWT (simplejwt) + Session Auth                 |
+| Infraestrutura | Docker, docker-compose, Nginx, Gunicorn        |
+| Auditoria      | django-auditlog                                |
+| Relatórios     | ReportLab                                      |
+
+## Como Rodar
+
+### Pré-requisitos
+
+- Docker e Docker Compose instalados
+- Arquivo `.env` configurado (copie de `.env.example`)
+
+### Desenvolvimento
+
+```bash
+# 1. Configurar variáveis de ambiente
+cp .env.example .env
+# Edite o .env com suas configurações
+
+# 2. Subir os containers
+make up-d
+
+# 3. Criar superusuário (primeira vez)
+make superuser
+
+# 4. Acessar
+# Admin Django:  http://localhost:8000/admin/
+# API:           http://localhost:8000/api/
+# Interface:     http://localhost:8000/
+```
+
+### Comandos Úteis
+
+| Comando          | Descrição                        |
+| ---------------- | -------------------------------- |
+| `make up-d`      | Sobe os containers em background |
+| `make migrate`   | Executa migrações do Django      |
+| `make shell`     | Abre shell Django no container   |
+| `make superuser` | Cria superusuário                |
+| `make test`      | Executa testes automatizados     |
+| `make logs`      | Exibe logs dos containers        |
+
+## Estrutura do Projeto
+
+```
+SIGA-LACENRS/
+├── backend/                    # API Django
+│   ├── apps/
+│   │   ├── amostras/           # Gestão de amostras, importação CSV
+│   │   ├── placas/             # Placas de extração e PCR (96 poços)
+│   │   ├── resultados/         # Resultados PCR, parser CFX Manager
+│   │   ├── usuarios/           # Autenticação, permissões, perfis
+│   │   └── gal_ws/             # Integração SOAP com GAL
+│   ├── config/                 # Configurações Django (settings, urls)
+│   ├── fixtures/               # Dados iniciais (grupos de permissão)
+│   ├── requirements/           # Dependências Python
+│   └── templates/              # Templates HTML Django
+├── frontend/                   # Interface React
+│   └── src/
+│       ├── components/         # Componentes reutilizáveis
+│       ├── design-system/      # Tokens e componentes de design
+│       ├── entries/            # Entry points por módulo (Vite)
+│       ├── pages/              # Componentes de página
+│       ├── services/           # Cliente HTTP (Axios)
+│       └── utils/              # Utilitários
+├── docker/                     # Configurações Docker (Nginx)
+├── docker-compose.yml          # Stack de produção
+├── docker-compose.override.yml # Overrides de desenvolvimento
+├── Makefile                    # Atalhos de comandos
+└── .env.example                # Template de variáveis de ambiente
+```
+
+## Perfis de Acesso
+
+| Perfil           | Permissões                                                                 |
+| ---------------- | -------------------------------------------------------------------------- |
+| **Técnico**      | Importar CSV, aliquotar, montar placas de extração e PCR                   |
+| **Especialista** | Tudo do Técnico + submeter ao termociclador + revisar/confirmar resultados |
+| **Supervisor**   | Acesso total (is_staff + is_superuser)                                     |
+
+> **Checkpoint de crachá:** Operações de aliquotagem e confirmação de extração exigem scan do crachá físico. Administradores (`is_staff=True`) têm bypass automático.
+
+## Fluxo de Status da Amostra
+
+```
+GAL CSV → Aguardando Triagem / Exame em Análise
+              ↓
+    [Aliquotagem] → Aliquotada
+              ↓
+    [Montar Placa Extração] → Extração
+              ↓
+    [Confirmar Extração] → Extraída
+              ↓
+    [Montar Placa PCR] → PCR
+              ↓
+    [Importar Resultado] → Resultado
+              ↓
+    [Liberar no GAL] → Resultado Liberado ✓
 
+Exceções: Cancelada (terminal), Repetição Solicitada → retorna para PCR
+```
 
+## API Endpoints
 
+### Autenticação
 
+| Método | Endpoint                    | Descrição                  |
+| ------ | --------------------------- | -------------------------- |
+| POST   | `/api/auth/login/`          | Login com e-mail/senha     |
+| POST   | `/api/auth/login-cracha/`   | Login com crachá           |
+| POST   | `/api/auth/logout/`         | Logout                     |
+| GET    | `/api/auth/validar-cracha/` | Validar crachá de operador |
+| POST   | `/api/token/refresh/`       | Renovar token JWT          |
 
----------------------------------------
+### Amostras
 
-Modelo Selecionável:
+| Método | Endpoint                        | Descrição                            |
+| ------ | ------------------------------- | ------------------------------------ |
+| GET    | `/api/amostras/`                | Listar amostras (paginado)           |
+| GET    | `/api/amostras/{id}/`           | Detalhe de amostra                   |
+| GET    | `/api/amostras/{id}/historico/` | Histórico de auditoria               |
+| GET    | `/api/amostras/filtros/`        | Filtros disponíveis (municípios, UF) |
+| POST   | `/api/amostras/receber/`        | Confirmar aliquotagem                |
+| POST   | `/api/amostras/preview-csv/`    | Preview de importação CSV            |
+| POST   | `/api/amostras/importar-csv/`   | Importar CSV do GAL                  |
 
-Haiku (3.5/4.0): É o "econômico". Use para tarefas simples: explicar um erro de sintaxe, renomear variáveis ou gerar testes unitários básicos. Ele consome até 90% menos tokens que o Opus.
+### Placas
 
-Sonnet: O equilíbrio ideal. É o padrão para a maioria das tarefas de codificação pesada.
+| Método | Endpoint                          | Descrição                    |
+| ------ | --------------------------------- | ---------------------------- |
+| GET    | `/api/placas/`                    | Listar placas                |
+| POST   | `/api/placas/`                    | Criar placa                  |
+| GET    | `/api/placas/{id}/`               | Detalhe de placa             |
+| GET    | `/api/placas/{id}/pdf/`           | Exportar PDF                 |
+| GET    | `/api/placas/{id}/rascunho-pcr/`  | Rascunho PCR de extração     |
+| POST   | `/api/placas/{id}/salvar-pocos/`  | Salvar poços da placa        |
+| POST   | `/api/placas/{id}/submeter/`      | Enviar PCR ao termociclador  |
+| POST   | `/api/placas/{id}/replicata/`     | Criar replicata de placa PCR |
+| GET    | `/api/placas/buscar-amostra/`     | Buscar amostra elegível      |
+| POST   | `/api/placas/confirmar-extracao/` | Confirmar extração           |
 
-Opus (4.6): O "SUV" de luxo. Use apenas quando estiver travado em um bug de lógica complexa ou arquitetura. Ele "bebe" tokens e reduz drasticamente seu limite de mensagens na janela de 5h.
+### Resultados
 
-Thinking (Modo de Pensamento):
+| Método | Endpoint                                    | Descrição                      |
+| ------ | ------------------------------------------- | ------------------------------ |
+| GET    | `/api/resultados/`                          | Listar resultados              |
+| GET    | `/api/resultados/{id}/`                     | Detalhe com canais             |
+| POST   | `/api/resultados/importar/`                 | Importar CSV do CFX Manager    |
+| POST   | `/api/resultados/{id}/confirmar/`           | Confirmar resultado (imutável) |
+| POST   | `/api/resultados/{id}/liberar/`             | Liberar resultado no GAL       |
+| POST   | `/api/resultados/{id}/solicitar-repeticao/` | Solicitar repetição de PCR     |
+| PATCH  | `/api/resultados/pocos/{id}/`               | Override manual de canal       |
 
-Quando ativado, o Claude gera um "rascunho mental" interno antes de responder.
+### GAL WebService
 
-Impacto: Cada palavra que ele "pensa" conta como token de saída. Se você pedir algo simples com o Thinking ligado, está jogando tokens no lixo. Desative-o para tarefas rotineiras.
+| Método | Endpoint                      | Descrição               |
+| ------ | ----------------------------- | ----------------------- |
+| GET    | `/api/gal-ws/configuracao/`   | Ler configuração GAL    |
+| POST   | `/api/gal-ws/configuracao/`   | Salvar configuração GAL |
+| POST   | `/api/gal-ws/testar-conexao/` | Testar conexão com GAL  |
+| POST   | `/api/gal-ws/buscar-exames/`  | Buscar exames pendentes |
 
-Effort (Esforço/Reasoning):
+## Modelos de Dados
 
-Define quanto tempo o modelo deve "raciocinar" sobre o problema.
+### Amostra
 
-Baixo Esforço: Respostas diretas. Ótimo para economizar.
+Representa uma amostra de paciente para análise de HPV.
 
-Alto Esforço: Gera cadeias de pensamento longas. Use apenas se o código for intrincado, pois o custo de contexto sobe exponencialmente.
+**Identificadores:** `cod_exame_gal` (único), `numero_gal`, `cod_amostra_gal`, `codigo_interno` (formato N/AA)
 
-2. Estratégias Práticas para a Janela de 5h
-O limite de 5 horas começa a contar a partir da primeira mensagem. Se você mandar um "Oi" às 08:00, sua sessão vai até às 13:00, independentemente de você estar usando ou não.
+**Dados do paciente:** nome, nome_social, cns, cpf, municipio, uf, unidade_solicitante, material
 
-O Truque do "Dummy Prompt": Se você sabe que vai codar pesado das 14h às 18h, mande uma mensagem curta ("ping") às 11h. Isso faz com que sua primeira sessão expire às 16h, liberando uma nova cota cheia exatamente quando você ainda está no meio do trabalho.
+**Datas:** data_coleta, data_recebimento
 
-Comando /compact ou Novo Chat: À medida que a conversa cresce, o Claude reenvia todo o histórico a cada nova mensagem. Se o chat ficou longo, use o comando /compact (se disponível na sua ferramenta) ou inicie um novo chat referenciando apenas os arquivos necessários.
+**Fluxo:** status (enum), observacoes, criado_por, recebido_por
 
-Use o .claudeignore ou .cursorignore: Evite que a IA leia pastas pesadas como node_modules, dist ou build. Se ela indexar esses arquivos desnecessariamente, cada prompt enviará milhares de tokens inúteis de contexto.
+### Placa
 
+Placa de 96 poços (8×12) para extração ou PCR.
 
+**Campos:** codigo (auto: HPVe{DDMMAA}-{N} / HPVp{DDMMAA}-{N}), tipo_placa (extracao/pcr), placa_origem (FK), protocolo, responsavel, extracao_confirmada_por, status_placa, observacoes
 
+**Status por tipo:**
 
+- Extração: `aberta` → `extracao_confirmada`
+- PCR: `aberta` → `submetida` → `resultados_importados`
 
-PROMPT PARA CONTINUAR: 
+### Poco
 
+Poço individual de uma placa.
 
+**Campos:** placa (FK), amostra (FK, nullable), posicao (A01-H12), tipo_conteudo (amostra/cn/cp/vazio)
 
+### ResultadoPoco
 
-Estou retomando uma tarefa que foi interrompida por limite de tokens, você tinha os seguintes passos:
+Resultado bruto de um canal de PCR por poço.
 
-Criar parser.py — parse CFX CSV + lógica IBMP(Feito)
+**Campos:** poco (FK), canal (CI/HPV16/HPV18/HPV_AR), cq, interpretacao, interpretacao_manual, justificativa_manual
 
-Atualizar models.py — adicionar recalcular_resultado_final(Feito)
+### ResultadoAmostra
 
-Atualizar serializers.py — adicionar ResultadoAmostraDetalheSerializer
+Resultado consolidado de uma amostra por run.
 
-Reescrever views.py — viewsets com importar, confirmar, liberar, repetição
+**Campos:** poco (OneToOne), ci_resultado, hpv16_resultado, hpv18_resultado, hpvar_resultado, resultado_final, confirmado_em, confirmado_por, imutavel
 
-Atualizar urls.py — registrar viewsets + URL da página
+### Usuario
 
-Criar template revisao.html + wiring Django/Vite/URLs
+Usuário customizado com login por e-mail.
 
-Criar frontend ResultadosRevisao.jsx + entry resultados.jsx
+**Campos:** email (único), nome_completo, numero_cracha, is_active, is_staff, groups
 
-Executar migrate + testar importação no container
+### GalWsConfig
 
+Configuração do GAL WebService (singleton).
 
+**Campos:** usuario, senha, codigo_laboratorio, url_ws, verificar_ssl
 
-Prompt anterior com instruções desta etapa de desenvolvimento:
+## Testes
 
-Vamos trabalahar especificamene na fase 6 agora. Para isso, vou te instruir quanto aos critérios IBMP. Veja também o exemplo em csv do output do sequenciador agora presente na pasta do projeto chamado HPV1303261_lims. Perceba que este nome do CSV segue uma lógica com HPV sempre fixo sequido da data (130326) e o número da placa 1.
+```bash
+make test
+```
 
-Instruções IBMP:
+36 testes automatizados cobrindo:
 
-1. Validação da Corrida (Controles)Para que os resultados da placa sejam válidos, os controles da reação devem atender estritamente aos seguintes critérios:Controle Positivo (CP): Deve obrigatoriamente apresentar amplificação nos 4 alvos analisados (HPV-16, HPV-18, HPV AR e CI). O valor de Ct para estes alvos deve ser Ct ≤ 25.Controle Negativo (CN): Não deve apresentar nenhum sinal de amplificação para os alvos de HPV. O Controle Interno (CI) deve amplificar com um valor de Ct ≤ 25.Se o CP ou o CN não apresentarem o comportamento esperado descrito acima, o ensaio inteiro é considerado inválido.2. Critérios de Avaliação das AmostrasA análise de cada amostra baseia-se na leitura conjugada do Controle Interno (CI) e das curvas de detecção viral:Amostra Negativa: Caracterizada pela ausência de amplificação para qualquer alvo de HPV. É obrigatório que o Controle Interno apresente amplificação com Ct ≤ 33 para validar a negatividade da amostra.Amostra Positiva: Caracterizada por apresentar curva de perfil típico de amplificação para pelo menos um dos alvos de HPV, com Ct ≤ 40. Um resultado positivo é válido independentemente de o Controle Interno ter amplificado ou não.Amostra Inválida: Ocorre quando não há amplificação para os alvos de HPV e o Controle Interno também não amplifica (ou amplifica com Ct > 33).3. Matriz de Interpretação de ResultadosCom base nas regras de positividade e negatividade, os laudos finais devem ser reportados segundo as seguintes combinações:HPV não detectável: Nenhum alvo viral amplificado e presença de CI válido (+).HPV-16 detectável: Amplificação exclusiva do alvo HPV-16 (+), independente do CI (+/-).HPV-18 detectável: Amplificação exclusiva do alvo HPV-18 (+), independente do CI (+/-).HPV AR detectável*: Amplificação exclusiva do alvo HPV AR (+), independente do CI (+/-). (Nota: A sigla AR refere-se aos genótipos de alto risco 31, 33, 35, 39, 45, 51, 52, 56, 58, 59, 66 e 68 ).Infecções Múltiplas:HPV-18 e HPV AR detectáveis*: Amplificação dos alvos HPV-18 (+) e HPV AR (+).HPV-16 e HPV AR detectáveis*: Amplificação dos alvos HPV-16 (+) e HPV AR (+).HPV-16 e HPV-18 detectáveis: Amplificação dos alvos HPV-16 (+) e HPV-18 (+).HPV-16, HPV-18 e HPV AR detectáveis*: Amplificação simultânea dos três alvos virais (+).4. Procedimentos para Casos InválidosAmostras invalidadas (sem amplificação viral e com falha no CI) devem ser testadas novamente a partir da etapa de qPCR.Caso a amostra permaneça com Ct > 33 para o Controle Interno, o processo deve ser repetido desde a etapa de extração do DNA.Se mesmo após a nova extração o resultado se mantiver, a amostra deve ser liberada com o status de "inconclusivo".
+- State machine de transições de status
+- Permissões por grupo em todos os ViewSets
+- Validação de transições de status
 
+## Roadmap
 
+### Pendente
 
-------Anotações------
--Exames cancelados entram no db?
--Arrumar a tag de aliquota ja feita ✅
--#PLACA: Fix placement de amostras e Controle (default G-H 12) -!!!Não permitir salvamento de placa SEM CONTROLE ✅
--#PLACA: Reconhecimento e flag de duplicatas ✅
--#PLACA: Alterar nome PACIENTE (não aparecer) e Fluxo de adição de amostras vertical (atualmente cada amostra é adicionada horizontalmente)✅
+- [ ] **Fase 6 — Módulo de Resultados:** Implementar critérios IBMP Biomol (cutoffs de Cq) para classificação automática
+- [ ] **Fase 6.5 — Integração e Robustez:** Testes E2E do fluxo completo, visualização de histórico de amostra
+- [ ] **Fase 7 — Auditoria e Relatórios:** Configuração avançada do Admin, relatórios exportáveis (PDF/Excel)
+- [ ] **Fase 8 — Dashboard:** Página inicial com Chart.js, contadores, gráficos e alertas
+- [ ] **Integração GAL completa:** Implementar `marcarExamesEnviados` e `gravarResultados` no WebService
+- [ ] **Responsividade:** Adaptar interface para tablets (uso em bancada)
+- [ ] **Filtro por material:** Implementar filtro por material na consulta de amostras
 
+### Melhorias Técnicas
 
-Confirmar login antes de qualquer modulo (melhorar)
-
-arrumar satus de pcr ✅
-
-adicionar botão de confirmar todos na revisão de resultados
-
-
-protocolos de anonimizar dados
-
-
-Voltar ao inicio após importação
-
-
-Edição placa pós salvar >> revisar
-
-opção de repetir amostras >> revisar
-
-
-Cód. Exame => Requisição  ✅
-
-
-Formato pdf placas
-
-
-# IMPORTANTE: refomular sistema de login e autenticação de ações: o registro do log hoje é feito pelo login e não pela autenticação de etapa que estamos implementando, isso deve ser revisto e bem documentado para que as ações feitas sejam registradas no nome do usuário que foi autenticado para cada modulo/ação e não pelo que fez o login inicial. Talvez fazer login por laboratório e depois os logs internos pelo código do crachá (id funcional)
-
+- [ ] Adicionar testes de integração para endpoints de importação CSV
+- [ ] Implementar rate limiting mais granular
+- [ ] Adicionar logging estruturado para auditoria
+- [ ] Otimizar queries com select_related/prefetch_related onde necessário
+- [ ] Implementar CI/CD com GitHub Actions

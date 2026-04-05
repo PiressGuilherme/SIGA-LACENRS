@@ -13,33 +13,33 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <!-- TopNav com Tailwind -->
-  <header class="sticky top-0 z-50 h-14 bg-brand-800 border-b border-brand-900 flex items-center px-6 gap-6 shadow-sm"
+  <!-- TopNav -->
+  <header class="sticky top-0 z-50 h-14 bg-neutral-900 flex items-center px-6 gap-6 shadow-sm"
           style="border-bottom: 3px solid; border-image: linear-gradient(to right, #CC2529 33%, #FFC72C 33% 66%, #009B3A 66%) 1">
-    
+
     <!-- Logo -->
     <a href="/" class="text-white font-bold text-sm tracking-widest uppercase shrink-0">
       SIGA · LACEN
     </a>
 
-    <div class="w-px h-5 bg-brand-600 shrink-0"></div>
+    <div class="w-px h-5 bg-neutral-600 shrink-0"></div>
 
     <!-- Workflow Stepper -->
     <nav class="flex items-center gap-1 flex-1 overflow-x-auto" aria-label="Etapas">
       <a href="/amostras/aliquotagem/"
-         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-brand-300 hover:text-white hover:bg-brand-700">
+         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-neutral-300 hover:text-white hover:bg-neutral-700">
         Aliquotagem
       </a>
       <a href="/placas/extracao/"
-         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-brand-300 hover:text-white hover:bg-brand-700">
+         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-neutral-300 hover:text-white hover:bg-neutral-700">
         Extração
       </a>
       <a href="/placas/pcr/"
-         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-brand-300 hover:text-white hover:bg-brand-700">
+         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-neutral-300 hover:text-white hover:bg-neutral-700">
         PCR
       </a>
       <a href="/resultados/revisar/"
-         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-brand-300 hover:text-white hover:bg-brand-700">
+         class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors text-neutral-300 hover:text-white hover:bg-neutral-700">
         Resultados
       </a>
     </nav>
@@ -47,27 +47,27 @@
     <!-- Links secundários -->
     <div class="flex items-center gap-3 shrink-0">
       <a href="/amostras/consulta/"
-         class="text-brand-400 hover:text-white text-sm transition-colors">
+         class="text-neutral-400 hover:text-white text-sm transition-colors">
         Consulta
       </a>
       <a href="/amostras/importar/"
-         class="text-brand-400 hover:text-white text-sm transition-colors">
+         class="text-neutral-400 hover:text-white text-sm transition-colors">
         Importar
       </a>
       {% if user.is_superuser %}
-        <a href="{% url 'gal-ws-page' %}" class="text-brand-400 hover:text-white text-sm transition-colors">GAL WS</a>
-        <a href="/admin/" class="text-brand-400 hover:text-white text-sm transition-colors">Admin</a>
+        <a href="{% url 'gal-ws-page' %}" class="text-neutral-400 hover:text-white text-sm transition-colors">GAL WS</a>
+        <a href="/admin/" class="text-neutral-400 hover:text-white text-sm transition-colors">Admin</a>
       {% endif %}
     </div>
 
     <!-- User info + logout -->
     {% if user.is_authenticated %}
       <div class="flex items-center gap-3 shrink-0 ml-auto">
-        <span class="text-brand-300 text-sm font-medium" id="header-usuario">
+        <span class="text-neutral-300 text-sm font-medium" id="header-usuario">
           {{ user.nome_completo }}
         </span>
         <button onclick="logout()"
-                class="text-brand-400 hover:text-white text-sm transition-colors">
+                class="text-neutral-400 hover:text-white text-sm transition-colors">
           Sair
         </button>
       </div>

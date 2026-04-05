@@ -1,10 +1,5 @@
 /**
  * BarcodeInput — Input especializado para scan de crachá e código de amostra
- * 
- * Características:
- * - Fonte JetBrains Mono, centralizado
- * - Autofocus após cada submit bem-sucedido
- * - Substitui todos os <input> de scan atuais
  */
 
 import { useRef, useEffect } from 'react'
@@ -56,10 +51,10 @@ export default function BarcodeInput({
         className={`
           w-full px-4 py-3
           font-mono text-lg text-center tracking-wider
-          border-2 border-brand-400 rounded-lg
+          border-2 border-rs-red rounded-lg
           bg-white text-neutral-900
           placeholder:text-neutral-400 placeholder:font-sans placeholder:text-base placeholder:tracking-normal
-          focus:outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-200
+          focus:outline-none focus:border-danger-700 focus:ring-2 focus:ring-danger-100
           disabled:bg-neutral-100 disabled:text-neutral-500 disabled:border-neutral-300
           transition-colors
         `}

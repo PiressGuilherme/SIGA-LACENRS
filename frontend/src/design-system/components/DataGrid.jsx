@@ -1,13 +1,5 @@
 /**
  * DataGrid — Tabela densa reutilizável com sticky columns e zebra stripe.
- *
- * Props:
- *   columns       — Array de { key, label, width?, mono?, render? }
- *   data          — Array de objetos
- *   onRowClick    — Callback ao clicar em uma linha (opcional)
- *   stickyColumns — Número de colunas fixas à esquerda (default: 0)
- *   emptyMessage  — Mensagem quando não há dados
- *   className     — Classes adicionais
  */
 export default function DataGrid({
   columns = [],
@@ -46,7 +38,7 @@ export default function DataGrid({
             <tr
               key={row.id || rowIndex}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`border-b border-neutral-100 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-brand-50' : ''} ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}
+              className={`border-b border-neutral-100 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-danger-50' : ''} ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}
             >
               {columns.map((col, i) => (
                 <td

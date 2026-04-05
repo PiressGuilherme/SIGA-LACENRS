@@ -1,22 +1,13 @@
 /**
  * CrachaInput — validação de crachá por leitura ou digitação.
- *
- * Props:
- *   onValidado(user | null)  chamado após cada tentativa de validação
- *   label                    texto do painel (default: 'Identificação do Operador')
- *
- * Comportamento:
- *   - Ao validar com sucesso: chama onValidado({ id, nome_completo, perfil, numero_cracha })
- *   - Ao escanear um novo crachá: chama onValidado com o novo operador (swap sem perda de dados)
- *   - Foco automático no input ao montar
  */
 import { useState, useRef, useEffect } from 'react'
 
 export default function CrachaInput({ onValidado, label = 'Identificação do Operador' }) {
-  const [codigo, setCodigo]       = useState('')
-  const [operador, setOperador]   = useState(null)
+  const [codigo, setCodigo]         = useState('')
+  const [operador, setOperador]     = useState(null)
   const [carregando, setCarregando] = useState(false)
-  const [erro, setErro]           = useState(null)
+  const [erro, setErro]             = useState(null)
   const inputRef = useRef()
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -46,29 +37,20 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
       onValidado(novoOperador)
     } catch (err) {
       setErro(err.message)
-      // Não limpa o operador anterior — operador atual continua válido
     } finally {
       setCodigo('')
       setCarregando(false)
-      // Re-foca para a próxima leitura
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }
 
   return (
-    <div style={{
-      background: operador ? '#f0fdf4' : '#f8fafc',
-      border: `1px solid ${operador ? '#6ee7b7' : '#e2e8f0'}`,
-      borderRadius: 8,
-      padding: '0.9rem 1.1rem',
-      marginBottom: '1.25rem',
-      transition: 'background 0.2s, border-color 0.2s',
-    }}>
-      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <div className={`rounded-lg px-4 py-3.5 mb-5 transition-colors border ${operador ? 'bg-success-50 border-success-400' : 'bg-neutral-50 border-neutral-200'}`}>
+      <div className="text-[0.78rem] font-semibold text-neutral-600 mb-2 uppercase tracking-wider">
         {label}
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
         <input
           ref={inputRef}
           type="text"
@@ -77,48 +59,33 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
           placeholder="Escaneie ou digite o código do crachá..."
           disabled={carregando}
           autoComplete="off"
-          style={{
-            flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.95rem',
-            border: '2px solid #cbd5e1', borderRadius: 6, outline: 'none',
-            background: '#fff',
-          }}
+          className="flex-1 px-3 py-2 text-[0.95rem] border-2 border-neutral-300 rounded-md outline-none bg-white focus:border-rs-red transition-colors"
         />
         <button
           type="submit"
           disabled={carregando || !codigo.trim()}
-          style={{
-            padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600,
-            background: '#1a3a5c', color: '#fff', border: 'none', borderRadius: 6,
-            cursor: (carregando || !codigo.trim()) ? 'default' : 'pointer',
-            opacity: (carregando || !codigo.trim()) ? 0.5 : 1,
-            whiteSpace: 'nowrap',
-          }}
+          className={`px-3.5 py-2 text-[0.85rem] font-semibold bg-rs-red text-white border-none rounded-md whitespace-nowrap transition-opacity ${(carregando || !codigo.trim()) ? 'cursor-default opacity-50' : 'cursor-pointer hover:bg-danger-700'}`}
         >
           {carregando ? '...' : 'Validar'}
         </button>
       </form>
 
-      {/* Operador atual */}
       {operador && (
-        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-[0.9rem] text-success-800 font-semibold">
             ✓ {operador.nome_completo}
           </span>
-          <span style={{
-            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
-            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
-          }}>
+          <span className="text-[0.72rem] bg-success-100 text-success-800 px-1.5 py-0.5 rounded-full font-medium">
             {operador.perfil}
           </span>
-          <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 'auto' }}>
+          <span className="text-[0.75rem] text-neutral-500 ml-auto">
             Escaneie um novo crachá para trocar de operador
           </span>
         </div>
       )}
 
-      {/* Erro de validação */}
       {erro && (
-        <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#b91c1c' }}>
+        <div className="mt-1.5 text-[0.82rem] text-danger-700">
           ⚠ {erro}
         </div>
       )}

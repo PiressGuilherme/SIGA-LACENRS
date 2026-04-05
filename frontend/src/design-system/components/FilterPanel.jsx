@@ -1,13 +1,5 @@
 /**
  * FilterPanel — Painel de filtros avançados reutilizável.
- *
- * Props:
- *   filters       — Array de { key, label, type, options?, placeholder? }
- *                   type: 'text' | 'select' | 'date' | 'dateRange'
- *   values        — Objeto com valores atuais dos filtros
- *   onFilterChange — Callback (key, value) ao mudar um filtro
- *   onClear       — Callback para limpar todos os filtros
- *   className     — Classes adicionais
  */
 export default function FilterPanel({
   filters = [],
@@ -21,6 +13,8 @@ export default function FilterPanel({
   }
 
   const hasActiveFilters = Object.values(values).some(v => v !== undefined && v !== '' && v !== null)
+
+  const inputClass = "w-full px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-rs-red focus:ring-1 focus:ring-danger-100"
 
   return (
     <div className={`bg-white border border-neutral-200 rounded-lg p-4 ${className}`}>
@@ -51,7 +45,7 @@ export default function FilterPanel({
                 value={values[filter.key] || ''}
                 onChange={e => handleChange(filter.key, e.target.value)}
                 placeholder={filter.placeholder || `Filtrar por ${filter.label.toLowerCase()}...`}
-                className="w-full px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-brand-500"
+                className={inputClass}
               />
             )}
 
@@ -59,7 +53,7 @@ export default function FilterPanel({
               <select
                 value={values[filter.key] || ''}
                 onChange={e => handleChange(filter.key, e.target.value)}
-                className="w-full px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-brand-500"
+                className={inputClass}
               >
                 <option value="">{filter.placeholder || 'Todos'}</option>
                 {(filter.options || []).map(opt => (
@@ -75,7 +69,7 @@ export default function FilterPanel({
                 type="date"
                 value={values[filter.key] || ''}
                 onChange={e => handleChange(filter.key, e.target.value)}
-                className="w-full px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-brand-500"
+                className={inputClass}
               />
             )}
 
@@ -85,15 +79,13 @@ export default function FilterPanel({
                   type="date"
                   value={values[`${filter.key}_inicio`] || ''}
                   onChange={e => handleChange(`${filter.key}_inicio`, e.target.value)}
-                  placeholder="De"
-                  className="flex-1 px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-brand-500"
+                  className={`flex-1 ${inputClass}`}
                 />
                 <input
                   type="date"
                   value={values[`${filter.key}_fim`] || ''}
                   onChange={e => handleChange(`${filter.key}_fim`, e.target.value)}
-                  placeholder="Até"
-                  className="flex-1 px-3 py-1.5 text-[0.85rem] border border-neutral-300 rounded-md outline-none bg-white transition-colors focus:border-brand-500"
+                  className={`flex-1 ${inputClass}`}
                 />
               </div>
             )}

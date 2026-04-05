@@ -37,6 +37,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'apps.core',
     'apps.usuarios',
     'apps.amostras',
     'apps.placas',
@@ -140,8 +141,8 @@ MEDIA_ROOT = BASE_DIR / 'mediafiles'
 DJANGO_VITE = {
     'default': {
         'dev_mode': False,  # sobrescrito em development.py
-        'dev_server_host': 'localhost',
-        'dev_server_port': 5173,
+        'dev_server_host': config('VITE_HOST', default='localhost'),
+        'dev_server_port': config('VITE_PORT', default=5173, cast=int),
         'manifest_path': BASE_DIR / 'static' / '.vite' / 'manifest.json',
         'static_url_prefix': '',
     }

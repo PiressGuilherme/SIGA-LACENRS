@@ -1,13 +1,5 @@
 /**
  * SearchInput — Campo de busca com debounce e ícone de lupa.
- *
- * Props:
- *   onSearch     — Callback com o termo de busca (após debounce)
- *   debounceMs   — Tempo de debounce em ms (default: 300)
- *   placeholder  — Texto placeholder (default: 'Buscar...')
- *   value        — Valor controlado (opcional)
- *   onChange     — Callback de mudança (opcional)
- *   className    — Classes adicionais
  */
 import { useState, useEffect, useRef } from 'react'
 
@@ -30,7 +22,6 @@ export default function SearchInput({
     if (!isControlled) setInternalValue(newValue)
     if (onChange) onChange(newValue)
 
-    // Debounce
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       if (onSearch) onSearch(newValue)
@@ -51,7 +42,6 @@ export default function SearchInput({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Ícone de lupa */}
       <svg
         className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none"
         fill="none"
@@ -71,10 +61,9 @@ export default function SearchInput({
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 text-[0.9rem] border border-neutral-300 rounded-lg outline-none bg-white transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
+        className="w-full pl-10 pr-10 py-2 text-[0.9rem] border border-neutral-300 rounded-lg outline-none bg-white transition-colors focus:border-rs-red focus:ring-1 focus:ring-danger-100"
       />
 
-      {/* Botão limpar */}
       {value && (
         <button
           onClick={handleClear}

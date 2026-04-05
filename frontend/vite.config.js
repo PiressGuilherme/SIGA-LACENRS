@@ -1,37 +1,38 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { resolve } from "path";
 
 export default defineConfig({
   plugins: [react()],
 
   // Alinha com STATIC_URL do Django para que django-vite gere URLs corretas
   // tanto em dev (http://localhost:5173/static/...) quanto em produção
-  base: '/static/',
+  base: "/static/",
 
-  root: resolve(__dirname, 'src'),
+  root: resolve(__dirname, "src"),
 
   resolve: {
     alias: {
-      '@design-system': resolve(__dirname, 'src/design-system'),
+      "@design-system": resolve(__dirname, "src/design-system"),
     },
   },
 
   build: {
-    outDir: resolve(__dirname, '../backend/static'),
+    outDir: resolve(__dirname, "../backend/static"),
     emptyOutDir: true,
     manifest: true,
     rollupOptions: {
       input: {
-        index: resolve(__dirname, 'src/index.css'),
-        login: resolve(__dirname, 'src/entries/login.jsx'),
-        import: resolve(__dirname, 'src/entries/import.jsx'),
-        aliquotagem: resolve(__dirname, 'src/entries/aliquotagem.jsx'),
-        plates: resolve(__dirname, 'src/entries/plates.jsx'),
-        pcr: resolve(__dirname, 'src/entries/pcr.jsx'),
-        consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
-        resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
-        gal_ws: resolve(__dirname, 'src/entries/gal_ws.jsx'),
+        index: resolve(__dirname, "src/index.css"),
+        login: resolve(__dirname, "src/entries/login.jsx"),
+        import: resolve(__dirname, "src/entries/import.jsx"),
+        aliquotagem: resolve(__dirname, "src/entries/aliquotagem.jsx"),
+        plates: resolve(__dirname, "src/entries/plates.jsx"),
+        pcr: resolve(__dirname, "src/entries/pcr.jsx"),
+        consulta: resolve(__dirname, "src/entries/consulta.jsx"),
+        resultados: resolve(__dirname, "src/entries/resultados.jsx"),
+        gal_ws: resolve(__dirname, "src/entries/gal_ws.jsx"),
+        recebimento: resolve(__dirname, "src/entries/recebimento.jsx"),
       },
     },
   },
@@ -42,5 +43,11 @@ export default defineConfig({
     // Permite que o browser carregue scripts do Vite mesmo com a página
     // vindo de uma origem diferente (Django em :8000)
     cors: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
-})
+});

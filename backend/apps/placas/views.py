@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -12,6 +10,7 @@ from rest_framework.response import Response
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.amostras.serializers import AmostraSerializer
+from apps.core.utils import noop_ctx, resolver_operador
 from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsLaboratorio
 from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
 from .pdf import gerar_pdf_placa
@@ -20,13 +19,8 @@ from .serializers import PlacaSerializer, PocoInputSerializer
 User = get_user_model()
 
 
-@contextmanager
-def _noop_ctx():
-    yield
-
-
-def _resolver_operador(request):
-    """Resolve o operador a partir de numero_cracha ou fallback para request.user (superuser)."""
+def _resolver_operador_placa(request):
+    """Resolve o operador para operações de placa com validação de crachá."""
     from auditlog.context import set_actor
     numero_cracha = (request.data.get('numero_cracha') or '').strip()
     if numero_cracha:
@@ -306,9 +300,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, _err = _resolver_operador_placa(request)
         if actor_ctx is None:
-            actor_ctx = _noop_ctx()
+            actor_ctx = noop_ctx()
 
         with transaction.atomic(), actor_ctx:
             placa.pocos.all().delete()
@@ -380,7 +374,7 @@ class PlacaViewSet(viewsets.ModelViewSet):
             )
 
         # Validação de crachá do operador
-        operador, _ctx, err = _resolver_operador(request)
+        operador, _ctx, err = _resolver_operador_placa(request)
         if err:
             return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         numero_cracha = (request.data.get('numero_cracha') or '').strip()
@@ -418,9 +412,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, _err = _resolver_operador_placa(request)
         if actor_ctx is None:
-            actor_ctx = _noop_ctx()
+            actor_ctx = noop_ctx()
         with actor_ctx:
             placa.submeter_termociclador()
         return Response(PlacaSerializer(placa).data)
@@ -447,9 +441,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, _err = _resolver_operador_placa(request)
         if actor_ctx is None:
-            actor_ctx = _noop_ctx()
+            actor_ctx = noop_ctx()
 
         with transaction.atomic(), actor_ctx:
             # Cria nova placa PCR

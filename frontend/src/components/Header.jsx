@@ -17,7 +17,8 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-brand-800 px-6 py-3 flex items-center justify-between border-b-[3px] border-brand-900">
+    <header className="bg-neutral-900 px-6 py-3 flex items-center justify-between border-b-[3px]"
+      style={{ borderImage: 'linear-gradient(to right, #7f1d1d 33%, #FFC72C 33% 66%, #009B3A 66%) 1' }}>
       <a
         href="/"
         className="text-white no-underline text-[1.1rem] font-bold tracking-wide"
@@ -27,7 +28,7 @@ export default function Header() {
 
       <div className="flex items-center gap-4">
         {usuario && (
-          <span className="text-brand-300 text-[0.85rem] font-medium">
+          <span className="text-neutral-300 text-[0.85rem] font-medium">
             {usuario.nome_completo}
             {usuario.is_staff && (
               <span className="ml-2 bg-white/20 px-1.5 py-0.5 rounded text-[0.7rem] font-semibold">

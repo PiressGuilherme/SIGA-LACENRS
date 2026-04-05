@@ -1,21 +1,12 @@
 /**
  * CrachaModal — modal bloqueante de identificação por crachá.
- *
- * Exibido como overlay fullscreen que impede interação com a página
- * até que o operador escaneie um crachá válido.
- *
- * Props:
- *   onValidado(user)   chamado após validação bem-sucedida
- *   modulo             nome do módulo exibido no título (ex: 'Aliquotagem')
- *   operadorAtual      se preenchido, exibe opção de manter operador
- *   onManter()         chamado quando operador decide manter o anterior
  */
 import { useState, useRef, useEffect } from 'react'
 
 export default function CrachaModal({ onValidado, modulo = '', operadorAtual = null, onManter, gruposRequeridos = [] }) {
-  const [codigo, setCodigo]       = useState('')
+  const [codigo, setCodigo]         = useState('')
   const [carregando, setCarregando] = useState(false)
-  const [erro, setErro]           = useState(null)
+  const [erro, setErro]             = useState(null)
   const inputRef = useRef()
 
   useEffect(() => {
@@ -49,13 +40,11 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
         throw new Error(data.erro || 'Crachá não reconhecido.')
       }
 
-      // Switch de sessão: atualiza tokens e identidade no localStorage
       if (data.access && data.refresh && data.usuario) {
         localStorage.setItem('access_token', data.access)
         localStorage.setItem('refresh_token', data.refresh)
         localStorage.setItem('usuario', JSON.stringify(data.usuario))
 
-        // Atualiza o nome do operador no header da página
         const elHeader = document.getElementById('header-usuario')
         if (elHeader) elHeader.textContent = data.usuario.nome_completo
       }
@@ -73,13 +62,21 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
   return (
     <div className="fixed inset-0 bg-black/55 flex items-center justify-center z-[9999] backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl overflow-hidden w-full max-w-[420px] mx-4">
-        {/* Header */}
-        <div className="bg-brand-800 px-8 pt-7 pb-5 text-center text-white">
+
+        {/* Header vermelho RS */}
+        <div className="bg-rs-red px-8 pt-7 pb-5 text-center text-white">
           <div className="text-[2.8rem] mb-1">ID</div>
           <div className="text-[1.2rem] font-bold tracking-wide">Identificação do Operador</div>
           {modulo && (
-            <div className="text-[0.8rem] text-brand-300 mt-1">Módulo: {modulo}</div>
+            <div className="text-[0.8rem] text-red-200 mt-1">Módulo: {modulo}</div>
           )}
+        </div>
+
+        {/* Faixa tricolor RS */}
+        <div className="h-1 flex">
+          <div className="flex-1 bg-rs-red" />
+          <div className="flex-1 bg-rs-yellow" />
+          <div className="flex-1 bg-rs-green" />
         </div>
 
         {/* Body */}
@@ -103,18 +100,17 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
               placeholder="Escanear crachá..."
               disabled={carregando}
               autoComplete="off"
-              className="w-full px-3.5 py-3 rounded-lg border-2 border-neutral-300 text-base text-center tracking-wider mb-3 outline-none transition-colors focus:border-brand-500 box-border"
+              className="w-full px-3.5 py-3 rounded-lg border-2 border-neutral-300 text-base text-center tracking-wider mb-3 outline-none transition-colors focus:border-rs-red box-border"
             />
             <button
               type="submit"
               disabled={carregando || !codigo.trim()}
-              className={`w-full py-3 bg-brand-800 text-white border-none rounded-lg text-[0.95rem] font-bold cursor-pointer transition-opacity ${(carregando || !codigo.trim()) ? 'opacity-60 cursor-default' : 'hover:bg-brand-700'}`}
+              className={`w-full py-3 bg-rs-red text-white border-none rounded-lg text-[0.95rem] font-bold cursor-pointer transition-opacity ${(carregando || !codigo.trim()) ? 'opacity-60 cursor-default' : 'hover:bg-danger-700'}`}
             >
               {carregando ? 'Validando...' : 'Validar crachá'}
             </button>
           </form>
 
-          {/* Manter operador anterior */}
           {operadorAtual && onManter && (
             <div className="mt-4">
               <div className="text-center relative mb-3">
@@ -126,7 +122,6 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
             </div>
           )}
 
-          {/* Botão cancelar */}
           <div className="mt-4 text-center">
             <button
               type="button"

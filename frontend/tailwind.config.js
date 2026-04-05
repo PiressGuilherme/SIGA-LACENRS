@@ -78,5 +78,5 @@ export default {
       boxShadow: tokens.shadow,
     },
   },
-  plugins: [require("@tailwindcss/forms")],
+  plugins: [require("@tailwindcss/forms"), require("tailwindcss-animate")],
 };

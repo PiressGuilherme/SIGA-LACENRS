@@ -1,85 +1,72 @@
 /**
- * ConfirmDialog — Modal de confirmação para ações destrutivas
+ * ConfirmDialog — modal de confirmação baseado em Radix Dialog.
+ * API compatível com o componente anterior.
  */
-
-import { useEffect, useRef } from 'react'
+import { Dialog, DialogContent, ConfirmDialog as RadixConfirmDialog } from '../../components/ui/dialog'
+import * as RadixDialogPrimitive from '@radix-ui/react-dialog'
+import { cn } from '../../lib/utils'
 
 export default function ConfirmDialog({
   open,
   title,
-  description,
+  description,       // prop legada
+  message,           // prop nova (sinônimo de description)
   confirmLabel = 'Confirmar',
   confirmVariant = 'danger',
   onConfirm,
-  onCancel,
+  onCancel,          // prop legada
+  onOpenChange,      // prop nova
   loading = false,
 }) {
-  const confirmRef = useRef()
-
-  useEffect(() => {
-    if (open) {
-      const timer = setTimeout(() => confirmRef.current?.focus(), 100)
-      return () => clearTimeout(timer)
+  const resolvedMessage = description ?? message
+  const handleOpenChange = (v) => {
+    if (!v) {
+      onCancel?.()
+      onOpenChange?.(false)
     }
-  }, [open])
-
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (!open) return
-      if (e.key === 'Escape') onCancel?.()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onCancel])
-
-  if (!open) return null
-
-  const confirmClasses = {
-    danger: 'bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500',
-    primary: 'bg-rs-red text-white hover:bg-danger-700 focus:ring-rs-red',
-    warning: 'bg-warning-600 text-white hover:bg-warning-700 focus:ring-warning-500',
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onCancel?.() }}
-    >
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <h3 className="text-lg font-bold text-neutral-900 mb-2">
-            {title}
-          </h3>
-          <p className="text-sm text-neutral-600 leading-relaxed">
-            {description}
-          </p>
-        </div>
+  const confirmStyles = {
+    danger:  'bg-danger-600 hover:bg-danger-700 text-white',
+    primary: 'bg-rs-red hover:bg-danger-700 text-white',
+    warning: 'bg-warning-500 hover:bg-warning-600 text-white',
+  }[confirmVariant] ?? 'bg-danger-600 hover:bg-danger-700 text-white'
 
-        {/* Actions */}
-        <div className="px-6 pb-6 flex gap-3 justify-end">
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent showClose={false} className="max-w-sm">
+        <div className="px-6 pt-6 pb-4">
+          <RadixDialogPrimitive.Title className="text-base font-semibold text-neutral-900 mb-2">
+            {title}
+          </RadixDialogPrimitive.Title>
+          {resolvedMessage && (
+            <RadixDialogPrimitive.Description className="text-sm text-neutral-600 leading-relaxed">
+              {resolvedMessage}
+            </RadixDialogPrimitive.Description>
+          )}
+        </div>
+        <div className="flex gap-2 px-6 pb-5">
           <button
-            onClick={onCancel}
+            onClick={() => handleOpenChange(false)}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-rs-red focus:ring-offset-1 disabled:opacity-50"
+            className="flex-1 py-2 rounded-lg border border-neutral-300 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors focus:outline-none focus:ring-2 focus:ring-rs-red disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
-            ref={confirmRef}
-            onClick={onConfirm}
+            onClick={() => { onConfirm?.(); handleOpenChange(false) }}
             disabled={loading}
-            className={`
-              px-4 py-2 text-sm font-medium rounded-md
-              focus:outline-none focus:ring-2 focus:ring-offset-1
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${confirmClasses[confirmVariant] || confirmClasses.danger}
-            `}
+            className={cn(
+              'flex-1 py-2 rounded-lg text-sm font-semibold transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-rs-red',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              confirmStyles
+            )}
           >
             {loading ? 'Processando...' : confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

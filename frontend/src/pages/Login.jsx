@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Button from "../design-system/components/Button";
-import { getCsrfToken } from "../utils/auth";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 
 // ---------------------------------------------------------------------------
 // Aba: email + senha
@@ -196,8 +196,6 @@ function TabCracha({ onSuccess, csrf }) {
 // Componente principal
 // ---------------------------------------------------------------------------
 export default function Login({ csrfToken, nextUrl }) {
-  const [aba, setAba] = useState("email");
-
   function onSuccess({ access, refresh, usuario }) {
     localStorage.setItem("access_token", access);
     localStorage.setItem("refresh_token", refresh);
@@ -207,8 +205,8 @@ export default function Login({ csrfToken, nextUrl }) {
 
   return (
     <div className="w-full max-w-[420px] px-4">
-      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-        {/* Header */}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Header vermelho RS */}
         <div className="bg-rs-red px-8 py-8 text-center text-white">
           <div className="text-4xl mb-2">SIGA</div>
           <div className="text-lg font-bold tracking-wide">SIGA-LACEN</div>
@@ -220,45 +218,27 @@ export default function Login({ csrfToken, nextUrl }) {
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-8 py-7">
-          {/* Tab bar */}
-          <div className="flex border-b-2 border-neutral-200 mb-6">
-            <button
-              className={`flex-1 py-2.5 border-none bg-none cursor-pointer text-sm font-semibold transition-colors ${
-                aba === "email"
-                  ? "text-rs-red border-b-2 border-rs-red -mb-0.5"
-                  : "text-neutral-400 border-b-2 border-transparent -mb-0.5"
-              }`}
-              onClick={() => setAba("email")}
-            >
-              E-mail e Senha
-            </button>
-            <button
-              className={`flex-1 py-2.5 border-none bg-none cursor-pointer text-sm font-semibold transition-colors ${
-                aba === "cracha"
-                  ? "text-rs-red border-b-2 border-rs-red -mb-0.5"
-                  : "text-neutral-400 border-b-2 border-transparent -mb-0.5"
-              }`}
-              onClick={() => setAba("cracha")}
-            >
-              Crachá
-            </button>
-          </div>
-
-          {aba === "email" && (
-            <TabEmail onSuccess={onSuccess} csrf={csrfToken} />
-          )}
-          {aba === "cracha" && (
-            <TabCracha onSuccess={onSuccess} csrf={csrfToken} />
-          )}
-        </div>
-
-        {/* Faixa tricolor RS — rodapé do card */}
-        <div className="h-1.5 flex">
+        {/* Faixa tricolor RS — abaixo do header */}
+        <div className="h-1 flex">
           <div className="flex-1 bg-rs-red" />
           <div className="flex-1 bg-rs-yellow" />
           <div className="flex-1 bg-rs-green" />
+        </div>
+
+        {/* Body com Tabs Radix */}
+        <div className="px-8 py-7">
+          <Tabs defaultValue="email">
+            <TabsList className="mb-6">
+              <TabsTrigger value="email">E-mail e Senha</TabsTrigger>
+              <TabsTrigger value="cracha">Crachá</TabsTrigger>
+            </TabsList>
+            <TabsContent value="email">
+              <TabEmail onSuccess={onSuccess} csrf={csrfToken} />
+            </TabsContent>
+            <TabsContent value="cracha">
+              <TabCracha onSuccess={onSuccess} csrf={csrfToken} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

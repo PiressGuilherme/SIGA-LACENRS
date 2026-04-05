@@ -2,6 +2,7 @@
  * CrachaInput — validação de crachá por leitura ou digitação.
  */
 import { useState, useRef, useEffect } from 'react'
+import { CheckCircle2, AlertTriangle } from 'lucide-react'
 
 export default function CrachaInput({ onValidado, label = 'Identificação do Operador' }) {
   const [codigo, setCodigo]         = useState('')
@@ -72,8 +73,8 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
 
       {operador && (
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-[0.9rem] text-success-800 font-semibold">
-            ✓ {operador.nome_completo}
+          <span className="text-[0.9rem] text-success-800 font-semibold flex items-center gap-1">
+            <CheckCircle2 className="h-4 w-4" /> {operador.nome_completo}
           </span>
           <span className="text-[0.72rem] bg-success-100 text-success-800 px-1.5 py-0.5 rounded-full font-medium">
             {operador.perfil}
@@ -85,8 +86,8 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
       )}
 
       {erro && (
-        <div className="mt-1.5 text-[0.82rem] text-danger-700">
-          ⚠ {erro}
+        <div className="mt-1.5 text-[0.82rem] text-danger-700 flex items-center gap-1">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" /> {erro}
         </div>
       )}
     </div>

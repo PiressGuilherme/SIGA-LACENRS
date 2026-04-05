@@ -1,56 +1,35 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createColumnHelper } from "@tanstack/react-table";
+import { Search, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import Button from "../design-system/components/Button";
 import CrachaModal from "../components/CrachaModal";
 import NavigationButtons from "../components/NavigationButtons";
+import DataTable from "../components/ui/data-table";
 import { getOperadorInicial, getCsrfToken } from "../utils/auth";
+import { cn } from "../lib/utils";
+
+// ── Constantes ────────────────────────────────────────────────────────────────
 
 const ROWS = ["A", "B", "C", "D", "E", "F", "G", "H"];
-const COLS = [
-  "01",
-  "02",
-  "03",
-  "04",
-  "05",
-  "06",
-  "07",
-  "08",
-  "09",
-  "10",
-  "11",
-  "12",
-];
+const COLS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 
 const STATUS_PLACA = {
-  aberta: { bg: "bg-rs-red", label: "Aberta" },
-  extracao_confirmada: { bg: "bg-purple-500", label: "Extração confirmada" },
-  submetida: { bg: "bg-warning-500", label: "Submetida" },
-  resultados_importados: { bg: "bg-success-600", label: "Resultados" },
+  aberta:               { bg: "bg-rs-red",        label: "Aberta" },
+  extracao_confirmada:  { bg: "bg-purple-500",    label: "Extração confirmada" },
+  submetida:            { bg: "bg-warning-500",   label: "Submetida" },
+  resultados_importados:{ bg: "bg-success-600",   label: "Resultados" },
 };
 
 const POCO_COR = {
-  amostra: {
-    bg: "bg-info-100",
-    border: "border-neutral-300",
-    text: "text-info-800",
-  },
-  controle_positivo: {
-    bg: "bg-warning-100",
-    border: "border-warning-300",
-    text: "text-warning-800",
-  },
-  controle_negativo: {
-    bg: "bg-purple-100",
-    border: "border-purple-300",
-    text: "text-purple-800",
-  },
-  vazio: {
-    bg: "bg-neutral-50",
-    border: "border-neutral-200",
-    text: "text-neutral-400",
-  },
+  amostra:           { bg: "bg-success-100",  border: "border-success-300",  text: "text-success-800" },
+  controle_positivo: { bg: "bg-warning-100",  border: "border-warning-300",  text: "text-warning-800" },
+  controle_negativo: { bg: "bg-neutral-100",  border: "border-neutral-300",  text: "text-neutral-600" },
+  vazio:             { bg: "bg-neutral-50",   border: "border-neutral-200",  text: "text-neutral-300" },
 };
 
-async function api(url, { csrfToken, method = "GET", body } = {}) {
+// ── API helper ────────────────────────────────────────────────────────────────
+
+async function api(url, { method = "GET", body } = {}) {
   const token = localStorage.getItem("access_token");
   const opts = {
     method,
@@ -70,57 +49,54 @@ async function api(url, { csrfToken, method = "GET", body } = {}) {
   return data;
 }
 
+function fmtDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+// ── EspelhoPlaca ─────────────────────────────────────────────────────────────
+
 function EspelhoPlaca({ pocos }) {
   const mapa = {};
   for (const p of pocos) mapa[p.posicao] = p;
 
   return (
     <div className="overflow-x-auto">
-      <table
-        className="border-collapse text-xs"
-        style={{ tableLayout: "fixed" }}
-      >
+      <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr>
-            <th className="w-[22px] p-0.5 text-neutral-400 font-normal"></th>
-            {COLS.map((c) => (
-              <th
-                key={c}
-                className="w-[68px] p-0.5 text-center text-neutral-400 font-medium"
-              >
+            <th className="w-[22px] p-0.5 text-neutral-400 font-normal" />
+            {COLS.map(c => (
+              <th key={c} className="w-[68px] p-0.5 text-center text-neutral-400 font-medium">
                 {parseInt(c, 10)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {ROWS.map((row) => (
+          {ROWS.map(row => (
             <tr key={row}>
-              <td className="p-0.5 font-semibold text-neutral-400 text-center">
-                {row}
-              </td>
-              {COLS.map((col) => {
+              <td className="p-0.5 font-semibold text-neutral-400 text-center">{row}</td>
+              {COLS.map(col => {
                 const pos = `${row}${col}`;
                 const p = mapa[pos];
                 const tipo = p?.tipo_conteudo || "vazio";
                 const cor = POCO_COR[tipo] || POCO_COR.vazio;
-                const label =
-                  tipo === "amostra"
-                    ? p.amostra_codigo || "?"
-                    : tipo === "controle_positivo"
-                      ? "CP"
-                      : tipo === "controle_negativo"
-                        ? "CN"
-                        : "";
+                const label = tipo === "amostra" ? p.amostra_codigo || "?"
+                  : tipo === "controle_positivo" ? "CP"
+                  : tipo === "controle_negativo" ? "CN" : "";
                 return (
                   <td key={col} className="p-[2px]">
                     <div
-                      title={
-                        tipo === "amostra" && p?.amostra_nome
-                          ? `${p.amostra_codigo} — ${p.amostra_nome}`
-                          : pos
-                      }
-                      className={`${cor.bg} ${cor.border} ${cor.text} border rounded-[3px] px-1 py-[3px] text-center font-${tipo === "amostra" ? "semibold" : "medium"} overflow-hidden text-ellipsis whitespace-nowrap min-h-[22px] leading-4`}
+                      title={tipo === "amostra" && p?.amostra_nome ? `${p.amostra_codigo} — ${p.amostra_nome}` : pos}
+                      className={cn(
+                        cor.bg, cor.border, cor.text,
+                        "border rounded-[3px] px-1 py-[3px] text-center overflow-hidden text-ellipsis whitespace-nowrap min-h-[22px] leading-4",
+                        tipo === "amostra" ? "font-semibold" : "font-medium"
+                      )}
                     >
                       {label}
                     </div>
@@ -135,54 +111,105 @@ function EspelhoPlaca({ pocos }) {
   );
 }
 
-function LinhaPlaca({ p, onEditar }) {
-  const [aberta, setAberta] = useState(false);
-  const badge = STATUS_PLACA[p.status_placa] || {
-    bg: "bg-neutral-500",
-    label: p.status_display,
-  };
+// ── Sub-row expansível ────────────────────────────────────────────────────────
 
+function PlacaSubRow({ row }) {
+  const p = row.original;
   const amostras = (p.pocos || [])
-    .filter((w) => w.tipo_conteudo === "amostra" && w.amostra_codigo)
+    .filter(w => w.tipo_conteudo === "amostra" && w.amostra_codigo)
     .sort((a, b) => a.posicao.localeCompare(b.posicao));
 
   return (
-    <>
-      <tr
-        onClick={() => setAberta((v) => !v)}
-        className={`cursor-pointer transition-colors ${aberta ? "bg-purple-50 border-b-0" : "border-b border-neutral-100"}`}
-        title="Clique para ver as amostras na placa"
-      >
-        <td className="px-3 py-2 text-neutral-700 font-semibold">
-          <span className="mr-1.5 text-xs text-neutral-500">
-            {aberta ? "▼" : "▶"}
+    <div className="px-2 py-3">
+      {/* Legenda */}
+      <div className="flex gap-4 flex-wrap items-center mb-3">
+        {Object.entries(POCO_COR).map(([tipo, cor]) => (
+          <span key={tipo} className="flex items-center gap-1 text-xs text-neutral-600">
+            <span className={cn("inline-block w-3 h-3 rounded-[2px] border", cor.bg, cor.border)} />
+            {tipo === "amostra" ? "Amostra" : tipo === "controle_positivo" ? "CP" : tipo === "controle_negativo" ? "CN" : "Vazio"}
           </span>
-          {p.codigo}
-        </td>
-        <td className="px-3 py-2">
-          <span
-            className={`${badge.bg} text-white px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap`}
-          >
+        ))}
+        <span className="text-xs text-neutral-400 ml-auto">Hover = nome da paciente</span>
+      </div>
+
+      <EspelhoPlaca pocos={p.pocos || []} />
+
+      {amostras.length > 0 && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs text-neutral-500 select-none hover:text-neutral-700">
+            Lista de amostras ({amostras.length})
+          </summary>
+          <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-y-1 gap-x-4 text-xs text-neutral-700">
+            {amostras.map(w => (
+              <div key={w.id} className="flex gap-1">
+                <span className="text-neutral-400 min-w-[30px]">{w.posicao}</span>
+                <span className="font-semibold font-mono text-neutral-800 min-w-[60px]">{w.amostra_codigo}</span>
+                <span className="text-neutral-500 overflow-hidden text-ellipsis whitespace-nowrap">{w.amostra_nome || ""}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+// ── Definição de colunas ──────────────────────────────────────────────────────
+
+const col = createColumnHelper();
+
+function buildColumns(onEditar) {
+  return [
+    col.display({
+      id: "expand",
+      size: 30,
+      header: () => null,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <button
+          onClick={e => { e.stopPropagation(); row.toggleExpanded(); }}
+          className="text-neutral-400 hover:text-rs-red transition-colors"
+        >
+          {row.getIsExpanded() ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+      ),
+    }),
+    col.accessor("codigo", {
+      header: "Código",
+      cell: info => <span className="font-semibold font-mono text-neutral-800">{info.getValue()}</span>,
+    }),
+    col.accessor("status_placa", {
+      header: "Status",
+      cell: info => {
+        const badge = STATUS_PLACA[info.getValue()] || { bg: "bg-neutral-500", label: info.row.original.status_display };
+        return (
+          <span className={cn(badge.bg, "text-white px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap")}>
             {badge.label}
           </span>
-        </td>
-        <td className="px-3 py-2 text-neutral-700">{p.total_amostras}</td>
-        <td className="px-3 py-2 text-neutral-700">
-          {p.responsavel_nome || "—"}
-        </td>
-        <td className="px-3 py-2 text-neutral-700">
-          {fmtDate(p.data_criacao)}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          <div className="flex gap-1.5">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditar(p.id);
-              }}
-              variant="primary"
-              size="sm"
-            >
+        );
+      },
+    }),
+    col.accessor("total_amostras", {
+      header: "Amostras",
+      cell: info => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    col.accessor("responsavel_nome", {
+      header: "Responsável",
+      cell: info => <span className="text-neutral-600">{info.getValue() || "—"}</span>,
+    }),
+    col.accessor("data_criacao", {
+      header: "Data",
+      cell: info => <span className="text-neutral-500 text-xs whitespace-nowrap">{fmtDate(info.getValue())}</span>,
+    }),
+    col.display({
+      id: "acoes",
+      header: "Ações",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+            <Button onClick={() => onEditar?.(p.id)} variant="primary" size="sm">
               Editar
             </Button>
             {p.total_amostras > 0 && (
@@ -190,94 +217,36 @@ function LinhaPlaca({ p, onEditar }) {
                 href={`/api/placas/${p.id}/pdf/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="px-3 py-1.5 rounded bg-neutral-600 text-white text-xs font-medium no-underline inline-block hover:bg-neutral-700"
+                className="px-3 py-1.5 rounded bg-neutral-600 text-white text-xs font-medium no-underline inline-block hover:bg-neutral-700 transition-colors"
               >
                 PDF
               </a>
             )}
           </div>
-        </td>
-      </tr>
-
-      {aberta && (
-        <tr className="border-b border-neutral-100 bg-purple-50">
-          <td colSpan={6} className="px-4 py-3 pl-5">
-            <div className="mb-2.5 flex gap-4 flex-wrap items-center">
-              {[
-                { tipo: "amostra", label: "Amostra" },
-                { tipo: "controle_positivo", label: "CP" },
-                { tipo: "controle_negativo", label: "CN" },
-                { tipo: "vazio", label: "Vazio" },
-              ].map(({ tipo, label }) => {
-                const cor = POCO_COR[tipo];
-                return (
-                  <span
-                    key={tipo}
-                    className="flex items-center gap-1 text-xs text-neutral-700"
-                  >
-                    <span
-                      className={`inline-block w-3 h-3 rounded-[2px] ${cor.bg} ${cor.border} border`}
-                    />
-                    {label}
-                  </span>
-                );
-              })}
-              <span className="text-xs text-neutral-400 ml-auto">
-                Passe o mouse sobre uma célula para ver o nome da paciente
-              </span>
-            </div>
-
-            <EspelhoPlaca pocos={p.pocos || []} />
-
-            {amostras.length > 0 && (
-              <details className="mt-3">
-                <summary className="cursor-pointer text-xs text-purple-600 select-none">
-                  Lista de amostras ({amostras.length})
-                </summary>
-                <div className="mt-1 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-y-1 gap-x-4 text-xs text-neutral-700">
-                  {amostras.map((w) => (
-                    <div key={w.id} className="flex gap-1">
-                      <span className="text-neutral-400 min-w-[30px]">
-                        {w.posicao}
-                      </span>
-                      <span className="font-semibold text-info-800 min-w-[60px]">
-                        {w.amostra_codigo}
-                      </span>
-                      <span className="text-neutral-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                        {w.amostra_nome || ""}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-          </td>
-        </tr>
-      )}
-    </>
-  );
+        );
+      },
+    }),
+  ];
 }
 
-export default function ConsultarPlacas({ csrfToken, onEditar }) {
-  const [operador, setOperador] = useState(() => getOperadorInicial());
-  const [placas, setPlacas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
+// ── Componente principal ──────────────────────────────────────────────────────
+
+export default function ConsultarPlacas({ onEditar }) {
+  const [operador, setOperador]         = useState(() => getOperadorInicial());
+  const [placas, setPlacas]             = useState([]);
+  const [loading, setLoading]           = useState(false);
+  const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  useEffect(() => {
-    fetchPlacas();
-  }, []);
+  useEffect(() => { fetchPlacas(); }, []);
 
   async function fetchPlacas(s = search, sf = statusFilter) {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append("tipo_placa", "extracao");
+      const params = new URLSearchParams({ tipo_placa: "extracao" });
       if (s.trim()) params.append("search", s.trim());
       if (sf) params.append("status_placa", sf);
-      const data = await api(`/api/placas/?${params}`, { csrfToken });
+      const data = await api(`/api/placas/?${params}`);
       setPlacas(data.results || data);
     } catch {
       setPlacas([]);
@@ -286,98 +255,50 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
     }
   }
 
-  function handleSearch(e) {
-    const val = e.target.value;
-    setSearch(val);
-    fetchPlacas(val, statusFilter);
-  }
-
-  function handleStatusFilter(e) {
-    const val = e.target.value;
-    setStatusFilter(val);
-    fetchPlacas(search, val);
-  }
+  const columns = useMemo(() => buildColumns(onEditar), [onEditar]);
 
   return (
     <div>
       <NavigationButtons currentStep="extracao" />
 
-      {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="Consultar Placas" />
-      )}
+      {!operador && <CrachaModal onValidado={setOperador} modulo="Consultar Placas" />}
 
-      <div>
-        <div className="flex gap-2 mb-4 flex-wrap items-center">
+      {/* Toolbar */}
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
           <input
             type="text"
             value={search}
-            onChange={handleSearch}
+            onChange={e => { setSearch(e.target.value); fetchPlacas(e.target.value, statusFilter); }}
             placeholder="Buscar por código (ex: PL2603)"
-            className="flex-1 min-w-[200px] px-3 py-2 border border-neutral-300 rounded text-sm"
+            className="w-full pl-9 pr-3.5 py-2.5 text-sm border border-neutral-300 rounded-lg outline-none focus:border-rs-red focus:ring-1 focus:ring-rs-red transition-colors"
           />
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            className="px-3 py-2 border border-neutral-300 rounded text-sm bg-white"
-          >
-            <option value="">Todos os status</option>
-            <option value="aberta">Aberta</option>
-            <option value="extracao_confirmada">Extração confirmada</option>
-          </select>
-          <Button onClick={() => fetchPlacas()} variant="outline" size="sm">
-            Atualizar
-          </Button>
         </div>
-
-        {loading ? (
-          <p className="text-neutral-500 py-4">Carregando...</p>
-        ) : placas.length === 0 ? (
-          <p className="text-neutral-400 py-4">Nenhuma placa encontrada.</p>
-        ) : (
-          <div className="bg-white border border-neutral-200 rounded-lg overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-neutral-50 border-b-2 border-neutral-200">
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Código
-                  </th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Status
-                  </th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Amostras
-                  </th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Responsável
-                  </th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Data
-                  </th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-neutral-700 whitespace-nowrap">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {placas.map((p) => (
-                  <LinhaPlaca key={p.id} p={p} onEditar={onEditar} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); fetchPlacas(search, e.target.value); }}
+          className="px-3 py-2.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-700 outline-none focus:border-rs-red min-w-[180px]"
+        >
+          <option value="">Todos os status</option>
+          <option value="aberta">Aberta</option>
+          <option value="extracao_confirmada">Extração confirmada</option>
+        </select>
+        <Button onClick={() => fetchPlacas()} variant="outline" size="sm">
+          <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+        </Button>
       </div>
+
+      <DataTable
+        columns={columns}
+        data={placas}
+        loading={loading}
+        skeletonRows={6}
+        pageSize={30}
+        getRowCanExpand={() => true}
+        renderSubRow={row => <PlacaSubRow row={row} />}
+        emptyMessage="Nenhuma placa encontrada."
+      />
     </div>
   );
-}
-
-function fmtDate(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }

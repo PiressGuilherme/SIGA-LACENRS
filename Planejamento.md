@@ -253,19 +253,96 @@ Uma amostra pode aparecer em múltiplas placas PCR ao longo do tempo (uma por te
 
 ---
 
-### Perfis de Acesso
+### Perfis de Acesso (RBAC)
 
-| Perfil | Permissões |
-| :--- | :--- |
-| `extracao` | Importar CSV GAL; aliquotagem (scan de alíquota com crachá); montar e editar placas de extração; confirmar extração (scan de crachá + código de placa); exportar PDF da placa |
-| `pcr` | Montar placa PCR; enviar ao termociclador; importar CSV do termociclador; revisar e confirmar resultados |
-| `supervisor` | Todas as operações acima + editar amostras manualmente + cancelar amostras + acessar auditoria; bypass de crachá (ação executada com identidade do próprio supervisor) |
+| Perfil | Permissões | Restrições |
+| :--- | :--- | :--- |
+| `admin` | Acesso irrestrito a todas as funcionalidades do sistema | — |
+| `especialista` | Todas as operações laboratoriais (extração + PCR + resultados) | Não tem privilégios de administração do sistema |
+| `tecnico` | Operações até extração (importar CSV, aliquotagem, montar placa, confirmar extração) | **NÃO pode fazer PCR nem liberar resultados** (restrição de conselho de classe) |
+| `extracao` | Importar CSV GAL; aliquotagem; montar e editar placas de extração; confirmar extração | Perfil legado |
+| `pcr` | Montar placa PCR; enviar ao termociclador; importar CSV do termociclador; revisar e confirmar resultados | Perfil legado |
+| `supervisor` | Todas as operações + editar amostras manualmente + cancelar amostras + acessar auditoria | Perfil legado |
 
 > Todos os perfis autenticados têm acesso à consulta de amostras e de placas.
 
-> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. Superusers não precisam bipe de crachá.
+> **Checkpoint de crachá:** em operações de aliquotagem e confirmação de extração, o sistema exige o código do crachá físico do operador. O usuário logado na sessão web pode ser diferente do operador na bancada. **Administradores (`is_staff=True`) não precisam escanear o crachá** — o sistema automaticamente preenche o operador com os dados do próprio administrador logado.
 
 > **`numero_cracha`** é um campo do model `Usuario`. O endpoint `GET /api/auth/validar-cracha/?codigo=` retorna nome e perfil do operador para exibição no frontend.
+
+#### Usuários de Teste
+
+| Nome | E-mail | Perfil | Crachá |
+| :--- | :--- | :--- | :--- |
+| Admin (superuser) | admin@lacen.gov.br | admin | — |
+| Daniela | daniela@lacen.gov.br | especialista | DAN2026 |
+| Teste | teste@lacen.gov.br | tecnico | TST2026 |
+
+---
+
+### Sistema de Autenticação em Duas Camadas
+
+O SIGA-LACEN implementa um sistema de autenticação de duas camadas para garantir rastreabilidade completa das ações realizadas no laboratório:
+
+#### Camada 1: Login Web (Autenticação de Sessão)
+* **Objetivo:** Controlar o acesso ao sistema
+* **Método:** Login com e-mail/senha ou crachá diretamente na tela de login
+* **Resultado:** Geração de token JWT (`access_token` e `refresh_token`)
+* **Responsável pelo log:** `request.user` do Django (usuário logado na sessão)
+* **Quando é usado:** Para acessar o sistema, navegar entre módulos e operações de consulta
+
+#### Camada 2: Scan de Crachá (Autenticação de Ação)
+* **Objetivo:** Identificar quem está executando uma ação específica na bancada
+* **Método:** Modal bloqueante que exige escanear o crachá antes de iniciar qualquer operação
+* **Resultado:** Operador identificado por `numero_cracha` é enviado ao backend em cada requisição
+* **Responsável pelo log:** Campos de rastreamento (`confirmado_por`, `recebido_por`, `extracao_confirmada_por`)
+* **Quando é usado:** Em todas as operações críticas listadas abaixo
+
+#### Operações que exigem autenticação por crachá:
+
+| Módulo | Operação | Campo de Rastreamento |
+|--------|---------|----------------------|
+| Aliquotagem | Confirmar alíquota | `recebido_por` na `Amostra` |
+| Extração | Salvar placa | `responsavel` na `Placa` |
+| Extração | Confirmar extração | `extracao_confirmada_por` na `Placa` |
+| PCR | Salvar placa PCR | `responsavel` na `Placa` |
+| PCR | Enviar ao termociclador | `submetido_por` no registro |
+| Resultados | Importar CSV | `operador` no `auditlog` |
+| Resultados | Confirmar resultado | `confirmado_por` no `ResultadoAmostra` |
+| Resultados | Liberar resultado | `liberado_por` no registro |
+| Resultados | Solicitar repetição | `operador` no `auditlog` |
+
+#### Comportamento do Sistema
+
+1. **Modal Bloqueante:** Ao acessar qualquer módulo operacional (Aliquotagem, Extração, PCR, Resultados), um modal é exibido bloqueando a página até que o operador escaneie o crachá.
+
+2. **Bypass para Administradores:** Usuários com `is_staff=True` (administradores) **não precisam escanear o crachá**. O sistema automaticamente preenche o operador com os dados do próprio administrador logado. Isso permite que supervisores/administradores acessem os módulos operacionais sem necessidade de crachá físico, mantendo a rastreabilidade (ações são registradas com o nome do admin).
+
+3. **Troca de Operador:** O operador pode trocar o crachá a qualquer momento clicando em "Trocar operador". A partir desse ponto, todas as ações são registradas com o novo operador. Para administradores, o botão "Trocar operador" permite alternar entre o modo admin (sem crachá) e o modo operador (com crachá).
+
+4. **Persistência na Sessão:** O operador identificado permanece ativo durante toda a sessão do módulo.
+
+#### Implementação Técnica
+
+**Frontend:**
+* `CrachaModal.jsx` — componente React de modal bloqueante com botão de cancelar (redireciona para `/`)
+* `NavigationButtons.jsx` — componente de navegação com botões "Início", "Anterior" e "Próxima Etapa"
+* `frontend/src/utils/auth.js` — utilitários de autenticação:
+  * `getUsuarioAtual()` — retorna dados do usuário logado do localStorage
+  * `isAdmin()` — verifica se o usuário é admin (`is_staff=True`)
+  * `getOperadorInicial()` — retorna operador inicial (admin bypass ou null para crachá)
+* Cada módulo usa `useState(() => getOperadorInicial())` para inicializar o operador
+* Enviado `numero_cracha` em todas as requisições POST/PATCH que alteram dados (null para admins)
+
+**Backend:**
+* Função `_resolver_operador()` em cada ViewSet extrai o `numero_cracha` do request
+* `auditlog.context.set_actor(operador)` configura o ator correto no auditlog
+* Fallback para `request.user` quando crachá não é fornecido (caso de admin)
+
+**Banco de Dados:**
+* Campo `numero_cracha` no model `Usuario`
+* Campos de rastreamento (`confirmado_por`, `recebido_por`, `extracao_confirmada_por`, etc.) são ForeignKey para `Usuario`
+* Grupos de permissão: `admin`, `especialista`, `tecnico`, `extracao`, `pcr`, `supervisor`
 
 ---
 
@@ -383,24 +460,51 @@ Uma amostra pode aparecer em múltiplas placas PCR ao longo do tempo (uma por te
 * ✅ Linha expansível na tabela de consulta exibe detalhes da amostra
 * ✅ Aba "Placas" na tela de consulta — espelho 8×12 expansível por placa, Confirmar Extração com crachá
 
-#### Fase 6 - Módulo de Resultados e Repetição (2-3 semanas)
-> **Pré-requisito:** Obter critérios IBMP Biomol (cutoffs de Cq por canal) antes de implementar a lógica de classificação.
+#### Fase 4 — Extras implementados (design system e PDF)
+* ✅ Header global (base.html) migrado para vermelho bordô (#7b1020) com faixa tricolor RS (vermelho/amarelo/verde)
+* ✅ Login.jsx e CrachaModal.jsx atualizados para o novo esquema de cores
+* ✅ Tela de consulta de amostras: largura máxima removida para acomodar colunas de resultado
+* ✅ CSRF_TRUSTED_ORIGINS adicionado ao settings de desenvolvimento (corrige 403 em POST)
+* ✅ `requests` adicionado ao requirements/base.txt (correção de ImportError no gal_ws)
+
+#### Fase 4C — Grupos de Amostras na Placa de Extração ✅ Concluída
+* ✅ Campo `grupo` (PositiveSmallIntegerField, default=1) adicionado ao model `Poco` (migration 0009)
+* ✅ Serializers: `grupo` exposto em `PocoSerializer` e `PocoInputSerializer`; `grupos_count` em `PlacaSerializer`
+* ✅ `views.py` passa `grupo` ao `Poco` no bulk_create
+* ✅ `MontarPlaca.jsx`: barra de grupos com cores distintas por grupo (azul/verde/laranja/roxo/rosa)
+* ✅ Botão "+ Adicionar Grupo" insere CP/CN automaticamente na coluna adjacente (G12→G11→G10…)
+* ✅ Detecção de colisão ao inserir controles de novo grupo — exibe mensagem e não insere
+* ✅ Remoção de grupo limpa todos os poços do grupo do grid
+* ✅ Cálculo de reagentes exibido separadamente por grupo
+* ✅ PDF FR-HPV-001 completamente refatorado:
+  * ✅ Cabeçalho institucional em 3 colunas (logo CEVS | título FR-HPV-001 | revisão/paginação)
+  * ✅ Linha ORIGEM + Kits + Ensaio abaixo do cabeçalho
+  * ✅ Colunas do grid sem zero à esquerda (1…12), bordas pretas mais grossas
+  * ✅ Cor de fundo das amostras por grupo (espelha frontend)
+  * ✅ Tabelas de reagentes lado a lado por grupo (apenas contagem de amostras, sem CN/CP)
+  * ✅ Campos "Operador extração" e "Operador PCR" sem borda, alinhados à direita
+  * ✅ Cálculo automático de altura de linha para garantir página única landscape A4
+
+#### Fase 6 - Módulo de Resultados e Repetição ✅ Parcialmente Concluída
 > O CSV do CFX Manager é importado contra uma **placa PCR** (não contra placa de extração).
 
-* Página web de upload do CSV do CFX Manager (seleção da placa PCR correspondente).
-* Parser formatado para o modelo do CFX Manager (Bio-Rad):
-  * Lê metadados do cabeçalho
-  * Agrupa linhas por poço
-  * Extrai Cq por canal (CI, HPV16, HPV18, HPV_AR)
-  * Cruza por `posicao` do poço com a placa PCR salva no banco
-* Implementar classificação automática por critérios IBMP Biomol.
-* Calcular `resultado_final` consolidado por amostra.
-* Ao importar com sucesso: status das amostras da placa PCR → `Resultado`; placa → `Resultados importados`.
-* Tela de revisão de resultados com edição individual e justificativa obrigatória.
-* Alertas para controles falhos (CN amplificou / CP não amplificou).
-* Gestão de Repetições — amostras para repetição voltam para `Aliquotada` para nova placa PCR.
-* Gravação imutável de resultados confirmados (`imutavel=True`).
-* Endpoint para marcar resultado como liberado no GAL → status `Resultado Liberado`.
+* ✅ Parser `parse_cfx_csv()` para CSV do CFX Manager (Bio-Rad): lê metadados, agrupa por poço, extrai Cq por canal (CI, HPV16, HPV18, HPV_AR)
+* ✅ Validação de controles: `validar_cp()` e `validar_cn()` — corrida inválida bloqueia import (HTTP 422)
+* ✅ Classificação automática por canal: `classificar_canal()` com critérios IBMP Biomol
+* ✅ `calcular_resultado_final()` consolida resultado por amostra (hpv_nao_detectado, hpv16, hpv18, hpv_ar, combinações, inválido, inconclusivo)
+* ✅ `POST /api/resultados/importar/` — importa CSV, cria/atualiza `ResultadoPoco` e `ResultadoAmostra`, amostras → `Resultado`, placa → `Resultados Importados`
+* ✅ Tela React `RevisarResultados.jsx` com:
+  * ✅ Seleção de placa PCR (submetida ou com resultados importados)
+  * ✅ Upload e importação do CSV com feedback de CP/CN e avisos por amostra
+  * ✅ Tabela de revisão com canais (CI, HPV-16, HPV-18, HPV AR) e resultado final colorido
+  * ✅ Override manual de interpretação por canal com justificativa obrigatória
+  * ✅ Botão "Confirmar" individual e "Confirmar Todos"
+  * ✅ Botão "Liberar" (muda amostra para `Resultado Liberado`)
+  * ✅ Botão "Solicitar Repetição" (muda amostra para `Repetição Solicitada`)
+* ✅ Resultados aparecem na tela de Consulta de Amostras (colunas CI, HPV-16, HPV-18, HPV AR, Resultado)
+* ✅ `ResultadoAmostraDetalheSerializer` inclui canais aninhados para edição inline
+* ✅ `ResultadoPocoViewSet` — PATCH para override manual; recalcula resultado final automaticamente
+* ✅ Fix: `get_confirmado_por_nome` usava `get_full_name()` (inexistente em `Usuario` customizado) → corrigido para `nome_completo` (HTTP 500 em todas chamadas a `/api/resultados/`)
 
 #### Fase 6.5 - Integração e Robustez (1-2 semanas)
 * Testes E2E do fluxo completo: Importar CSV → Receber → Extração → Confirmar Extração → PCR → Enviar Termociclador → Importar Resultado → Confirmar → Liberar

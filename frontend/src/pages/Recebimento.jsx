@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const STATUS_BADGE = {
   aguardando_triagem:   { bg: '#6c757d', label: 'Aguardando Triagem' },
@@ -13,6 +15,7 @@ const STATUS_BADGE = {
 }
 
 export default function Recebimento({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [codigo, setCodigo] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [feedback, setFeedback] = useState(null) // { tipo: 'sucesso'|'aviso'|'erro', msg }
@@ -35,7 +38,7 @@ export default function Recebimento({ csrfToken }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
+          'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({ codigo: val }),
         credentials: 'same-origin',
@@ -66,6 +69,11 @@ export default function Recebimento({ csrfToken }) {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Recebimento de Amostras" />
+      )}
+
       <h2 style={{ marginBottom: '0.5rem', fontSize: '1.3rem', color: '#1a3a5c' }}>
         Recebimento de Amostras
       </h2>

@@ -1,0 +1,28 @@
+[
+  {
+    "model": "usuarios.usuario",
+    "pk": 2,
+    "fields": {
+      "email": "daniela@lacen.gov.br",
+      "nome_completo": "Daniela",
+      "numero_cracha": "DAN2026",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "groups": [2]
+    }
+  },
+  {
+    "model": "usuarios.usuario",
+    "pk": 3,
+    "fields": {
+      "email": "teste@lacen.gov.br",
+      "nome_completo": "Teste",
+      "numero_cracha": "TST2026",
+      "is_active": true,
+      "is_staff": false,
+      "is_superuser": false,
+      "groups": [1]
+    }
+  }
+]

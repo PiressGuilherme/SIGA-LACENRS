@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import MontarPlaca from './MontarPlaca'
+import ConfirmarExtracao from './ConfirmarExtracao'
 import ConsultarPlacas from './ConsultarPlacas'
 
 const TABS = [
   { id: 'montar',    label: 'Montar Placa' },
+  { id: 'confirmar', label: 'Confirmar Placa' },
   { id: 'consultar', label: 'Consultar Placas' },
 ]
 
@@ -46,8 +48,9 @@ export default function PlateEditor({ csrfToken }) {
         ))}
       </div>
 
-      {activeTab === 'montar'    && <MontarPlaca    csrfToken={csrfToken} editarPlacaId={editarPlacaId} onEditarDone={() => setEditarPlacaId(null)} />}
-      {activeTab === 'consultar' && <ConsultarPlacas csrfToken={csrfToken} onEditar={handleEditar} />}
+      {activeTab === 'montar'    && <MontarPlaca        csrfToken={csrfToken} editarPlacaId={editarPlacaId} onEditarDone={() => setEditarPlacaId(null)} />}
+      {activeTab === 'confirmar' && <ConfirmarExtracao   csrfToken={csrfToken} />}
+      {activeTab === 'consultar' && <ConsultarPlacas     csrfToken={csrfToken} onEditar={handleEditar} />}
     </div>
   )
 }

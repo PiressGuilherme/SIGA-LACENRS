@@ -1,10 +1,11 @@
 from django.urls import path
 
-from .views import LoginCrachaView, LoginEmailView, LoginPageView, ValidarCrachaView
+from .views import LoginCrachaView, LoginEmailView, LoginPageView, LogoutView, ValidarCrachaView
 
 api_urlpatterns = [
     path('login/',          LoginEmailView.as_view(),   name='auth-login'),
     path('login-cracha/',   LoginCrachaView.as_view(),  name='auth-login-cracha'),
+    path('logout/',         LogoutView.as_view(),        name='auth-logout'),
     path('validar-cracha/', ValidarCrachaView.as_view(), name='auth-validar-cracha'),
 ]
 

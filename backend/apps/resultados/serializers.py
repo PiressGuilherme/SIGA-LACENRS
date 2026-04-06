@@ -54,7 +54,7 @@ class ResultadoAmostraSerializer(serializers.ModelSerializer):
 
     def get_confirmado_por_nome(self, obj):
         if obj.confirmado_por:
-            return obj.confirmado_por.get_full_name() or obj.confirmado_por.email
+            return getattr(obj.confirmado_por, 'nome_completo', None) or obj.confirmado_por.email
         return None
 
 

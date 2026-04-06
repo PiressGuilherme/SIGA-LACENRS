@@ -1,6 +1,14 @@
+from contextlib import contextmanager
+
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
+
+
+@contextmanager
+def _noop_ctx():
+    """Context manager vazio — usado quando não há operador para o set_actor."""
+    yield
 
 from apps.amostras.models import Amostra, StatusAmostra
 
@@ -38,7 +46,7 @@ class Placa(models.Model):
     codigo = models.CharField(
         max_length=20, unique=True, blank=True,
         verbose_name='Código da Placa',
-        help_text='Gerado automaticamente no formato HPV{DDMMAA}-{N} (ex: HPV240326-1).',
+        help_text='Gerado automaticamente: HPVe{DDMMAA}-{N} para extração (ex: HPVe010426-1) ou HPVp{DDMMAA}-{N} para PCR (ex: HPVp010426-1).',
         db_index=True,
     )
     tipo_placa = models.CharField(
@@ -87,9 +95,10 @@ class Placa(models.Model):
         super().save(*args, **kwargs)
 
     def _gerar_codigo(self):
-        """Gera código único no formato HPV{DDMMAA}-{N}."""
+        """Gera código único: HPVe{DDMMAA}-{N} para extração, HPVp{DDMMAA}-{N} para PCR."""
         agora = timezone.now()
-        prefixo = f'HPV{agora.strftime("%d%m%y")}-'
+        tipo_letra = 'p' if self.tipo_placa == TipoPlaca.PCR else 'e'
+        prefixo = f'HPV{tipo_letra}{agora.strftime("%d%m%y")}-'
         ultimo = (
             Placa.objects.filter(codigo__startswith=prefixo)
             .order_by('-data_criacao', '-id')
@@ -127,7 +136,9 @@ class Placa(models.Model):
 
     def confirmar_extracao(self, operador=None):
         """Scan do código da placa após extração: amostras → Extraída; placa → Extração confirmada."""
-        with transaction.atomic():
+        from auditlog.context import set_actor
+        ctx = set_actor(operador) if operador else _noop_ctx()
+        with transaction.atomic(), ctx:
             for amostra in Amostra.objects.filter(pk__in=self._amostras_ids()):
                 amostra.status = StatusAmostra.EXTRAIDA
                 amostra.save(update_fields=['status', 'atualizado_em'])
@@ -170,6 +181,11 @@ class Poco(models.Model):
     tipo_conteudo = models.CharField(
         max_length=20, choices=TipoConteudoPoco.choices,
         default=TipoConteudoPoco.AMOSTRA, verbose_name='Tipo de conteúdo',
+    )
+    grupo = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name='Grupo de extração',
+        help_text='Grupo de reagentes ao qual este poço pertence (1, 2, 3...).',
     )
 
     class Meta:

@@ -10,12 +10,18 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
            background: #f4f6f9; color: #212529; min-height: 100vh; }
     header {
-      background: #1a3a5c; color: #fff; padding: 0.75rem 1.5rem;
+      background: #ffffff; color: #7b1020; padding: 0.75rem 1.5rem;
       display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #e5e7eb;
     }
-    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; }
-    header nav a { color: #adc8e6; text-decoration: none; margin-left: 1.5rem; font-size: 0.9rem; }
-    header nav a:hover { color: #fff; }
+    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; color: #7b1020; }
+    header nav a { color: #7b1020; text-decoration: none; margin-left: 1.5rem; font-size: 0.9rem; }
+    header nav a:hover { color: #4a0010; }
+    .tricolor-bar { display: flex; height: 5px; }
+    .tricolor-bar span { flex: 1; }
+    .tricolor-bar span:nth-child(3n+1) { background: #c8102e; }
+    .tricolor-bar span:nth-child(3n+2) { background: #f5c518; }
+    .tricolor-bar span:nth-child(3n+0) { background: #009c3b; }
     main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
     {% block extra_style %}{% endblock %}
   </style>
@@ -32,15 +38,34 @@
       <a href="/placas/extracao/">Extração</a>
       <a href="/placas/pcr/">PCR</a>
       <a href="/resultados/revisar/">Resultados</a>
-      {% if user.is_staff %}
+      {% if user.is_superuser %}
         <a href="{% url 'gal-ws-page' %}">GAL WS</a>
         <a href="/admin/">Admin</a>
       {% endif %}
       {% if user.is_authenticated %}
-        <span style="color:#adc8e6;margin-left:1.5rem;font-size:0.85rem">{{ user.nome_completo }}</span>
+        <span id="header-usuario" style="color:#4a0010;margin-left:1.5rem;font-size:0.85rem;font-weight:500">{{ user.nome_completo }}</span>
+        <button onclick="logout()" style="background:#7b1020;color:#fff;border:1px solid #4a0010;padding:0.35rem 0.85rem;border-radius:6px;cursor:pointer;font-size:0.8rem;margin-left:0.75rem;">Sair</button>
       {% endif %}
     </nav>
   </header>
+  <!-- Barra tricolor RS — 4 repetições de vermelho/amarelo/verde -->
+  <div class="tricolor-bar">
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+  </div>
+  <script>
+    function logout() {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('usuario')
+      fetch('/api/auth/logout/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)||[])[1]||'' },
+      }).finally(() => { window.location.href = '/login/' })
+    }
+  </script>
   <main>
     {% block content %}{% endblock %}
   </main>

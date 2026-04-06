@@ -1,17 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
-import NavigationButtons from '../components/NavigationButtons'
 import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
-
-const STATUS_PLACA = {
-  aberta:                { bg: '#0d6efd', label: 'Aberta' },
-  extracao_confirmada:   { bg: '#6f42c1', label: 'Extração confirmada' },
-  submetida:             { bg: '#fd7e14', label: 'Submetida' },
-  resultados_importados: { bg: '#198754', label: 'Resultados' },
-}
 
 const POCO_COR = {
   amostra:           { bg: '#dbeafe', border: '#93c5fd', text: '#1e3a5f' },
@@ -40,9 +32,7 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
   return data
 }
 
-// ── Mini espelho de placa 8×12 ────────────────────────────────────────────────
 function EspelhoPlaca({ pocos }) {
-  // Monta mapa posicao → poco
   const mapa = {}
   for (const p of pocos) mapa[p.posicao] = p
 
@@ -111,12 +101,9 @@ function EspelhoPlaca({ pocos }) {
   )
 }
 
-// ── Linha de placa com expandável ─────────────────────────────────────────────
-function LinhaPlaca({ p, onEditar }) {
+function LinhaPlaca({ p, onConfirmar }) {
   const [aberta, setAberta] = useState(false)
-  const badge = STATUS_PLACA[p.status_placa] || { bg: '#6c757d', label: p.status_display }
 
-  // Amostra na placa (excluindo controles e vazios)
   const amostras = (p.pocos || [])
     .filter(w => w.tipo_conteudo === 'amostra' && w.amostra_codigo)
     .sort((a, b) => a.posicao.localeCompare(b.posicao))
@@ -131,7 +118,6 @@ function LinhaPlaca({ p, onEditar }) {
           background: aberta ? '#f5f3ff' : undefined,
           transition: 'background 0.15s',
         }}
-        title="Clique para ver as amostras na placa"
       >
         <td style={{ ...tdStyle, fontWeight: 600 }}>
           <span style={{ marginRight: 5, fontSize: '0.7rem', color: '#6b7280' }}>
@@ -139,45 +125,22 @@ function LinhaPlaca({ p, onEditar }) {
           </span>
           {p.codigo}
         </td>
-        <td style={tdStyle}>
-          <span style={{
-            background: badge.bg, color: '#fff',
-            padding: '2px 8px', borderRadius: 4,
-            fontSize: '0.78rem', fontWeight: 500, whiteSpace: 'nowrap',
-          }}>
-            {badge.label}
-          </span>
-        </td>
         <td style={tdStyle}>{p.total_amostras}</td>
         <td style={tdStyle}>{p.responsavel_nome || '—'}</td>
         <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
         <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <button
-              onClick={e => { e.stopPropagation(); onEditar(p.id) }}
-              style={btnSmall('#1a3a5c')}
-            >
-              Editar
-            </button>
-            {p.total_amostras > 0 && (
-              <a
-                href={`/api/placas/${p.id}/pdf/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{ ...btnSmall('#4b5563'), textDecoration: 'none', display: 'inline-block' }}
-              >
-                PDF
-              </a>
-            )}
-          </div>
+          <button
+            onClick={e => { e.stopPropagation(); onConfirmar(p.codigo) }}
+            style={btnSmall('#6f42c1')}
+          >
+            Confirmar Extração
+          </button>
         </td>
       </tr>
 
       {aberta && (
         <tr style={{ borderBottom: '1px solid #f0f0f0', background: '#f5f3ff' }}>
-          <td colSpan={6} style={{ padding: '0.75rem 1rem 1rem 1.25rem' }}>
-            {/* Legenda + espelho */}
+          <td colSpan={5} style={{ padding: '0.75rem 1rem 1rem 1.25rem' }}>
             <div style={{ marginBottom: '0.6rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {[
                 { tipo: 'amostra',           label: 'Amostra' },
@@ -203,7 +166,6 @@ function LinhaPlaca({ p, onEditar }) {
 
             <EspelhoPlaca pocos={p.pocos || []} />
 
-            {/* Lista compacta de amostras */}
             {amostras.length > 0 && (
               <details style={{ marginTop: '0.75rem' }}>
                 <summary style={{ cursor: 'pointer', fontSize: '0.8rem', color: '#6f42c1', userSelect: 'none' }}>
@@ -236,22 +198,28 @@ function LinhaPlaca({ p, onEditar }) {
   )
 }
 
-export default function ConsultarPlacas({ csrfToken, onEditar }) {
-  const [operador, setOperador] = useState(() => getOperadorInicial())
+export default function ConfirmarExtracao({ csrfToken }) {
   const [placas, setPlacas] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+
+  const [operador, setOperador] = useState(() => getOperadorInicial())
+  const [codigoExtracao, setCodigoExtracao] = useState('')
+  const [feedbackExtracao, setFeedbackExtracao] = useState(null)
+  const [amostrasExtraidas, setAmostrasExtraidas] = useState([])
+  const [carregandoExtracao, setCarregandoExtracao] = useState(false)
+  const extracaoRef = useRef()
 
   useEffect(() => { fetchPlacas() }, [])
+  useEffect(() => { if (!carregandoExtracao) extracaoRef.current?.focus() }, [carregandoExtracao])
 
-  async function fetchPlacas(s = search, sf = statusFilter) {
+  async function fetchPlacas(s = search) {
     setLoading(true)
     try {
       const params = new URLSearchParams()
       params.append('tipo_placa', 'extracao')
+      params.append('status_placa', 'aberta')
       if (s.trim()) params.append('search', s.trim())
-      if (sf) params.append('status_placa', sf)
       const data = await api(`/api/placas/?${params}`, { csrfToken })
       setPlacas(data.results || data)
     } catch {
@@ -264,28 +232,130 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
   function handleSearch(e) {
     const val = e.target.value
     setSearch(val)
-    fetchPlacas(val, statusFilter)
+    fetchPlacas(val)
   }
 
-  function handleStatusFilter(e) {
-    const val = e.target.value
-    setStatusFilter(val)
-    fetchPlacas(search, val)
+  async function handleConfirmarExtracao(placaCodigo) {
+    const val = placaCodigo || codigoExtracao.trim()
+    if (!val) return
+    setCarregandoExtracao(true)
+    setFeedbackExtracao(null)
+    setAmostrasExtraidas([])
+    try {
+      const body = { codigo: val }
+      if (operador) body.numero_cracha = operador.numero_cracha
+      const data = await api('/api/placas/confirmar-extracao/', {
+        csrfToken, method: 'POST', body,
+      })
+      const pocos = data.placa?.pocos || []
+      const codigos = pocos
+        .filter(p => p.tipo_conteudo === 'amostra' && p.amostra_codigo)
+        .map(p => p.amostra_codigo)
+        .sort()
+      setAmostrasExtraidas(codigos)
+      setFeedbackExtracao({
+        tipo: 'sucesso',
+        msg: `Placa ${val} — ${codigos.length} amostra${codigos.length !== 1 ? 's' : ''} marcada${codigos.length !== 1 ? 's' : ''} como Extraída.`,
+      })
+      fetchPlacas()
+    } catch (err) {
+      setFeedbackExtracao({ tipo: 'erro', msg: err.data?.erro || 'Placa não encontrada ou já processada.' })
+    } finally {
+      setCodigoExtracao('')
+      setCarregandoExtracao(false)
+    }
   }
 
-  // ================================================================
-  // Render
-  // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
-      <NavigationButtons currentStep="extracao" />
-
-      {/* Modal bloqueante de identificação */}
       {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="Consultar Placas" />
+        <CrachaModal
+          onValidado={(op) => { setOperador(op); setTimeout(() => extracaoRef.current?.focus(), 100) }}
+          modulo="Confirmar Extração"
+        />
       )}
 
-      {/* ---- Seção: Lista de placas ---- */}
+      {operador && (
+        <div style={{
+          background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: 8,
+          padding: '1.25rem', marginBottom: '1.75rem',
+        }}>
+          <h3 style={{ fontSize: '1rem', color: '#6f42c1', marginBottom: '0.5rem', marginTop: 0 }}>
+            Confirmar Extração
+          </h3>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.75rem',
+            background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+            padding: '0.6rem 1rem', marginBottom: '0.75rem',
+          }}>
+            <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+              Operador: {operador.nome_completo}
+            </span>
+            <span style={{
+              fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+              padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+            }}>
+              {operador.perfil}
+            </span>
+            <button
+              onClick={() => setOperador(null)}
+              style={{
+                marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+                borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+                color: '#065f46', cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              Trocar operador
+            </button>
+          </div>
+
+          <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+            Escaneie o código de barras da placa após a extração de DNA para marcar todas as amostras como <b>Extraída</b>.
+          </p>
+          <form onSubmit={e => { e.preventDefault(); handleConfirmarExtracao() }} style={{ display: 'flex', gap: '0.5rem', maxWidth: 500, marginBottom: '0.75rem' }}>
+            <input
+              ref={extracaoRef}
+              type="text"
+              value={codigoExtracao}
+              onChange={e => setCodigoExtracao(e.target.value)}
+              placeholder="Escanear código da placa..."
+              disabled={carregandoExtracao}
+              autoComplete="off"
+              style={{
+                flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
+                border: '2px solid #c4b5fd', borderRadius: 6, outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={carregandoExtracao || !codigoExtracao.trim()}
+              style={{
+                ...btnStyle('#6f42c1'),
+                opacity: (carregandoExtracao || !codigoExtracao.trim()) ? 0.5 : 1,
+              }}
+            >
+              {carregandoExtracao ? 'Confirmando...' : 'Confirmar'}
+            </button>
+          </form>
+          {feedbackExtracao && (
+            <div style={{ borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ padding: '0.6rem 1rem', ...feedbackStyles[feedbackExtracao.tipo] }}>
+                {feedbackExtracao.msg}
+              </div>
+              {feedbackExtracao.tipo === 'sucesso' && amostrasExtraidas.length > 0 && (
+                <div style={{
+                  padding: '0.5rem 1rem', background: '#f0fdf4',
+                  borderTop: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#065f46',
+                }}>
+                  <b>Amostras extraídas:</b> {amostrasExtraidas.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
@@ -298,43 +368,34 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
               border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.85rem',
             }}
           />
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            style={{
-              padding: '0.45rem 0.75rem', border: '1px solid #d1d5db',
-              borderRadius: 5, fontSize: '0.85rem', background: '#fff',
-            }}
-          >
-            <option value="">Todos os status</option>
-            <option value="aberta">Aberta</option>
-            <option value="extracao_confirmada">Extração confirmada</option>
-          </select>
           <button onClick={() => fetchPlacas()} style={{ ...btnStyle('#4b5563'), padding: '0.45rem 1rem', fontSize: '0.85rem' }}>
             Atualizar
           </button>
         </div>
 
+        <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          Placas com status <b>Aberta</b> aguardando confirmação de extração.
+        </p>
+
         {loading ? (
           <p style={{ color: '#6b7280', padding: '1rem 0' }}>Carregando...</p>
         ) : placas.length === 0 ? (
-          <p style={{ color: '#9ca3af', padding: '1rem 0' }}>Nenhuma placa encontrada.</p>
+          <p style={{ color: '#9ca3af', padding: '1rem 0' }}>Nenhuma placa pendente de confirmação.</p>
         ) : (
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
                   <th style={thStyle}>Código</th>
-                  <th style={thStyle}>Status</th>
                   <th style={thStyle}>Amostras</th>
                   <th style={thStyle}>Responsável</th>
                   <th style={thStyle}>Data</th>
-                  <th style={thStyle}>Ações</th>
+                  <th style={thStyle}>Ação</th>
                 </tr>
               </thead>
               <tbody>
                 {placas.map(p => (
-                  <LinhaPlaca key={p.id} p={p} onEditar={onEditar} />
+                  <LinhaPlaca key={p.id} p={p} onConfirmar={handleConfirmarExtracao} />
                 ))}
               </tbody>
             </table>
@@ -345,7 +406,6 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
   )
 }
 
-// ---- Helpers / Styles ----
 function fmtDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('pt-BR', {
@@ -370,3 +430,9 @@ const thStyle = {
 }
 
 const tdStyle = { padding: '0.5rem 0.75rem', color: '#374151' }
+
+const feedbackStyles = {
+  sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },
+  aviso:   { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' },
+  erro:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
+}

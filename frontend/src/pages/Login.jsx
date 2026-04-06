@@ -8,11 +8,11 @@ const s = {
   card: {
     background: '#fff',
     borderRadius: 14,
-    boxShadow: '0 4px 32px rgba(26,58,92,0.13)',
+    boxShadow: '0 4px 32px rgba(92,10,20,0.15)',
     overflow: 'hidden',
   },
   header: {
-    background: '#1a3a5c',
+    background: '#7b1020',
     padding: '2rem 2rem 1.5rem',
     textAlign: 'center',
     color: '#fff',
@@ -28,7 +28,7 @@ const s = {
   },
   subtitle: {
     fontSize: '0.8rem',
-    color: '#adc8e6',
+    color: '#f0b8be',
     marginTop: '0.25rem',
   },
   body: {
@@ -47,8 +47,8 @@ const s = {
     cursor: 'pointer',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: active ? '#1a3a5c' : '#9ca3af',
-    borderBottom: active ? '2px solid #1a3a5c' : '2px solid transparent',
+    color: active ? '#7b1020' : '#9ca3af',
+    borderBottom: active ? '2px solid #7b1020' : '2px solid transparent',
     marginBottom: -2,
     transition: 'color 0.15s',
   }),
@@ -72,7 +72,7 @@ const s = {
   btnPrimary: {
     width: '100%',
     padding: '0.75rem',
-    background: '#1a3a5c',
+    background: '#7b1020',
     color: '#fff',
     border: 'none',
     borderRadius: 8,
@@ -118,9 +118,9 @@ const s = {
     gap: 8,
     padding: '0.6rem 1.25rem',
     borderRadius: 999,
-    border: `2px solid ${lendo ? '#1a3a5c' : '#d1d5db'}`,
-    background: lendo ? '#eff6ff' : '#f9fafb',
-    color: lendo ? '#1a3a5c' : '#6b7280',
+    border: `2px solid ${lendo ? '#7b1020' : '#d1d5db'}`,
+    background: lendo ? '#fdf2f3' : '#f9fafb',
+    color: lendo ? '#7b1020' : '#6b7280',
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: 'pointer',
@@ -264,7 +264,7 @@ function TabCracha({ onSuccess, csrf }) {
     <div style={s.crachaArea}>
       {erro && <div style={{ ...s.erro, textAlign: 'left' }}>{erro}</div>}
 
-      <div style={s.crachaIcon}>🪪</div>
+      <div style={s.crachaIcon}>ID</div>
       <p style={s.crachaHint}>
         {lendo
           ? 'Passe o crachá no leitor agora…'
@@ -307,7 +307,7 @@ export default function Login({ csrfToken, nextUrl }) {
     <div style={s.wrapper}>
       <div style={s.card}>
         <div style={s.header}>
-          <div style={s.logo}>🔬</div>
+          <div style={s.logo}>SIGA</div>
           <div style={s.title}>SIGA-LACEN</div>
           <div style={s.subtitle}>
             Sistema de Informação e Gerenciamento de Amostras
@@ -329,6 +329,13 @@ export default function Login({ csrfToken, nextUrl }) {
 
           {aba === 'email'  && <TabEmail  onSuccess={onSuccess} csrf={csrfToken} />}
           {aba === 'cracha' && <TabCracha onSuccess={onSuccess} csrf={csrfToken} />}
+        </div>
+
+        {/* Faixa tricolor — bandeira do RS */}
+        <div style={{ display: 'flex', height: 6 }}>
+          <div style={{ flex: 1, background: '#c8102e' }} />
+          <div style={{ flex: 1, background: '#f5c518' }} />
+          <div style={{ flex: 1, background: '#009c3b' }} />
         </div>
       </div>
 

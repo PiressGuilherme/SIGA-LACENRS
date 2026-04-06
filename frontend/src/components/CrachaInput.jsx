@@ -1,5 +1,5 @@
 /**
- * CrachaInput — validação de crachá por bipagem ou digitação.
+ * CrachaInput — validação de crachá por leitura ou digitação.
  *
  * Props:
  *   onValidado(user | null)  chamado após cada tentativa de validação
@@ -7,7 +7,7 @@
  *
  * Comportamento:
  *   - Ao validar com sucesso: chama onValidado({ id, nome_completo, perfil, numero_cracha })
- *   - Ao bipe de um novo crachá: chama onValidado com o novo operador (swap sem perda de dados)
+ *   - Ao escanear um novo crachá: chama onValidado com o novo operador (swap sem perda de dados)
  *   - Foco automático no input ao montar
  */
 import { useState, useRef, useEffect } from 'react'
@@ -50,7 +50,7 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
     } finally {
       setCodigo('')
       setCarregando(false)
-      // Re-foca para o próximo bipe
+      // Re-foca para a próxima leitura
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }
@@ -74,7 +74,7 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
           type="text"
           value={codigo}
           onChange={e => setCodigo(e.target.value)}
-          placeholder="Bipe ou digite o código do crachá..."
+          placeholder="Escaneie ou digite o código do crachá..."
           disabled={carregando}
           autoComplete="off"
           style={{
@@ -111,7 +111,7 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
             {operador.perfil}
           </span>
           <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 'auto' }}>
-            Bipe um novo crachá para trocar de operador
+            Escaneie um novo crachá para trocar de operador
           </span>
         </div>
       )}

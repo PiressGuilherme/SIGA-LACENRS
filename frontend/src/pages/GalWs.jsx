@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
+import CrachaModal from '../components/CrachaModal'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const STATUS = { idle: 'idle', loading: 'loading', ok: 'ok', erro: 'erro' }
 
@@ -41,7 +43,7 @@ function TabConfiguracao({ csrf }) {
   const [msg, setMsg] = useState(null)
 
   useEffect(() => {
-    api.get('/gal-ws/configuracao/', { headers: { 'X-CSRFToken': csrf } })
+    api.get('/gal-ws/configuracao/', { headers: { 'X-CSRFToken': getCsrfToken() } })
       .then(r => {
         const d = r.data
         setForm(f => ({
@@ -65,7 +67,7 @@ function TabConfiguracao({ csrf }) {
     setSalvando(true)
     setMsg(null)
     try {
-      await api.post('/gal-ws/configuracao/', form, { headers: { 'X-CSRFToken': csrf } })
+      await api.post('/gal-ws/configuracao/', form, { headers: { 'X-CSRFToken': getCsrfToken() } })
       setMsg({ tipo: 'ok', texto: 'Configuração salva com sucesso.' })
       if (form.senha) setSenhaConfigurada(true)
       setForm(f => ({ ...f, senha: '' }))
@@ -146,7 +148,7 @@ function TabTestarConexao({ csrf }) {
     setSt(STATUS.loading)
     setResultado(null)
     try {
-      const r = await api.post('/gal-ws/testar-conexao/', {}, { headers: { 'X-CSRFToken': csrf } })
+      const r = await api.post('/gal-ws/testar-conexao/', {}, { headers: { 'X-CSRFToken': getCsrfToken() } })
       setResultado({ ok: true, data: r.data })
       setSt(STATUS.ok)
     } catch (err) {
@@ -215,7 +217,7 @@ function TabBuscarExames({ csrf }) {
     try {
       const r = await api.post('/gal-ws/buscar-exames/',
         { laboratorio },
-        { headers: { 'X-CSRFToken': csrf } }
+        { headers: { 'X-CSRFToken': getCsrfToken() } }
       )
       setResultado({ ok: true, data: r.data })
       setSt(STATUS.ok)
@@ -292,10 +294,16 @@ const TABS = [
 ]
 
 export default function GalWs({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [aba, setAba] = useState('config')
 
   return (
     <div style={{ maxWidth: 760 }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="GAL WebService" />
+      )}
+
       <div style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.4rem', color: '#1a3a5c', marginBottom: '0.25rem' }}>
           Integração GAL WebService

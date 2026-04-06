@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils import timezone
@@ -9,8 +12,31 @@ from rest_framework.response import Response
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.placas.models import Placa, Poco, StatusPlaca, TipoConteudoPoco
-from apps.usuarios.permissions import IsPCROuSupervisor
+from apps.usuarios.permissions import IsEspecialista
 from .models import ResultadoAmostra, ResultadoPoco
+
+User = get_user_model()
+
+
+@contextmanager
+def _noop_ctx():
+    yield
+
+
+def _resolver_operador(request):
+    """Resolve o operador a partir de numero_cracha ou fallback para request.user."""
+    from auditlog.context import set_actor
+    numero_cracha = ''
+    # Suporte para FormData (multipart) e JSON
+    if hasattr(request.data, 'get'):
+        numero_cracha = (request.data.get('numero_cracha') or '').strip()
+    if numero_cracha:
+        try:
+            operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
+        except User.DoesNotExist:
+            return request.user, set_actor(request.user), None
+        return operador, set_actor(operador), None
+    return request.user, set_actor(request.user), None
 from .parser import (
     parse_cfx_csv, validar_cp, validar_cn,
     classificar_canal, calcular_resultado_final,
@@ -45,7 +71,7 @@ class ResultadoPocoViewSet(viewsets.GenericViewSet,
         'poco__amostra', 'poco__resultado_amostra'
     ).all()
     serializer_class = ResultadoPocoSerializer
-    permission_classes = [IsPCROuSupervisor]
+    permission_classes = [IsEspecialista]
     http_method_names = ['patch', 'head', 'options']
 
     def perform_update(self, serializer):
@@ -69,14 +95,11 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ResultadoAmostra.objects.select_related(
         'poco__amostra', 'poco__placa', 'confirmado_por'
     ).prefetch_related('poco__resultados').all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsEspecialista]
 
     def get_permissions(self):
-        # Import, confirmação, liberação e repetição: perfil PCR ou supervisor
-        if self.action in ('importar', 'confirmar', 'liberar', 'solicitar_repeticao'):
-            return [IsPCROuSupervisor()]
-        # list, retrieve: qualquer autenticado
-        return [permissions.IsAuthenticated()]
+        # Todas as ações requerem especialista ou supervisor
+        return [IsEspecialista()]
 
     def get_serializer_class(self):
         # Inclui canais aninhados em todas as leituras (list, retrieve, importar)
@@ -100,11 +123,10 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
     # ------------------------------------------------------------------
 
     @action(detail=False, methods=['post'], url_path='importar')
-    @transaction.atomic
     def importar(self, request):
         """
         POST /api/resultados/importar/
-        Body: multipart/form-data com 'arquivo' (CSV) e 'placa_id'.
+        Body: multipart/form-data com 'arquivo' (CSV), 'placa_id' e opcionalmente 'numero_cracha'.
 
         Fluxo:
         1. Parseia o CSV do CFX Manager.
@@ -149,8 +171,19 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
+        # Resolver operador para auditlog
+        operador, actor_ctx, _err = _resolver_operador(request)
+        if actor_ctx is None:
+            actor_ctx = _noop_ctx()
+
         avisos: list[str] = []
 
+        # Tudo a partir daqui é atômico e com actor correto no auditlog
+        with transaction.atomic(), actor_ctx:
+            return self._processar_import(request, placa, parsed, cp_msg, cn_msg, operador, avisos)
+
+    def _processar_import(self, request, placa, parsed, cp_msg, cn_msg, operador, avisos):
+        """Lógica interna de importação, executada dentro de transaction.atomic() + set_actor()."""
         # ── 1. ResultadoPoco por poço × canal ────────────────────────────────
         # Mapa de posição → Poco para acesso rápido
         poco_map: dict[str, Poco] = {
@@ -269,6 +302,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         """
         POST /api/resultados/{id}/confirmar/
         Torna o resultado imutável e registra o responsável.
+        Aceita numero_cracha para atribuir a ação ao operador do crachá.
         """
         resultado = self.get_object()
         if resultado.imutavel:
@@ -276,10 +310,12 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado já foi confirmado.'},
                 status=status.HTTP_409_CONFLICT,
             )
+        operador, actor_ctx, _err = _resolver_operador(request)
         resultado.imutavel      = True
         resultado.confirmado_em  = timezone.now()
-        resultado.confirmado_por = request.user
-        resultado.save(update_fields=['imutavel', 'confirmado_em', 'confirmado_por'])
+        resultado.confirmado_por = operador
+        with actor_ctx:
+            resultado.save(update_fields=['imutavel', 'confirmado_em', 'confirmado_por'])
         return Response(ResultadoAmostraDetalheSerializer(resultado).data)
 
     # ------------------------------------------------------------------
@@ -291,6 +327,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         """
         POST /api/resultados/{id}/liberar/
         Requer resultado confirmado. Atualiza a amostra para Resultado Liberado.
+        Aceita numero_cracha para atribuir a ação ao operador do crachá.
         """
         resultado = self.get_object()
         if not resultado.imutavel:
@@ -298,10 +335,12 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'O resultado precisa ser confirmado antes de ser liberado.'},
                 status=status.HTTP_409_CONFLICT,
             )
+        operador, actor_ctx, _err = _resolver_operador(request)
         amostra = resultado.poco.amostra
         if amostra and amostra.status != StatusAmostra.RESULTADO_LIBERADO:
-            amostra.status = StatusAmostra.RESULTADO_LIBERADO
-            amostra.save(update_fields=['status', 'atualizado_em'])
+            with actor_ctx:
+                amostra.status = StatusAmostra.RESULTADO_LIBERADO
+                amostra.save(update_fields=['status', 'atualizado_em'])
         return Response(ResultadoAmostraSerializer(resultado).data)
 
     # ------------------------------------------------------------------
@@ -314,6 +353,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         POST /api/resultados/{id}/solicitar-repeticao/
         Marca a amostra para novo ciclo de PCR.
         Não pode ser aplicado a resultados já confirmados.
+        Aceita numero_cracha para atribuir a ação ao operador do crachá.
         """
         resultado = self.get_object()
         if resultado.imutavel:
@@ -321,10 +361,12 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado confirmado não pode solicitar repetição.'},
                 status=status.HTTP_409_CONFLICT,
             )
+        operador, actor_ctx, _err = _resolver_operador(request)
         amostra = resultado.poco.amostra
         if amostra:
-            amostra.status = StatusAmostra.REPETICAO_SOLICITADA
-            amostra.save(update_fields=['status', 'atualizado_em'])
+            with actor_ctx:
+                amostra.status = StatusAmostra.REPETICAO_SOLICITADA
+                amostra.save(update_fields=['status', 'atualizado_em'])
         return Response(
             {
                 'mensagem': f'Repetição solicitada para amostra {amostra.codigo_interno if amostra else pk}.',

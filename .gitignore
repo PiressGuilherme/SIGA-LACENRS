@@ -17,6 +17,7 @@ build/
 .eggs/
 
 # Django
+backend/static/
 backend/staticfiles/
 backend/mediafiles/
 *.log
@@ -41,4 +42,3 @@ htmlcov/
 
 #diversos
 gal-bmh*
-*.csv

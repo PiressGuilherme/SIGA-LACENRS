@@ -179,5 +179,5 @@ class ResultadoAmostra(models.Model):
         self.resultado_final = _calcular(ci, hpv16, hpv18, hpvar)
         self.save(update_fields=[
             'ci_resultado', 'hpv16_resultado', 'hpv18_resultado',
-            'hpvar_resultado', 'resultado_final',
+            'hpvar_resultado', 'resultado_final', 'atualizado_em',
         ])

@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
-from apps.usuarios.permissions import IsExtracaoOuSupervisor, IsSupervisor
+from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsSupervisor, IsLaboratorio
 from .models import Amostra, StatusAmostra
 from .serializers import AmostraSerializer
 from .utils import parse_gal_file
@@ -66,9 +66,9 @@ class AmostraViewSet(viewsets.ModelViewSet):
         # Escrita manual (criar/editar/excluir): apenas supervisor
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
             return [IsSupervisor()]
-        # Import CSV e recebimento: extracao ou supervisor
+        # Import CSV e recebimento: qualquer perfil de laboratório (técnico, especialista, supervisor)
         if self.action in ('preview_csv', 'importar_csv', 'receber'):
-            return [IsExtracaoOuSupervisor()]
+            return [IsLaboratorio()]
         # list, retrieve, filtros: qualquer autenticado
         return [permissions.IsAuthenticated()]
 
@@ -279,9 +279,11 @@ class AmostraViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
+        from auditlog.context import set_actor
         amostra.status = StatusAmostra.ALIQUOTADA
         amostra.recebido_por = operador
-        amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
+        with set_actor(operador):
+            amostra.save(update_fields=['status', 'recebido_por', 'atualizado_em'])
 
         return Response(
             {

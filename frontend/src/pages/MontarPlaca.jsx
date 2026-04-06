@@ -1,4 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -17,11 +20,27 @@ FILL_ORDER.forEach((gridIdx, fillPos) => { FILL_POS[gridIdx] = fillPos })
 
 const TIPO = { AMOSTRA: 'amostra', CN: 'cn', CP: 'cp', VAZIO: 'vazio' }
 
-const TIPO_COLORS = {
-  [TIPO.AMOSTRA]: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
-  [TIPO.CN]:      { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  [TIPO.CP]:      { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },
-  [TIPO.VAZIO]:   { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
+// Cores fixas para CN/CP e vazio
+const CTRL_COLORS = {
+  [TIPO.CN]:    { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+  [TIPO.CP]:    { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },
+  [TIPO.VAZIO]: { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
+}
+
+// Cores de amostras por grupo (índice 0 = grupo 1)
+const GROUP_COLORS = [
+  { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },  // grupo 1 — azul
+  { bg: '#d1fae5', border: '#10b981', text: '#065f46' },  // grupo 2 — verde
+  { bg: '#fde8d8', border: '#f97316', text: '#9a3412' },  // grupo 3 — laranja
+  { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' },  // grupo 4 — roxo
+  { bg: '#fce7f3', border: '#db2777', text: '#9d174d' },  // grupo 5 — rosa
+]
+
+function wellColors(w) {
+  if (w.tipo_conteudo === TIPO.AMOSTRA) {
+    return GROUP_COLORS[(w.grupo - 1) % GROUP_COLORS.length]
+  }
+  return CTRL_COLORS[w.tipo_conteudo] || CTRL_COLORS[TIPO.VAZIO]
 }
 
 const DEFAULT_CP_IDX = 6 * 12 + 11  // G12
@@ -46,9 +65,10 @@ function emptyGrid() {
     tipo_conteudo: TIPO.VAZIO,
     amostra_id: null,
     amostra_codigo: '',
+    grupo: 1,
   }))
-  g[DEFAULT_CP_IDX] = { ...g[DEFAULT_CP_IDX], tipo_conteudo: TIPO.CP }
-  g[DEFAULT_CN_IDX] = { ...g[DEFAULT_CN_IDX], tipo_conteudo: TIPO.CN }
+  g[DEFAULT_CP_IDX] = { ...g[DEFAULT_CP_IDX], tipo_conteudo: TIPO.CP, grupo: 1 }
+  g[DEFAULT_CN_IDX] = { ...g[DEFAULT_CN_IDX], tipo_conteudo: TIPO.CN, grupo: 1 }
   return g
 }
 
@@ -58,6 +78,7 @@ function gridFromPocos(pocos) {
     tipo_conteudo: TIPO.VAZIO,
     amostra_id: null,
     amostra_codigo: '',
+    grupo: 1,
   }))
   for (const poco of pocos) {
     const idx = ALL_POSITIONS.indexOf(poco.posicao)
@@ -67,6 +88,7 @@ function gridFromPocos(pocos) {
       tipo_conteudo: poco.tipo_conteudo,
       amostra_id: poco.amostra || null,
       amostra_codigo: poco.amostra_codigo || '',
+      grupo: poco.grupo || 1,
     }
   }
   return g
@@ -75,7 +97,7 @@ function gridFromPocos(pocos) {
 async function api(url, { csrfToken, method = 'GET', body } = {}) {
   const opts = {
     method,
-    headers: { 'X-CSRFToken': csrfToken },
+    headers: { 'X-CSRFToken': getCsrfToken() },
     credentials: 'same-origin',
   }
   if (body) {
@@ -90,6 +112,9 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
 
 // ================================================================
 export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarDone }) {
+  // ---- State: operador (crachá ou admin) ----
+  const [operador, setOperador] = useState(() => getOperadorInicial())
+
   // ---- State: lista de placas ----
   const [placas, setPlacas] = useState([])
   const [loadingList, setLoadingList] = useState(false)
@@ -107,6 +132,8 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   const [carregando, setCarregando] = useState(false)
   const [salva, setSalva] = useState(false)
   const [pendingDuplicate, setPendingDuplicate] = useState(null)
+  const [grupoAtivo, setGrupoAtivo] = useState(1)
+  const [totalGrupos, setTotalGrupos] = useState(1)
   const inputRef = useRef()
 
   // Foco automático no input após cada scan (quando carregando volta a false)
@@ -128,6 +155,12 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   const totalCP = grid.filter(w => w.tipo_conteudo === TIPO.CP).length
   const totalReacoes = totalAmostras + totalCN + totalCP
   const hasControls = totalCN > 0 && totalCP > 0
+
+  // Contadores por grupo (para exibir reagentes por grupo)
+  const gruposAtivos = [...new Set(grid.filter(w => w.tipo_conteudo !== TIPO.VAZIO).map(w => w.grupo))].sort()
+  function reacoesPorGrupo(g) {
+    return grid.filter(w => w.tipo_conteudo !== TIPO.VAZIO && w.grupo === g).length
+  }
 
   const nextEmpty = useCallback((afterGridIdx) => {
     const startFP = FILL_POS[afterGridIdx] + 1
@@ -188,9 +221,15 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
       if (data.pocos && data.pocos.length > 0) {
         setGrid(gridFromPocos(data.pocos))
         setSalva(true)
+        const grupos = [...new Set(data.pocos.map(p => p.grupo || 1))].sort()
+        const maxGrupo = grupos.length > 0 ? Math.max(...grupos) : 1
+        setTotalGrupos(maxGrupo)
+        setGrupoAtivo(1)
       } else {
         setGrid(emptyGrid())
         setSalva(false)
+        setTotalGrupos(1)
+        setGrupoAtivo(1)
       }
       setSelected(FILL_ORDER[0])
       setShowList(false)
@@ -210,6 +249,8 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
     setSalva(false)
     setFeedback(null)
     setShowList(false)
+    setGrupoAtivo(1)
+    setTotalGrupos(1)
   }
 
   // ---- Colocar amostra ----
@@ -221,6 +262,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
         tipo_conteudo: TIPO.AMOSTRA,
         amostra_id: amostra.id,
         amostra_codigo: amostra.codigo_interno,
+        grupo: grupoAtivo,
       }
       return next
     })
@@ -287,12 +329,88 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
     setGrid(prev => {
       const next = [...prev]
-      next[idx] = { ...next[idx], tipo_conteudo: tipo, amostra_id: null, amostra_codigo: '' }
+      next[idx] = { ...next[idx], tipo_conteudo: tipo, amostra_id: null, amostra_codigo: '', grupo: grupoAtivo }
       return next
     })
     const ne = nextEmpty(idx)
     setSelected(ne === -1 ? idx : ne)
     setSalva(false)
+  }
+
+  // ---- Adicionar novo grupo com controles automáticos ----
+  function adicionarGrupo() {
+    const novoGrupo = totalGrupos + 1
+
+    // Encontra os controles do grupo 1 como referência
+    const cpGrupo1 = grid.find(w => w.tipo_conteudo === TIPO.CP && w.grupo === 1)
+    const cnGrupo1 = grid.find(w => w.tipo_conteudo === TIPO.CN && w.grupo === 1)
+
+    if (!cpGrupo1 || !cnGrupo1) {
+      setFeedback({ tipo: 'erro', msg: 'Defina os controles CP e CN do Grupo 1 antes de adicionar um novo grupo.' })
+      return
+    }
+
+    // Calcula posições dos controles do novo grupo (desloca coluna para esquerda)
+    const offset = novoGrupo - 1
+    function deslocarPosicao(posicao) {
+      const row = posicao[0]
+      const col = parseInt(posicao.slice(1), 10)
+      const newCol = col - offset
+      if (newCol < 1) return null
+      return `${row}${String(newCol).padStart(2, '0')}`
+    }
+
+    const novaCpPos = deslocarPosicao(cpGrupo1.posicao)
+    const novaCnPos = deslocarPosicao(cnGrupo1.posicao)
+
+    if (!novaCpPos || !novaCnPos) {
+      setFeedback({ tipo: 'erro', msg: `Não há espaço para os controles do Grupo ${novoGrupo} (coluna fora da placa).` })
+      return
+    }
+
+    const cpIdx = ALL_POSITIONS.indexOf(novaCpPos)
+    const cnIdx = ALL_POSITIONS.indexOf(novaCnPos)
+
+    // Verifica colisão
+    const colisoes = []
+    if (grid[cpIdx]?.tipo_conteudo !== TIPO.VAZIO) colisoes.push(`CP em ${novaCpPos}`)
+    if (grid[cnIdx]?.tipo_conteudo !== TIPO.VAZIO) colisoes.push(`CN em ${novaCnPos}`)
+    if (colisoes.length > 0) {
+      setFeedback({
+        tipo: 'erro',
+        msg: `Não foi possível inserir controles do Grupo ${novoGrupo}: poço(s) ocupado(s) — ${colisoes.join(', ')}. Libere os poços e tente novamente.`,
+      })
+      return
+    }
+
+    setGrid(prev => {
+      const next = [...prev]
+      next[cpIdx] = { ...next[cpIdx], tipo_conteudo: TIPO.CP, amostra_id: null, amostra_codigo: '', grupo: novoGrupo }
+      next[cnIdx] = { ...next[cnIdx], tipo_conteudo: TIPO.CN, amostra_id: null, amostra_codigo: '', grupo: novoGrupo }
+      return next
+    })
+    setTotalGrupos(novoGrupo)
+    setGrupoAtivo(novoGrupo)
+    setSalva(false)
+    setFeedback({ tipo: 'sucesso', msg: `Grupo ${novoGrupo} criado. CP em ${novaCpPos}, CN em ${novaCnPos}.` })
+  }
+
+  // ---- Remover grupo (limpa todos os poços do grupo) ----
+  function removerGrupo(grupo) {
+    if (grupo === 1) return  // grupo 1 nunca pode ser removido
+    setGrid(prev => prev.map(w =>
+      w.grupo === grupo
+        ? { ...w, tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '', grupo: 1 }
+        : w
+    ))
+    // Recalcula totalGrupos com base no que sobrou
+    setTotalGrupos(prev => {
+      const novo = prev === grupo ? grupo - 1 : prev
+      return novo
+    })
+    if (grupoAtivo === grupo) setGrupoAtivo(grupo - 1)
+    setSalva(false)
+    setFeedback({ tipo: 'aviso', msg: `Grupo ${grupo} removido.` })
   }
 
   function clearWell(idx) {
@@ -321,6 +439,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
         posicao: w.posicao,
         tipo_conteudo: w.tipo_conteudo,
         amostra_codigo: w.amostra_codigo || '',
+        grupo: w.grupo || 1,
       }))
 
     try {
@@ -331,7 +450,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
       }
 
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -359,12 +478,13 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
         posicao: w.posicao,
         tipo_conteudo: w.tipo_conteudo,
         amostra_codigo: w.amostra_codigo || '',
+        grupo: w.grupo || 1,
       }))
 
     try {
       const novaPlaca = await api('/api/placas/', { csrfToken, method: 'POST', body: {} })
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -403,6 +523,8 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
     setSalva(false)
     setCodigo('')
     setPendingDuplicate(null)
+    setGrupoAtivo(1)
+    setTotalGrupos(1)
   }
 
   // ================================================================
@@ -410,6 +532,41 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      <NavigationButtons currentStep="extracao" />
+
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Extração — Montar Placa" />
+      )}
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
+        </div>
+      )}
 
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (
@@ -590,35 +747,116 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
               </form>
 
               <div style={{ display: 'flex', gap: '0.35rem' }}>
-                {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => (
+                {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => {
+                  const modeColor = t === TIPO.AMOSTRA
+                    ? GROUP_COLORS[0].border
+                    : (CTRL_COLORS[t]?.border || '#d1d5db')
+                  return (
                   <button
                     key={t}
                     onClick={() => setModo(t)}
                     style={{
-                      ...btnStyle(modo === t ? TIPO_COLORS[t].border : '#d1d5db'),
+                      ...btnStyle(modo === t ? modeColor : '#d1d5db'),
                       color: modo === t ? '#fff' : '#374151',
                       padding: '0.5rem 0.75rem', fontSize: '0.8rem',
                     }}
                   >
                     {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
 
-          {/* ---- Reagentes ---- */}
+          {/* ---- Barra de grupos ---- */}
+          {isEditable && (
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {Array.from({ length: totalGrupos }, (_, i) => i + 1).map(g => {
+                const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length]
+                const isAtivo = g === grupoAtivo
+                return (
+                  <div key={g} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                    <button
+                      onClick={() => setGrupoAtivo(g)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: isAtivo ? gc.border : '#f9fafb',
+                        color: isAtivo ? '#fff' : gc.text,
+                        border: `2px solid ${gc.border}`,
+                        borderRadius: g === totalGrupos && totalGrupos > 1 ? '6px 0 0 6px' : 6,
+                        cursor: 'pointer',
+                        fontSize: '0.82rem',
+                        fontWeight: isAtivo ? 700 : 500,
+                      }}
+                    >
+                      Grupo {g}
+                    </button>
+                    {g > 1 && (
+                      <button
+                        onClick={() => removerGrupo(g)}
+                        title={`Remover Grupo ${g}`}
+                        style={{
+                          padding: '0.35rem 0.4rem',
+                          background: isAtivo ? gc.border : '#f9fafb',
+                          color: isAtivo ? '#fff' : '#9ca3af',
+                          border: `2px solid ${gc.border}`,
+                          borderLeft: 'none',
+                          borderRadius: '0 6px 6px 0',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+              {totalGrupos < GROUP_COLORS.length && (
+                <button
+                  onClick={adicionarGrupo}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    background: '#fff',
+                    color: '#374151',
+                    border: '2px dashed #d1d5db',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  + Adicionar Grupo
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ---- Reagentes por grupo ---- */}
           {totalReacoes > 0 && (
-            <div style={{
-              display: 'flex', gap: '1.5rem', marginBottom: '1rem', padding: '0.6rem 1rem',
-              background: '#f0f7ff', borderRadius: 6, fontSize: '0.85rem', color: '#1e40af',
-              flexWrap: 'wrap',
-            }}>
-              {REAGENTES.map(r => (
-                <span key={r.nome}>
-                  <b>{r.nome}:</b> {(totalReacoes * r.vol).toFixed(1)} uL ({r.vol} x {totalReacoes})
-                </span>
-              ))}
+            <div style={{ marginBottom: '1rem' }}>
+              {(gruposAtivos.length > 0 ? gruposAtivos : [1]).map(g => {
+                const rg = reacoesPorGrupo(g)
+                const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length]
+                return (
+                  <div key={g} style={{
+                    display: 'flex', gap: '1.5rem', padding: '0.5rem 1rem',
+                    background: gc.bg, borderRadius: 6, fontSize: '0.85rem', color: gc.text,
+                    flexWrap: 'wrap', marginBottom: '0.35rem',
+                    border: `1px solid ${gc.border}`,
+                  }}>
+                    {gruposAtivos.length > 1 && (
+                      <span style={{ fontWeight: 700, minWidth: 60 }}>Grupo {g}:</span>
+                    )}
+                    {REAGENTES.map(r => (
+                      <span key={r.nome}>
+                        <b>{r.nome}:</b> {(rg * r.vol).toFixed(1)} uL ({r.vol} × {rg})
+                      </span>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
           )}
 
@@ -644,7 +882,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                     {COLS.map((col, ci) => {
                       const idx = ri * 12 + ci
                       const w = grid[idx]
-                      const colors = TIPO_COLORS[w.tipo_conteudo]
+                      const colors = wellColors(w)
                       const isSelected = idx === selected && isEditable
 
                       return (

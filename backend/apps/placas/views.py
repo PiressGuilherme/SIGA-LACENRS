@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse
@@ -9,10 +12,33 @@ from rest_framework.response import Response
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.amostras.serializers import AmostraSerializer
-from apps.usuarios.permissions import IsExtracaoOuSupervisor, IsPCROuSupervisor, IsLaboratorio
+from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsLaboratorio
 from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
 from .pdf import gerar_pdf_placa
 from .serializers import PlacaSerializer, PocoInputSerializer
+
+User = get_user_model()
+
+
+@contextmanager
+def _noop_ctx():
+    yield
+
+
+def _resolver_operador(request):
+    """Resolve o operador a partir de numero_cracha ou fallback para request.user (superuser)."""
+    from auditlog.context import set_actor
+    numero_cracha = (request.data.get('numero_cracha') or '').strip()
+    if numero_cracha:
+        try:
+            operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
+        except User.DoesNotExist:
+            return None, None, 'Crachá não reconhecido ou operador inativo.'
+        return operador, set_actor(operador), None
+    elif request.user.is_superuser:
+        return request.user, set_actor(request.user), None
+    else:
+        return request.user, set_actor(request.user), None
 
 # Statuses de amostra elegíveis para placa PCR (Extraída em diante, exceto cancelada)
 STATUS_ELEGIVEIS_PCR = {
@@ -47,12 +73,12 @@ class PlacaViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
-        # Confirmar extração: perfil extração ou supervisor
+        # Confirmar extração: qualquer perfil de laboratório (técnico, especialista, supervisor)
         if self.action == 'confirmar_extracao':
-            return [IsExtracaoOuSupervisor()]
-        # Enviar ao termociclador: perfil PCR ou supervisor
+            return [IsLaboratorio()]
+        # Enviar ao termociclador: apenas especialista ou supervisor
         if self.action == 'submeter':
-            return [IsPCROuSupervisor()]
+            return [IsEspecialista()]
         # Criar/editar/excluir placa e salvar poços: qualquer perfil de laboratório
         if self.action in ('create', 'update', 'partial_update', 'destroy', 'salvar_pocos'):
             return [IsLaboratorio()]
@@ -77,8 +103,10 @@ class PlacaViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """Ao excluir placa, reverte amostras vinculadas ao status anterior."""
+        from auditlog.context import set_actor
         amostra_ids = instance._amostras_ids()
-        with transaction.atomic():
+        actor_ctx = set_actor(self.request.user)
+        with transaction.atomic(), actor_ctx:
             if amostra_ids:
                 if instance.tipo_placa == TipoPlaca.EXTRACAO:
                     for amostra in Amostra.objects.filter(pk__in=amostra_ids):
@@ -259,8 +287,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 if placa.tipo_placa in (TipoPlaca.EXTRACAO, TipoPlaca.PCR):
                     amostras_a_atualizar.append(amostra.pk)
 
+            grupo = item.get('grupo', 1)
             pocos_to_create.append(Poco(
-                placa=placa, posicao=posicao, tipo_conteudo=tipo, amostra=amostra,
+                placa=placa, posicao=posicao, tipo_conteudo=tipo, amostra=amostra, grupo=grupo,
             ))
 
         if erros:
@@ -278,7 +307,11 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        with transaction.atomic():
+        operador, actor_ctx, _err = _resolver_operador(request)
+        if actor_ctx is None:
+            actor_ctx = _noop_ctx()
+
+        with transaction.atomic(), actor_ctx:
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
             if amostras_a_atualizar:
@@ -300,7 +333,15 @@ class PlacaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='pdf')
     def pdf(self, request, pk=None):
         placa = self.get_object()
-        pdf_bytes = gerar_pdf_placa(placa)
+        # PDF de placa PCR: restrito a especialista ou supervisor (mesma regra do termociclador)
+        if placa.tipo_placa == TipoPlaca.PCR:
+            perm = IsEspecialista()
+            if not perm.has_permission(request, self):
+                return Response(
+                    {'erro': 'Exportar PDF de placa PCR é restrito ao perfil Especialista ou Supervisor.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        pdf_bytes = gerar_pdf_placa(placa, operador=request.user)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{placa.codigo}.pdf"'
         return response
@@ -340,20 +381,11 @@ class PlacaViewSet(viewsets.ModelViewSet):
             )
 
         # Validação de crachá do operador
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+        operador, _ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         numero_cracha = (request.data.get('numero_cracha') or '').strip()
-        if numero_cracha:
-            try:
-                operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
-            except User.DoesNotExist:
-                return Response(
-                    {'erro': 'Crachá não reconhecido ou operador inativo.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        elif request.user.is_superuser:
-            operador = request.user
-        else:
+        if not numero_cracha and not request.user.is_superuser:
             return Response(
                 {'erro': 'Informe o código do crachá do operador para confirmar a extração.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -387,5 +419,58 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        placa.submeter_termociclador()
+        operador, actor_ctx, _err = _resolver_operador(request)
+        if actor_ctx is None:
+            actor_ctx = _noop_ctx()
+        with actor_ctx:
+            placa.submeter_termociclador()
         return Response(PlacaSerializer(placa).data)
+
+    @action(detail=True, methods=['post'], url_path='replicata')
+    def replicata(self, request, pk=None):
+        """
+        POST /api/placas/{id}/replicata/
+
+        Cria uma nova placa PCR copiando os poços de uma placa que falhou.
+        A placa original deve estar em status submetida ou resultados_importados.
+        """
+        placa_original = self.get_object()
+
+        if placa_original.tipo_placa != TipoPlaca.PCR:
+            return Response(
+                {'erro': 'Apenas placas PCR podem ter replicata.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if placa_original.status_placa not in (StatusPlaca.SUBMETIDA, StatusPlaca.RESULTADOS_IMPORTADOS):
+            return Response(
+                {'erro': f'Placa deve estar Submetida ou com Resultados Importados para gerar replicata.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        operador, actor_ctx, _err = _resolver_operador(request)
+        if actor_ctx is None:
+            actor_ctx = _noop_ctx()
+
+        with transaction.atomic(), actor_ctx:
+            # Cria nova placa PCR
+            nova_placa = Placa.objects.create(
+                tipo_placa=TipoPlaca.PCR,
+                placa_origem=placa_original.placa_origem,
+                responsavel=operador,
+                observacoes=f'Replicata de {placa_original.codigo}',
+            )
+
+            # Copia todos os poços da placa original
+            pocos_originais = placa_original.pocos.all()
+            pocos_para_criar = []
+            for poco in pocos_originais:
+                pocos_para_criar.append(Poco(
+                    placa=nova_placa,
+                    amostra=poco.amostra,
+                    posicao=poco.posicao,
+                    tipo_conteudo=poco.tipo_conteudo,
+                ))
+            Poco.objects.bulk_create(pocos_para_criar)
+
+        return Response(PlacaSerializer(nova_placa).data, status=status.HTTP_201_CREATED)

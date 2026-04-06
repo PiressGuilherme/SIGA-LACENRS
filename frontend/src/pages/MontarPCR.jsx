@@ -1,4 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken, isEspecialista } from '../utils/auth'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -72,7 +75,7 @@ function gridFromPocos(pocos) {
 async function api(url, { csrfToken, method = 'GET', body } = {}) {
   const opts = {
     method,
-    headers: { 'X-CSRFToken': csrfToken },
+    headers: { 'X-CSRFToken': getCsrfToken() },
     credentials: 'same-origin',
   }
   if (body) {
@@ -93,6 +96,9 @@ const STATUS_PLACA = {
 
 // ================================================================
 export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDone }) {
+  // ---- State: operador (crachá ou admin) ----
+  const [operador, setOperador] = useState(() => getOperadorInicial())
+
   // ---- State: escolha de origem ----
   const [modoInicio, setModoInicio] = useState(null)  // null | 'rascunho' | 'zero'
   const [placasExtracao, setPlacasExtracao] = useState([])
@@ -367,7 +373,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       }
 
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -387,7 +393,9 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
     setCarregando(true)
     setFeedback(null)
     try {
-      const data = await api(`/api/placas/${placa.id}/submeter/`, { csrfToken, method: 'POST' })
+      const data = await api(`/api/placas/${placa.id}/submeter/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
       setPlaca(data)
       setFeedback({ tipo: 'sucesso', msg: `Placa ${data.codigo} enviada ao termociclador.` })
     } catch (err) {
@@ -420,7 +428,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
         body: { tipo_placa: 'pcr', placa_origem: placa?.placa_origem || null },
       })
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos },
+        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
       })
       setPlaca(data)
       setSalva(true)
@@ -448,6 +456,27 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
     }
   }
 
+  // ---- Rodar replicata (duplicar placa que falhou) ----
+  async function rodarReplicata() {
+    if (!placa || placa.local) return
+    if (!window.confirm(`Criar replicata da placa ${placa.codigo}? Uma nova placa PCR será criada com os mesmos poços.`)) return
+    setCarregando(true)
+    setFeedback(null)
+    try {
+      const data = await api(`/api/placas/${placa.id}/replicata/`, {
+        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+      })
+      setPlaca(data)
+      setGrid(gridFromPocos(data.pocos || []))
+      setSalva(true)
+      setFeedback({ tipo: 'sucesso', msg: `Replicata criada: placa ${data.codigo}.` })
+    } catch (err) {
+      setFeedback({ tipo: 'erro', msg: err.data?.erro || 'Erro ao criar replicata.' })
+    } finally {
+      setCarregando(false)
+    }
+  }
+
   function resetar() {
     setPlaca(null)
     setGrid(emptyGrid())
@@ -468,6 +497,41 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   // ================================================================
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      <NavigationButtons currentStep="pcr" />
+
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="PCR — Montar Placa" />
+      )}
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
+        </div>
+      )}
 
       {/* ---- Tela de escolha de início ---- */}
       {!placa && modoInicio === null && (
@@ -812,17 +876,27 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
                 {carregando ? 'Salvando...' : 'Salvar como nova placa'}
               </button>
             )}
-            {/* Enviar ao termociclador — só para placa PCR salva e aberta */}
-            {placa && !placa.local && placa.status_placa === 'aberta' && salva && (
-              <button
-                onClick={submeterTermociclador}
-                disabled={carregando}
-                style={{ ...btnStyle('#fd7e14'), opacity: carregando ? 0.5 : 1 }}
-              >
-                Enviar ao Termociclador
-              </button>
-            )}
-            {salva && placa && !placa.local && (
+          {/* Enviar ao termociclador — só para placa PCR salva e aberta */}
+          {placa && !placa.local && placa.status_placa === 'aberta' && salva && (
+            <button
+              onClick={submeterTermociclador}
+              disabled={carregando}
+              style={{ ...btnStyle('#fd7e14'), opacity: carregando ? 0.5 : 1 }}
+            >
+              Enviar ao Termociclador
+            </button>
+          )}
+          {/* Rodar replicata — para placas submetidas ou com resultados importados */}
+          {placa && !placa.local && (placa.status_placa === 'submetida' || placa.status_placa === 'resultados_importados') && (
+            <button
+              onClick={rodarReplicata}
+              disabled={carregando}
+              style={{ ...btnStyle('#7c3aed'), opacity: carregando ? 0.5 : 1 }}
+            >
+              Rodar Replicata
+            </button>
+          )}
+            {salva && placa && !placa.local && isEspecialista() && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
                 target="_blank"

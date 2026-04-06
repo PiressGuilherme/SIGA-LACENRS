@@ -102,7 +102,7 @@
 
 {% block content %}
 <div style="margin-bottom:1.5rem">
-  <h2 style="font-size:1.4rem;color:#1a3a5c;margin-bottom:0.25rem">
+  <h2 style="font-size:1.4rem;color:#4a0010;margin-bottom:0.25rem">
     Olá, {{ user.nome_completo }}
   </h2>
   <p style="color:#6b7280;font-size:0.875rem">
@@ -238,7 +238,7 @@
 
 </div>
 
-{% if user.is_staff %}
+{% if user.is_superuser %}
 <!-- Administração -->
 <p class="section-title">Administração</p>
 <div class="cards-grid">

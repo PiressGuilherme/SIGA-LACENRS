@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import CrachaInput from '../components/CrachaInput'
+import CrachaModal from '../components/CrachaModal'
+import NavigationButtons from '../components/NavigationButtons'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const STATUS_BADGE = {
   aguardando_triagem:   { bg: '#6c757d', label: 'Aguardando Triagem' },
@@ -19,7 +21,7 @@ export default function Aliquotagem({ csrfToken }) {
   const [carregando, setCarregando] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [confirmadas, setConfirmadas] = useState([])
-  const [operador, setOperador] = useState(null)   // operador atual (validado por crachá)
+  const [operador, setOperador] = useState(() => getOperadorInicial())   // operador atual (validado por crachá ou admin)
   const inputRef = useRef()
 
   // Re-foca o input de amostra após cada ação (se operador validado)
@@ -41,7 +43,7 @@ export default function Aliquotagem({ csrfToken }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
+          'X-CSRFToken': getCsrfToken(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ codigo: val, numero_cracha: operador.numero_cracha }),
@@ -73,13 +75,39 @@ export default function Aliquotagem({ csrfToken }) {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
-      {/* Identificação do operador (crachá) */}
-      <CrachaInput onValidado={setOperador} />
-
-      {/* Aviso se operador não identificado */}
+      <NavigationButtons currentStep="aliquotagem" />
+      
+      {/* Modal bloqueante de identificação */}
       {!operador && (
-        <div style={{ background: '#fef3c7', color: '#92400e', padding: '0.75rem 1rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.88rem' }}>
-          Identifique-se com o crachá para iniciar a aliquotagem.
+        <CrachaModal onValidado={setOperador} modulo="Aliquotagem" />
+      )}
+
+      {/* Barra do operador */}
+      {operador && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
+          padding: '0.6rem 1rem', marginBottom: '1rem',
+        }}>
+          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+            Operador: {operador.nome_completo}
+          </span>
+          <span style={{
+            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
+            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
+          }}>
+            {operador.perfil}
+          </span>
+          <button
+            onClick={() => setOperador(null)}
+            style={{
+              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
+              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
+              color: '#065f46', cursor: 'pointer', fontWeight: 500,
+            }}
+          >
+            Trocar operador
+          </button>
         </div>
       )}
 
@@ -90,14 +118,14 @@ export default function Aliquotagem({ csrfToken }) {
           type="text"
           value={codigo}
           onChange={e => setCodigo(e.target.value)}
-          placeholder={operador ? 'Escanear código da amostra...' : 'Identifique-se primeiro com o crachá'}
+          placeholder="Escanear código da amostra..."
           disabled={carregando || !operador}
           autoComplete="off"
           style={{
             flex: 1, padding: '0.75rem 1rem', fontSize: '1.1rem',
             border: '2px solid #93c5fd', borderRadius: 8,
             outline: 'none', transition: 'border-color 0.2s',
-            background: !operador ? '#f9fafb' : '#fff',
+            background: '#fff',
           }}
           onFocus={e => e.target.style.borderColor = '#3b82f6'}
           onBlur={e => e.target.style.borderColor = '#93c5fd'}

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import CrachaModal from '../components/CrachaModal'
+import { getOperadorInicial, getCsrfToken } from '../utils/auth'
 
 const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
@@ -21,7 +23,7 @@ async function api(url, { csrfToken, method = 'GET', body } = {}) {
   const opts = {
     method,
     headers: {
-      'X-CSRFToken': csrfToken,
+      'X-CSRFToken': getCsrfToken(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     credentials: 'same-origin',
@@ -266,6 +268,7 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
 
 // ================================================================
 export default function ConsultarPCR({ csrfToken, onEditar }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial())
   const [placas, setPlacas] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
@@ -291,6 +294,11 @@ export default function ConsultarPCR({ csrfToken, onEditar }) {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
+      {/* Modal bloqueante de identificação */}
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Consultar Placas PCR" />
+      )}
+
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           type="text"

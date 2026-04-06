@@ -34,5 +34,11 @@ class GalWsConfig(models.Model):
     @classmethod
     def get(cls) -> 'GalWsConfig':
         """Retorna (ou cria) o registro singleton de configuração."""
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
+        try:
+            return cls.objects.get(pk=1)
+        except cls.DoesNotExist:
+            from django.db import IntegrityError
+            try:
+                return cls.objects.create(pk=1)
+            except IntegrityError:
+                return cls.objects.get(pk=1)

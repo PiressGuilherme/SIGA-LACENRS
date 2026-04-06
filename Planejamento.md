@@ -460,24 +460,51 @@ O SIGA-LACEN implementa um sistema de autenticação de duas camadas para garant
 * ✅ Linha expansível na tabela de consulta exibe detalhes da amostra
 * ✅ Aba "Placas" na tela de consulta — espelho 8×12 expansível por placa, Confirmar Extração com crachá
 
-#### Fase 6 - Módulo de Resultados e Repetição (2-3 semanas)
-> **Pré-requisito:** Obter critérios IBMP Biomol (cutoffs de Cq por canal) antes de implementar a lógica de classificação.
+#### Fase 4 — Extras implementados (design system e PDF)
+* ✅ Header global (base.html) migrado para vermelho bordô (#7b1020) com faixa tricolor RS (vermelho/amarelo/verde)
+* ✅ Login.jsx e CrachaModal.jsx atualizados para o novo esquema de cores
+* ✅ Tela de consulta de amostras: largura máxima removida para acomodar colunas de resultado
+* ✅ CSRF_TRUSTED_ORIGINS adicionado ao settings de desenvolvimento (corrige 403 em POST)
+* ✅ `requests` adicionado ao requirements/base.txt (correção de ImportError no gal_ws)
+
+#### Fase 4C — Grupos de Amostras na Placa de Extração ✅ Concluída
+* ✅ Campo `grupo` (PositiveSmallIntegerField, default=1) adicionado ao model `Poco` (migration 0009)
+* ✅ Serializers: `grupo` exposto em `PocoSerializer` e `PocoInputSerializer`; `grupos_count` em `PlacaSerializer`
+* ✅ `views.py` passa `grupo` ao `Poco` no bulk_create
+* ✅ `MontarPlaca.jsx`: barra de grupos com cores distintas por grupo (azul/verde/laranja/roxo/rosa)
+* ✅ Botão "+ Adicionar Grupo" insere CP/CN automaticamente na coluna adjacente (G12→G11→G10…)
+* ✅ Detecção de colisão ao inserir controles de novo grupo — exibe mensagem e não insere
+* ✅ Remoção de grupo limpa todos os poços do grupo do grid
+* ✅ Cálculo de reagentes exibido separadamente por grupo
+* ✅ PDF FR-HPV-001 completamente refatorado:
+  * ✅ Cabeçalho institucional em 3 colunas (logo CEVS | título FR-HPV-001 | revisão/paginação)
+  * ✅ Linha ORIGEM + Kits + Ensaio abaixo do cabeçalho
+  * ✅ Colunas do grid sem zero à esquerda (1…12), bordas pretas mais grossas
+  * ✅ Cor de fundo das amostras por grupo (espelha frontend)
+  * ✅ Tabelas de reagentes lado a lado por grupo (apenas contagem de amostras, sem CN/CP)
+  * ✅ Campos "Operador extração" e "Operador PCR" sem borda, alinhados à direita
+  * ✅ Cálculo automático de altura de linha para garantir página única landscape A4
+
+#### Fase 6 - Módulo de Resultados e Repetição ✅ Parcialmente Concluída
 > O CSV do CFX Manager é importado contra uma **placa PCR** (não contra placa de extração).
 
-* Página web de upload do CSV do CFX Manager (seleção da placa PCR correspondente).
-* Parser formatado para o modelo do CFX Manager (Bio-Rad):
-  * Lê metadados do cabeçalho
-  * Agrupa linhas por poço
-  * Extrai Cq por canal (CI, HPV16, HPV18, HPV_AR)
-  * Cruza por `posicao` do poço com a placa PCR salva no banco
-* Implementar classificação automática por critérios IBMP Biomol.
-* Calcular `resultado_final` consolidado por amostra.
-* Ao importar com sucesso: status das amostras da placa PCR → `Resultado`; placa → `Resultados importados`.
-* Tela de revisão de resultados com edição individual e justificativa obrigatória.
-* Alertas para controles falhos (CN amplificou / CP não amplificou).
-* Gestão de Repetições — amostras para repetição voltam para `Aliquotada` para nova placa PCR.
-* Gravação imutável de resultados confirmados (`imutavel=True`).
-* Endpoint para marcar resultado como liberado no GAL → status `Resultado Liberado`.
+* ✅ Parser `parse_cfx_csv()` para CSV do CFX Manager (Bio-Rad): lê metadados, agrupa por poço, extrai Cq por canal (CI, HPV16, HPV18, HPV_AR)
+* ✅ Validação de controles: `validar_cp()` e `validar_cn()` — corrida inválida bloqueia import (HTTP 422)
+* ✅ Classificação automática por canal: `classificar_canal()` com critérios IBMP Biomol
+* ✅ `calcular_resultado_final()` consolida resultado por amostra (hpv_nao_detectado, hpv16, hpv18, hpv_ar, combinações, inválido, inconclusivo)
+* ✅ `POST /api/resultados/importar/` — importa CSV, cria/atualiza `ResultadoPoco` e `ResultadoAmostra`, amostras → `Resultado`, placa → `Resultados Importados`
+* ✅ Tela React `RevisarResultados.jsx` com:
+  * ✅ Seleção de placa PCR (submetida ou com resultados importados)
+  * ✅ Upload e importação do CSV com feedback de CP/CN e avisos por amostra
+  * ✅ Tabela de revisão com canais (CI, HPV-16, HPV-18, HPV AR) e resultado final colorido
+  * ✅ Override manual de interpretação por canal com justificativa obrigatória
+  * ✅ Botão "Confirmar" individual e "Confirmar Todos"
+  * ✅ Botão "Liberar" (muda amostra para `Resultado Liberado`)
+  * ✅ Botão "Solicitar Repetição" (muda amostra para `Repetição Solicitada`)
+* ✅ Resultados aparecem na tela de Consulta de Amostras (colunas CI, HPV-16, HPV-18, HPV AR, Resultado)
+* ✅ `ResultadoAmostraDetalheSerializer` inclui canais aninhados para edição inline
+* ✅ `ResultadoPocoViewSet` — PATCH para override manual; recalcula resultado final automaticamente
+* ✅ Fix: `get_confirmado_por_nome` usava `get_full_name()` (inexistente em `Usuario` customizado) → corrigido para `nome_completo` (HTTP 500 em todas chamadas a `/api/resultados/`)
 
 #### Fase 6.5 - Integração e Robustez (1-2 semanas)
 * Testes E2E do fluxo completo: Importar CSV → Receber → Extração → Confirmar Extração → PCR → Enviar Termociclador → Importar Resultado → Confirmar → Liberar

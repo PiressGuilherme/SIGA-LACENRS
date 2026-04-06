@@ -95,14 +95,12 @@ def gerar_pdf_placa(placa):
     table_data = [header_row]
     cell_bg = []  # list of (row, col, color)
 
-    total_reacoes = 0
     for ri, row_letter in enumerate(ROWS):
         row_data = [row_letter]
         for ci, col_num in enumerate(COLS):
             pos = f'{row_letter}{col_num}'
             poco = pocos_map.get(pos)
             if poco and poco.tipo_conteudo != TipoConteudoPoco.VAZIO:
-                total_reacoes += 1
                 label = TIPO_LABELS.get(poco.tipo_conteudo)
                 if label is None:
                     # Amostra — mostra código interno
@@ -137,25 +135,38 @@ def gerar_pdf_placa(placa):
     elements.append(grid_table)
     elements.append(Spacer(1, 6 * mm))
 
-    # ---- Tabela de reagentes ----
-    reagentes_header = ['Reagente', 'Vol/reação (uL)', 'Reações', 'Vol. total (uL)']
-    reagentes_data = [reagentes_header]
-    for nome, vol in REAGENTES:
-        reagentes_data.append([nome, f'{vol}', str(total_reacoes), f'{vol * total_reacoes:.1f}'])
-
-    reagentes_table = Table(reagentes_data, colWidths=[60 * mm, 35 * mm, 25 * mm, 35 * mm])
-    reagentes_table.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8f0fe')),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elements.append(Paragraph('Cálculo de Reagentes', ParagraphStyle(
+    # ---- Tabelas de reagentes (uma por grupo) ----
+    reag_title_style = ParagraphStyle(
         'ReagTitle', parent=styles['Heading3'], fontSize=10, spaceAfter=2 * mm,
-    )))
-    elements.append(reagentes_table)
+    )
+    grupos = sorted(set(poco.grupo for poco in placa.pocos.all() if poco.tipo_conteudo != TipoConteudoPoco.VAZIO))
+    if not grupos:
+        grupos = [1]
+
+    for grupo in grupos:
+        total_reacoes_grupo = sum(
+            1 for poco in placa.pocos.all()
+            if poco.grupo == grupo and poco.tipo_conteudo != TipoConteudoPoco.VAZIO
+        )
+        titulo = 'Cálculo de Reagentes' if len(grupos) == 1 else f'Cálculo de Reagentes — Grupo {grupo}'
+        elements.append(Paragraph(titulo, reag_title_style))
+
+        reagentes_header = ['Reagente', 'Vol/reação (uL)', 'Reações', 'Vol. total (uL)']
+        reagentes_data = [reagentes_header]
+        for nome, vol in REAGENTES:
+            reagentes_data.append([nome, f'{vol}', str(total_reacoes_grupo), f'{vol * total_reacoes_grupo:.1f}'])
+
+        reagentes_table = Table(reagentes_data, colWidths=[60 * mm, 35 * mm, 25 * mm, 35 * mm])
+        reagentes_table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8f0fe')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        elements.append(reagentes_table)
+        elements.append(Spacer(1, 4 * mm))
 
     doc.build(elements)
     return buf.getvalue()

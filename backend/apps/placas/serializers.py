@@ -14,7 +14,7 @@ class PocoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Poco
         fields = (
-            'id', 'posicao', 'tipo_conteudo',
+            'id', 'posicao', 'tipo_conteudo', 'grupo',
             'amostra', 'amostra_codigo', 'amostra_nome',
         )
 
@@ -30,6 +30,11 @@ class PlacaSerializer(serializers.ModelSerializer):
     placa_origem_codigo = serializers.CharField(
         source='placa_origem.codigo', read_only=True, allow_null=True,
     )
+    grupos_count = serializers.SerializerMethodField()
+
+    def get_grupos_count(self, obj):
+        grupos = obj.pocos.values_list('grupo', flat=True).distinct()
+        return len(set(grupos))
 
     class Meta:
         model = Placa
@@ -38,7 +43,7 @@ class PlacaSerializer(serializers.ModelSerializer):
             'placa_origem', 'placa_origem_codigo',
             'protocolo', 'responsavel', 'responsavel_nome',
             'status_placa', 'status_display',
-            'observacoes', 'total_amostras', 'data_criacao', 'pocos',
+            'observacoes', 'total_amostras', 'grupos_count', 'data_criacao', 'pocos',
         )
         read_only_fields = (
             'id', 'codigo', 'status_display', 'tipo_placa_display',
@@ -53,3 +58,4 @@ class PocoInputSerializer(serializers.Serializer):
     amostra_codigo = serializers.CharField(
         required=False, allow_blank=True, allow_null=True,
     )
+    grupo = serializers.IntegerField(default=1, min_value=1)

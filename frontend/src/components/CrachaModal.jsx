@@ -142,6 +142,13 @@ export default function CrachaModal({ onValidado, modulo = '', operadorAtual = n
         <div style={s.footer}>
           SIGA-LACEN · Laboratório de HPV
         </div>
+
+        {/* Faixa tricolor RS — vermelho / amarelo / verde */}
+        <div style={{ display: 'flex', height: 5 }}>
+          <div style={{ flex: 1, background: '#c8102e' }} />
+          <div style={{ flex: 1, background: '#f5c518' }} />
+          <div style={{ flex: 1, background: '#009c3b' }} />
+        </div>
       </div>
     </div>
   )
@@ -163,14 +170,14 @@ const s = {
   card: {
     background: '#fff',
     borderRadius: 14,
-    boxShadow: '0 8px 40px rgba(26,58,92,0.2)',
+    boxShadow: '0 8px 40px rgba(92,10,20,0.2)',
     overflow: 'hidden',
     width: '100%',
     maxWidth: 420,
     margin: '0 1rem',
   },
   header: {
-    background: '#1a3a5c',
+    background: '#7b1020',
     padding: '1.75rem 2rem 1.25rem',
     textAlign: 'center',
     color: '#fff',
@@ -186,7 +193,7 @@ const s = {
   },
   subtitle: {
     fontSize: '0.8rem',
-    color: '#adc8e6',
+    color: '#f0b8be',
     marginTop: '0.25rem',
   },
   body: {
@@ -224,7 +231,7 @@ const s = {
   btnPrimary: {
     width: '100%',
     padding: '0.75rem',
-    background: '#1a3a5c',
+    background: '#7b1020',
     color: '#fff',
     border: 'none',
     borderRadius: 8,

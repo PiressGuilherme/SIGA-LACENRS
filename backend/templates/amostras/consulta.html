@@ -9,6 +9,10 @@
   {% vite_asset 'entries/consulta.jsx' %}
 {% endblock %}
 
+{% block extra_style %}
+  main { max-width: 100% !important; }
+{% endblock %}
+
 {% block content %}
   <div id="consulta-app" data-csrf="{{ csrf_token }}"></div>
 {% endblock %}

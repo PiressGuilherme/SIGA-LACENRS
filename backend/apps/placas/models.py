@@ -182,6 +182,11 @@ class Poco(models.Model):
         max_length=20, choices=TipoConteudoPoco.choices,
         default=TipoConteudoPoco.AMOSTRA, verbose_name='Tipo de conteúdo',
     )
+    grupo = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name='Grupo de extração',
+        help_text='Grupo de reagentes ao qual este poço pertence (1, 2, 3...).',
+    )
 
     class Meta:
         verbose_name = 'Poço'

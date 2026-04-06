@@ -287,8 +287,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 if placa.tipo_placa in (TipoPlaca.EXTRACAO, TipoPlaca.PCR):
                     amostras_a_atualizar.append(amostra.pk)
 
+            grupo = item.get('grupo', 1)
             pocos_to_create.append(Poco(
-                placa=placa, posicao=posicao, tipo_conteudo=tipo, amostra=amostra,
+                placa=placa, posicao=posicao, tipo_conteudo=tipo, amostra=amostra, grupo=grupo,
             ))
 
         if erros:

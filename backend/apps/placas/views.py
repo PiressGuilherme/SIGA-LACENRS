@@ -341,7 +341,7 @@ class PlacaViewSet(viewsets.ModelViewSet):
                     {'erro': 'Exportar PDF de placa PCR é restrito ao perfil Especialista ou Supervisor.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        pdf_bytes = gerar_pdf_placa(placa)
+        pdf_bytes = gerar_pdf_placa(placa, operador=request.user)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{placa.codigo}.pdf"'
         return response

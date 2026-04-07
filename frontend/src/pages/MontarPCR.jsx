@@ -107,10 +107,6 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   const [placaOrigemCodigo, setPlacaOrigemCodigo] = useState('')
   const [carregandoRascunho, setCarregandoRascunho] = useState(false)
 
-  // ---- State: lista de placas PCR (para abrir existente) ----
-  const [showListPCR, setShowListPCR] = useState(false)
-  const [placasPCR, setPlacasPCR] = useState([])
-  const [loadingListPCR, setLoadingListPCR] = useState(false)
 
   // ---- State: editor ----
   const [placa, setPlaca] = useState(null)
@@ -124,10 +120,27 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   const [pendingDuplicate, setPendingDuplicate] = useState(null)
   // Confirmação para amostra com resultado
   const [pendingComResultado, setPendingComResultado] = useState(null)
+  const [selectedSet, setSelectedSet] = useState(new Set())
   const inputRef = useRef()
+  const dragSource = useRef(null)
+  const isDraggingSelection = useRef(false)
+  const lastClicked = useRef(null)
+  const [dragOver, setDragOver] = useState(null)
 
   // Foco automático no input após cada scan (quando carregando volta a false)
   useEffect(() => { if (!carregando) inputRef.current?.focus() }, [carregando])
+
+  // Delete → limpa poços selecionados (ignora quando foco está num input)
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key !== 'Delete') return
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (selectedSet.size > 0) { e.preventDefault(); clearSelected() }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedSet])
 
   // Carrega placa PCR solicitada pela aba de consulta
   useEffect(() => {
@@ -173,18 +186,6 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
     }
   }
 
-  // ---- Carregar placas PCR existentes ----
-  async function fetchPlacasPCR() {
-    setLoadingListPCR(true)
-    try {
-      const data = await api('/api/placas/?tipo_placa=pcr', { csrfToken })
-      setPlacasPCR(data.results || data)
-    } catch {
-      setPlacasPCR([])
-    } finally {
-      setLoadingListPCR(false)
-    }
-  }
 
   // ---- Carregar rascunho de extração ----
   async function carregarRascunho(extId, extCodigo) {
@@ -215,7 +216,6 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       setPlaca(data)
       setGrid(data.pocos?.length ? gridFromPocos(data.pocos) : emptyGrid())
       setSalva(true)
-      setShowListPCR(false)
       setModoInicio(null)
       setFeedback({ tipo: 'sucesso', msg: `Placa PCR ${data.codigo} carregada.` })
     } catch (err) {
@@ -342,7 +342,24 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       next[idx] = { ...next[idx], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '', tem_resultado: false }
       return next
     })
+    setSelectedSet(prev => { const s = new Set(prev); s.delete(idx); return s })
     setSalva(false)
+  }
+
+  function clearSelected() {
+    if (!isEditable || selectedSet.size === 0) return
+    const filled = [...selectedSet].filter(i => grid[i].tipo_conteudo !== TIPO.VAZIO)
+    if (filled.length === 0) return
+    setGrid(prev => {
+      const next = [...prev]
+      filled.forEach(i => {
+        next[i] = { ...next[i], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '', tem_resultado: false }
+      })
+      return next
+    })
+    setSelectedSet(new Set())
+    setSalva(false)
+    setFeedback({ tipo: 'aviso', msg: `${filled.length} poço(s) limpo(s).` })
   }
 
   // ---- Salvar placa PCR ----
@@ -489,7 +506,6 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
     setModoInicio(null)
     setPlacaOrigemId(null)
     setPlacaOrigemCodigo('')
-    setShowListPCR(false)
   }
 
   // ================================================================
@@ -537,7 +553,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       {!placa && modoInicio === null && (
         <div style={{ marginBottom: '1.5rem' }}>
           <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-            Monte uma nova placa de PCR a partir de uma extração ou do zero, ou abra uma existente.
+            Monte uma nova placa de PCR a partir de uma extração ou do zero. Use a aba "Consultar Placas PCR" para abrir uma existente.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <button
@@ -549,63 +565,7 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
             <button onClick={iniciarDoZero} style={btnStyle('#065f46')}>
               Nova Placa
             </button>
-            <button
-              onClick={() => { setShowListPCR(v => !v); if (!showListPCR) fetchPlacasPCR() }}
-              style={btnStyle('#4b5563')}
-            >
-              {showListPCR ? 'Fechar Lista' : 'Abrir Placa de PCR'}
-            </button>
           </div>
-
-          {/* Lista de placas PCR existentes */}
-          {showListPCR && (
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflowX: 'auto' }}>
-              {loadingListPCR ? (
-                <p style={{ padding: '1rem', color: '#6b7280' }}>Carregando...</p>
-              ) : placasPCR.length === 0 ? (
-                <p style={{ padding: '1rem', color: '#9ca3af' }}>Nenhuma placa PCR encontrada.</p>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={thStyle}>Código</th>
-                      <th style={thStyle}>Extração base</th>
-                      <th style={thStyle}>Status</th>
-                      <th style={thStyle}>Amostras</th>
-                      <th style={thStyle}>Data</th>
-                      <th style={thStyle}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {placasPCR.map(p => {
-                      const badge = STATUS_PLACA[p.status_placa] || { bg: '#6c757d', label: p.status_display }
-                      return (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                          <td style={{ ...tdStyle, fontWeight: 600 }}>{p.codigo}</td>
-                          <td style={{ ...tdStyle, color: '#6b7280' }}>{p.placa_origem_codigo || '—'}</td>
-                          <td style={tdStyle}>
-                            <span style={{ background: badge.bg, color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: '0.78rem', fontWeight: 500 }}>
-                              {badge.label}
-                            </span>
-                          </td>
-                          <td style={tdStyle}>{p.total_amostras}</td>
-                          <td style={tdStyle}>{fmtDate(p.data_criacao)}</td>
-                          <td style={tdStyle}>
-                            <button
-                              onClick={() => carregarPlacaPCR(p.id)}
-                              style={{ ...btnStyle('#1a3a5c'), padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
-                            >
-                              Abrir
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -802,18 +762,101 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
                       const idx = ri * 12 + ci
                       const w = grid[idx]
                       const colors = w.tem_resultado ? REPETIDO_COLORS : TIPO_COLORS[w.tipo_conteudo]
-                      const isSelected = idx === selected && isEditable
+                      const isDragOver = dragOver === idx
+                      const isDragSource = dragSource.current === idx
+                      const isInSelection = selectedSet.has(idx)
+                      const isCursor = idx === selected && isEditable && selectedSet.size === 0
 
                       return (
                         <td key={col} style={{ padding: 1.5 }}>
                           <div
-                            onClick={() => {
-                              if (!isEditable) return
-                              if (w.tipo_conteudo === TIPO.VAZIO) {
-                                if (modo !== TIPO.AMOSTRA) placeControl(modo)
-                                else setSelected(idx)
+                            draggable={isEditable && w.tipo_conteudo !== TIPO.VAZIO}
+                            onDragStart={() => {
+                              dragSource.current = idx
+                              isDraggingSelection.current = selectedSet.has(idx) && selectedSet.size > 1
+                            }}
+                            onDragEnd={() => { dragSource.current = null; isDraggingSelection.current = false; setDragOver(null) }}
+                            onDragOver={(e) => { if (!isEditable) return; e.preventDefault(); setDragOver(idx) }}
+                            onDragLeave={() => setDragOver(null)}
+                            onDrop={(e) => {
+                              e.preventDefault()
+                              const src = dragSource.current
+                              if (src === null || src === idx) { setDragOver(null); return }
+                              if (isDraggingSelection.current) {
+                                const rowOff = Math.floor(idx / 12) - Math.floor(src / 12)
+                                const colOff = (idx % 12) - (src % 12)
+                                const moves = []
+                                for (const si of selectedSet) {
+                                  const toRow = Math.floor(si / 12) + rowOff
+                                  const toCol = (si % 12) + colOff
+                                  if (toRow < 0 || toRow >= 8 || toCol < 0 || toCol >= 12) {
+                                    setFeedback({ tipo: 'aviso', msg: 'Movimento fora dos limites da placa.' })
+                                    setDragOver(null); return
+                                  }
+                                  const toIdx = toRow * 12 + toCol
+                                  if (grid[toIdx].tipo_conteudo !== TIPO.VAZIO && !selectedSet.has(toIdx)) {
+                                    setFeedback({ tipo: 'aviso', msg: 'Posição de destino ocupada.' })
+                                    setDragOver(null); return
+                                  }
+                                  moves.push({ from: si, to: toIdx })
+                                }
+                                setGrid(prev => {
+                                  const next = [...prev]
+                                  const moving = moves.map(({ from }) => ({ ...prev[from] }))
+                                  moves.forEach(({ from }) => {
+                                    next[from] = { ...next[from], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '', tem_resultado: false }
+                                  })
+                                  moves.forEach(({ to }, i) => {
+                                    next[to] = { ...moving[i], posicao: next[to].posicao }
+                                  })
+                                  return next
+                                })
+                                setSelectedSet(new Set(moves.map(({ to }) => to)))
                               } else {
-                                setSelected(idx)
+                                setGrid(prev => {
+                                  const next = [...prev]
+                                  const srcPos = next[src].posicao
+                                  const dstPos = next[idx].posicao
+                                  next[src] = { ...next[idx], posicao: srcPos }
+                                  next[idx] = { ...prev[src], posicao: dstPos }
+                                  return next
+                                })
+                                setSelectedSet(new Set())
+                              }
+                              setSalva(false)
+                              dragSource.current = null
+                              isDraggingSelection.current = false
+                              setDragOver(null)
+                            }}
+                            onClick={(e) => {
+                              if (!isEditable) return
+                              if (e.ctrlKey || e.metaKey) {
+                                setSelectedSet(prev => {
+                                  const next = new Set(prev)
+                                  if (next.has(idx)) next.delete(idx)
+                                  else next.add(idx)
+                                  return next
+                                })
+                                lastClicked.current = idx
+                              } else if (e.shiftKey && lastClicked.current !== null) {
+                                const from = Math.min(lastClicked.current, idx)
+                                const to = Math.max(lastClicked.current, idx)
+                                setSelectedSet(prev => {
+                                  const next = new Set(prev)
+                                  for (let i = from; i <= to; i++) {
+                                    if (grid[i].tipo_conteudo !== TIPO.VAZIO) next.add(i)
+                                  }
+                                  return next
+                                })
+                              } else {
+                                setSelectedSet(new Set())
+                                lastClicked.current = idx
+                                if (w.tipo_conteudo === TIPO.VAZIO) {
+                                  if (modo !== TIPO.AMOSTRA) placeControl(modo)
+                                  else setSelected(idx)
+                                } else {
+                                  setSelected(idx)
+                                }
                               }
                             }}
                             onContextMenu={(e) => { e.preventDefault(); clearWell(idx) }}
@@ -821,13 +864,14 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
                             style={{
                               width: 62, height: 40,
                               background: colors.bg,
-                              border: `2px solid ${isSelected ? '#065f46' : colors.border}`,
+                              border: `2px solid ${isDragOver ? '#f59e0b' : isInSelection ? '#7c3aed' : isCursor ? '#065f46' : colors.border}`,
                               borderRadius: 4,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: isEditable ? 'pointer' : 'default',
+                              cursor: isEditable && w.tipo_conteudo !== TIPO.VAZIO ? 'grab' : isEditable ? 'pointer' : 'default',
                               fontSize: '0.7rem', lineHeight: 1.2,
                               position: 'relative',
-                              boxShadow: isSelected ? '0 0 0 2px #34d399' : 'none',
+                              boxShadow: isDragOver ? '0 0 0 2px #f59e0b' : isInSelection ? '0 0 0 2px #7c3aed' : isCursor ? '0 0 0 2px #34d399' : 'none',
+                              opacity: isDragSource ? 0.4 : 1,
                             }}
                           >
                             {w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo && (

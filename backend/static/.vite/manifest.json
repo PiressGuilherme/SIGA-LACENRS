@@ -1,60 +1,115 @@
 {
+  "_ConsultarPlacas-Bj7AHvpw.js": {
+    "file": "assets/ConsultarPlacas-Bj7AHvpw.js",
+    "name": "ConsultarPlacas",
+    "imports": [
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_NavigationButtons-CE91ugDF.js"
+    ]
+  },
+  "_NavigationButtons-CE91ugDF.js": {
+    "file": "assets/NavigationButtons-CE91ugDF.js",
+    "name": "NavigationButtons",
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
+  "_auth-CTONGPlc.js": {
+    "file": "assets/auth-CTONGPlc.js",
+    "name": "auth",
+    "imports": [
+      "_client-DMp2t5-j.js"
+    ]
+  },
   "_client-DMp2t5-j.js": {
     "file": "assets/client-DMp2t5-j.js",
     "name": "client"
   },
+  "entries/aliquotagem.jsx": {
+    "file": "assets/aliquotagem-CVRFWfze.js",
+    "name": "aliquotagem",
+    "src": "entries/aliquotagem.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_NavigationButtons-CE91ugDF.js"
+    ]
+  },
   "entries/consulta.jsx": {
-    "file": "assets/consulta-DsgFEVZx.js",
+    "file": "assets/consulta--CjKjdWr.js",
     "name": "consulta",
     "src": "entries/consulta.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DMp2t5-j.js"
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_ConsultarPlacas-Bj7AHvpw.js",
+      "_NavigationButtons-CE91ugDF.js"
     ]
   },
   "entries/gal_ws.jsx": {
-    "file": "assets/gal_ws-sWY-X8ee.js",
+    "file": "assets/gal_ws-CFJTI2wc.js",
     "name": "gal_ws",
     "src": "entries/gal_ws.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DMp2t5-j.js"
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js"
     ]
   },
   "entries/import.jsx": {
-    "file": "assets/import-C1cIw3V4.js",
+    "file": "assets/import-CgoY_pWi.js",
     "name": "import",
     "src": "entries/import.jsx",
     "isEntry": true,
     "imports": [
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js"
+    ]
+  },
+  "entries/login.jsx": {
+    "file": "assets/login-Bpezh6Vd.js",
+    "name": "login",
+    "src": "entries/login.jsx",
+    "isEntry": true,
+    "imports": [
       "_client-DMp2t5-j.js"
     ]
   },
+  "entries/pcr.jsx": {
+    "file": "assets/pcr-Cn3RWctD.js",
+    "name": "pcr",
+    "src": "entries/pcr.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_NavigationButtons-CE91ugDF.js"
+    ]
+  },
   "entries/plates.jsx": {
-    "file": "assets/plates-DnLrJZK7.js",
+    "file": "assets/plates-SLtgo2Kb.js",
     "name": "plates",
     "src": "entries/plates.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DMp2t5-j.js"
-    ]
-  },
-  "entries/recebimento.jsx": {
-    "file": "assets/recebimento-BGF2Htfq.js",
-    "name": "recebimento",
-    "src": "entries/recebimento.jsx",
-    "isEntry": true,
-    "imports": [
-      "_client-DMp2t5-j.js"
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_NavigationButtons-CE91ugDF.js",
+      "_ConsultarPlacas-Bj7AHvpw.js"
     ]
   },
   "entries/resultados.jsx": {
-    "file": "assets/resultados-DNtiggdp.js",
+    "file": "assets/resultados-AFbM7kJh.js",
     "name": "resultados",
     "src": "entries/resultados.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DMp2t5-j.js"
+      "_client-DMp2t5-j.js",
+      "_auth-CTONGPlc.js",
+      "_NavigationButtons-CE91ugDF.js"
     ]
   }
 }

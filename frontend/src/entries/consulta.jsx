@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import ErrorBoundary from '../components/ErrorBoundary'
 import ConsultaAmostras from '../pages/ConsultaAmostras'
 import ConsultarPlacas from '../pages/ConsultarPlacas'
 
@@ -50,7 +51,9 @@ if (!el) {
 } else {
   createRoot(el).render(
     <React.StrictMode>
+      <ErrorBoundary>
       <ConsultaApp csrfToken={el.dataset.csrf} />
+          </ErrorBoundary>
     </React.StrictMode>
   )
 }

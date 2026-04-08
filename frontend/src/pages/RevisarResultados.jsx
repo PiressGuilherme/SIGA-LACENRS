@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import CrachaModal from '../components/CrachaModal'
 import NavigationButtons from '../components/NavigationButtons'
-import { getOperadorInicial, getCsrfToken } from '../utils/auth'
+import { getOperadorInicial } from '../utils/auth'
+import apiFetch from '../utils/apiFetch'
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 
@@ -34,29 +35,9 @@ const INTERP_STYLE = {
   pendente: { bg: '#f9fafb', color: '#6b7280', border: '#d1d5db' },
 }
 
-// ── API helper ─────────────────────────────────────────────────────────────
-
-async function apiFetch(url, { csrfToken, method = 'GET', body, isMultipart = false } = {}) {
-  const opts = {
-    method,
-    headers: { 'X-CSRFToken': getCsrfToken() },
-    credentials: 'same-origin',
-  }
-  if (body && !isMultipart) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  } else if (body && isMultipart) {
-    opts.body = body  // FormData — não definir Content-Type (boundary automático)
-  }
-  const res = await fetch(url, opts)
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw { status: res.status, data }
-  return data
-}
-
 // ── Componente principal ───────────────────────────────────────────────────
 
-export default function RevisarResultados({ csrfToken }) {
+export default function RevisarResultados({}) {
   const [operador, setOperador] = useState(() => getOperadorInicial())
   const [placas, setPlacas] = useState([])
   const [placaSelecionada, setPlacaSelecionada] = useState(null)
@@ -78,9 +59,9 @@ export default function RevisarResultados({ csrfToken }) {
   async function fetchPlacas() {
     try {
       const [r1, r2, r3] = await Promise.all([
-        apiFetch('/api/placas/?status_placa=submetida', { csrfToken }),
-        apiFetch('/api/placas/?status_placa=resultados_importados', { csrfToken }),
-        apiFetch('/api/placas/?status_placa=aberta', { csrfToken }),
+        apiFetch('/api/placas/?status_placa=submetida', {}),
+        apiFetch('/api/placas/?status_placa=resultados_importados', {}),
+        apiFetch('/api/placas/?status_placa=aberta', {}),
       ])
       // Inclui placas "aberta" que já têm amostras extraídas (criadas antes da correção do status)
       const abertas = (r3.results || r3).filter(p => p.total_amostras > 0)
@@ -108,7 +89,7 @@ export default function RevisarResultados({ csrfToken }) {
     setCarregando(true)
     setErro(null)
     try {
-      const data = await apiFetch(`/api/resultados/?placa_id=${placaId}`, { csrfToken })
+      const data = await apiFetch(`/api/resultados/?placa_id=${placaId}`, {})
       setResultados(data.results || data)
     } catch (err) {
       setErro(err.data?.erro || 'Erro ao carregar resultados.')
@@ -128,7 +109,7 @@ export default function RevisarResultados({ csrfToken }) {
       form.append('placa_id', placaSelecionada.id)
       if (operador?.numero_cracha) form.append('numero_cracha', operador.numero_cracha)
       const data = await apiFetch('/api/resultados/importar/', {
-        csrfToken, method: 'POST', body: form, isMultipart: true,
+        method: 'POST', body: form, isMultipart: true,
       })
       setImportFeedback({ cp: data.cp, cn: data.cn, avisos: data.avisos, mensagem: data.mensagem })
       setResultados(data.resultados || [])
@@ -150,7 +131,7 @@ export default function RevisarResultados({ csrfToken }) {
     setActionLoading(p => ({ ...p, [id]: 'confirmar' }))
     try {
       const updated = await apiFetch(`/api/resultados/${id}/confirmar/`, {
-        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+        method: 'POST', body: { numero_cracha: operador?.numero_cracha },
       })
       setResultados(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
     } catch (err) {
@@ -173,7 +154,7 @@ export default function RevisarResultados({ csrfToken }) {
     setActionLoading(p => ({ ...p, [id]: 'liberar' }))
     try {
       const updated = await apiFetch(`/api/resultados/${id}/liberar/`, {
-        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+        method: 'POST', body: { numero_cracha: operador?.numero_cracha },
       })
       setResultados(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
     } catch (err) {
@@ -188,7 +169,7 @@ export default function RevisarResultados({ csrfToken }) {
     setActionLoading(p => ({ ...p, [id]: 'repeticao' }))
     try {
       await apiFetch(`/api/resultados/${id}/solicitar-repeticao/`, {
-        csrfToken, method: 'POST', body: { numero_cracha: operador?.numero_cracha },
+        method: 'POST', body: { numero_cracha: operador?.numero_cracha },
       })
       await carregarResultados(placaSelecionada.id)
     } catch (err) {
@@ -214,7 +195,7 @@ export default function RevisarResultados({ csrfToken }) {
     setOverrideErro(null)
     try {
       await apiFetch(`/api/resultados/pocos/${overrideModal.canalId}/`, {
-        csrfToken, method: 'PATCH',
+        method: 'PATCH',
         body: {
           interpretacao_manual: overrideForm.interpretacao_manual || null,
           justificativa_manual: overrideForm.justificativa_manual,

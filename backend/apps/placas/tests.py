@@ -32,8 +32,8 @@ class TestPlacaPermissoes(APITestCase):
 
     def setUp(self):
         self.user_sem_grupo = make_user('semgrupo@lab.br')
-        self.user_extracao  = make_user('extracao@lab.br',  'extracao')
-        self.user_pcr       = make_user('pcr@lab.br',       'pcr')
+        self.user_extracao  = make_user('extracao@lab.br',  'tecnico')
+        self.user_pcr       = make_user('pcr@lab.br',       'especialista')
         self.user_supervisor= make_user('supervisor@lab.br','supervisor')
 
     # ---- list: qualquer autenticado ----
@@ -77,12 +77,12 @@ class TestPlacaPermissoes(APITestCase):
 
     # ---- confirmar-extracao: apenas extracao ou supervisor ----
 
-    def test_confirmar_extracao_pcr_retorna_403(self):
+    def test_confirmar_extracao_sem_grupo_retorna_403(self):
         r = self.client.post(
             '/api/placas/confirmar-extracao/',
             {'codigo': 'QUALQUER'},
             format='json',
-            **auth_header(self.user_pcr),
+            **auth_header(self.user_sem_grupo),
         )
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 

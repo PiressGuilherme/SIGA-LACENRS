@@ -1,9 +1,15 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import PlacaPCREditor from '../pages/PlacaPCREditor'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 const el = document.getElementById('pcr-app')
 if (el) {
-  const csrfToken = el.dataset.csrf || ''
-  createRoot(el).render(<PlacaPCREditor csrfToken={csrfToken} />)
+  createRoot(el).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <PlacaPCREditor csrfToken={el.dataset.csrf || ''} />
+      </ErrorBoundary>
+    </React.StrictMode>
+  )
 }

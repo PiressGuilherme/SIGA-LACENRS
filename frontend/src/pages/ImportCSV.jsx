@@ -1,30 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
-import { getOperadorInicial, getCsrfToken } from '../utils/auth'
+import { getOperadorInicial } from '../utils/auth'
+import apiFetch from '../utils/apiFetch'
 
 const STATUS_LABEL = {
   novo:        { text: 'Nova',        bg: '#d1fae5', color: '#065f46' },
   atualizavel: { text: 'Atualizar',   bg: '#dbeafe', color: '#1e40af' },
   duplicado:   { text: 'Duplicada',   bg: '#f3f4f6', color: '#6b7280' },
-}
-
-async function apiFetch(url, { csrfToken, body }) {
-  const headers = { 'X-CSRFToken': getCsrfToken() }
-  const token = localStorage.getItem('access_token')
-  if (token) headers['Authorization'] = `Bearer ${token}`
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body,
-    credentials: 'same-origin',
-  })
-  if (!res.ok) {
-    const data = await res.json().catch(() => null)
-    const msg = data?.erro || data?.detail || `Erro ${res.status}`
-    throw new Error(msg)
-  }
-  return res.json()
 }
 
 const COLUNAS = [
@@ -114,11 +96,11 @@ export default function ImportCSV({ csrfToken }) {
     try {
       const form = new FormData()
       form.append('file', arquivo)
-      const data = await apiFetch('/api/amostras/preview-csv/', { csrfToken, body: form })
+      const data = await apiFetch('/api/amostras/preview-csv/', { method: 'POST', body: form, isMultipart: true })
       setPreview(data)
       setEtapa('preview')
     } catch (e) {
-      setErro(e.message)
+      setErro(e?.data?.erro || e?.data?.detail || e?.message || `Erro ${e?.status ?? ''}`)
     } finally {
       setCarregando(false)
     }
@@ -131,11 +113,11 @@ export default function ImportCSV({ csrfToken }) {
     try {
       const form = new FormData()
       form.append('file', arquivo)
-      const data = await apiFetch('/api/amostras/importar-csv/', { csrfToken, body: form })
+      const data = await apiFetch('/api/amostras/importar-csv/', { method: 'POST', body: form, isMultipart: true })
       setResultado(data)
       setEtapa('resultado')
     } catch (e) {
-      setErro(e.message)
+      setErro(e?.data?.erro || e?.data?.detail || e?.message || `Erro ${e?.status ?? ''}`)
     } finally {
       setCarregando(false)
     }

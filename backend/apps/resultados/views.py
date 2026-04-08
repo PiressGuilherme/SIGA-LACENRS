@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -13,30 +11,11 @@ from rest_framework.response import Response
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.placas.models import Placa, Poco, StatusPlaca, TipoConteudoPoco
 from apps.usuarios.permissions import IsEspecialista
+from apps.utils.auditoria import noop_ctx as _noop_ctx, resolver_operador as _resolver_operador
 from .models import ResultadoAmostra, ResultadoPoco
 
 User = get_user_model()
 
-
-@contextmanager
-def _noop_ctx():
-    yield
-
-
-def _resolver_operador(request):
-    """Resolve o operador a partir de numero_cracha ou fallback para request.user."""
-    from auditlog.context import set_actor
-    numero_cracha = ''
-    # Suporte para FormData (multipart) e JSON
-    if hasattr(request.data, 'get'):
-        numero_cracha = (request.data.get('numero_cracha') or '').strip()
-    if numero_cracha:
-        try:
-            operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
-        except User.DoesNotExist:
-            return request.user, set_actor(request.user), None
-        return operador, set_actor(operador), None
-    return request.user, set_actor(request.user), None
 from .parser import (
     parse_cfx_csv, validar_cp, validar_cn,
     classificar_canal, calcular_resultado_final,
@@ -310,7 +289,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado já foi confirmado.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         resultado.imutavel      = True
         resultado.confirmado_em  = timezone.now()
         resultado.confirmado_por = operador
@@ -335,7 +316,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'O resultado precisa ser confirmado antes de ser liberado.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         amostra = resultado.poco.amostra
         if amostra and amostra.status != StatusAmostra.RESULTADO_LIBERADO:
             with actor_ctx:
@@ -361,7 +344,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado confirmado não pode solicitar repetição.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         amostra = resultado.poco.amostra
         if amostra:
             with actor_ctx:

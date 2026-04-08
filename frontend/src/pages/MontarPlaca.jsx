@@ -1,24 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
 import NavigationButtons from '../components/NavigationButtons'
-import { getOperadorInicial, getCsrfToken } from '../utils/auth'
-
-// ---- Constantes da placa 8x12 ----
-const ROWS = ['A','B','C','D','E','F','G','H']
-const COLS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
-const ALL_POSITIONS = ROWS.flatMap(r => COLS.map(c => r + c))
-
-// Ordem de preenchimento vertical (coluna-major): A01, B01, C01...H01, A02, B02...
-const FILL_ORDER = []
-for (let ci = 0; ci < 12; ci++) {
-  for (let ri = 0; ri < 8; ri++) {
-    FILL_ORDER.push(ri * 12 + ci)
-  }
-}
-const FILL_POS = new Array(96)
-FILL_ORDER.forEach((gridIdx, fillPos) => { FILL_POS[gridIdx] = fillPos })
-
-const TIPO = { AMOSTRA: 'amostra', CN: 'cn', CP: 'cp', VAZIO: 'vazio' }
+import { getOperadorInicial } from '../utils/auth'
+import apiFetch from '../utils/apiFetch'
+import WellGrid from '../components/plates/WellGrid'
+import {
+  ALL_POSITIONS, FILL_ORDER, FILL_POS, TIPO,
+  emptyGrid as baseEmptyGrid, gridFromPocos as baseGridFromPocos,
+  btnStyle, feedbackStyles,
+} from '../components/plates/PlateConstants'
 
 // Cores fixas para CN/CP e vazio
 const CTRL_COLORS = {
@@ -43,9 +33,6 @@ function wellColors(w) {
   return CTRL_COLORS[w.tipo_conteudo] || CTRL_COLORS[TIPO.VAZIO]
 }
 
-const DEFAULT_CP_IDX = 6 * 12 + 11  // G12
-const DEFAULT_CN_IDX = 7 * 12 + 11  // H12
-
 const REAGENTES = [
   { nome: 'Tampão de Lise', vol: 200 },
   { nome: 'Oligomix',       vol: 5 },
@@ -59,56 +46,10 @@ const STATUS_PLACA = {
   resultados_importados: { bg: '#198754', label: 'Resultados' },
 }
 
-function emptyGrid() {
-  const g = ALL_POSITIONS.map(pos => ({
-    posicao: pos,
-    tipo_conteudo: TIPO.VAZIO,
-    amostra_id: null,
-    amostra_codigo: '',
-    grupo: 1,
-  }))
-  g[DEFAULT_CP_IDX] = { ...g[DEFAULT_CP_IDX], tipo_conteudo: TIPO.CP, grupo: 1 }
-  g[DEFAULT_CN_IDX] = { ...g[DEFAULT_CN_IDX], tipo_conteudo: TIPO.CN, grupo: 1 }
-  return g
-}
+const emptyGrid = () => baseEmptyGrid({ grupo: 1 })
+const gridFromPocos = (pocos) => baseGridFromPocos(pocos, { grupo: 1 })
 
-function gridFromPocos(pocos) {
-  const g = ALL_POSITIONS.map(pos => ({
-    posicao: pos,
-    tipo_conteudo: TIPO.VAZIO,
-    amostra_id: null,
-    amostra_codigo: '',
-    grupo: 1,
-  }))
-  for (const poco of pocos) {
-    const idx = ALL_POSITIONS.indexOf(poco.posicao)
-    if (idx === -1) continue
-    g[idx] = {
-      posicao: poco.posicao,
-      tipo_conteudo: poco.tipo_conteudo,
-      amostra_id: poco.amostra || null,
-      amostra_codigo: poco.amostra_codigo || '',
-      grupo: poco.grupo || 1,
-    }
-  }
-  return g
-}
-
-async function api(url, { csrfToken, method = 'GET', body } = {}) {
-  const opts = {
-    method,
-    headers: { 'X-CSRFToken': getCsrfToken() },
-    credentials: 'same-origin',
-  }
-  if (body) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  }
-  const res = await fetch(url, opts)
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw { status: res.status, data }
-  return data
-}
+const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts)
 
 // ================================================================
 export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarDone }) {
@@ -225,7 +166,6 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
     setSelected(FILL_ORDER[0])
     setSalva(false)
     setFeedback(null)
-    setShowList(false)
     setGrupoAtivo(1)
     setTotalGrupos(1)
   }
@@ -814,171 +754,79 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
           )}
 
           {/* ---- Grid 8x12 ---- */}
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-            <table style={{ borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 28 }} />
-                  {COLS.map(c => (
-                    <th key={c} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#6b7280', padding: '2px 0 4px' }}>
-                      {c}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {ROWS.map((row, ri) => (
-                  <tr key={row}>
-                    <td style={{ fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', textAlign: 'center', paddingRight: 4 }}>
-                      {row}
-                    </td>
-                    {COLS.map((col, ci) => {
-                      const idx = ri * 12 + ci
-                      const w = grid[idx]
-                      const colors = wellColors(w)
-                      const isDragOver = dragOver === idx
-                      const isDragSource = dragSource.current === idx
-                      const isInSelection = selectedSet.has(idx)
-                      const isCursor = idx === selected && isEditable && selectedSet.size === 0
-
-                      return (
-                        <td key={col} style={{ padding: 1.5 }}>
-                          <div
-                            draggable={isEditable && w.tipo_conteudo !== TIPO.VAZIO}
-                            onDragStart={() => {
-                              dragSource.current = idx
-                              isDraggingSelection.current = selectedSet.has(idx) && selectedSet.size > 1
-                            }}
-                            onDragEnd={() => { dragSource.current = null; isDraggingSelection.current = false; setDragOver(null) }}
-                            onDragOver={(e) => { if (!isEditable) return; e.preventDefault(); setDragOver(idx) }}
-                            onDragLeave={() => setDragOver(null)}
-                            onDrop={(e) => {
-                              e.preventDefault()
-                              const src = dragSource.current
-                              if (src === null || src === idx) { setDragOver(null); return }
-                              if (isDraggingSelection.current) {
-                                const rowOff = Math.floor(idx / 12) - Math.floor(src / 12)
-                                const colOff = (idx % 12) - (src % 12)
-                                const moves = []
-                                for (const si of selectedSet) {
-                                  const toRow = Math.floor(si / 12) + rowOff
-                                  const toCol = (si % 12) + colOff
-                                  if (toRow < 0 || toRow >= 8 || toCol < 0 || toCol >= 12) {
-                                    setFeedback({ tipo: 'aviso', msg: 'Movimento fora dos limites da placa.' })
-                                    setDragOver(null); return
-                                  }
-                                  const toIdx = toRow * 12 + toCol
-                                  if (grid[toIdx].tipo_conteudo !== TIPO.VAZIO && !selectedSet.has(toIdx)) {
-                                    setFeedback({ tipo: 'aviso', msg: 'Posição de destino ocupada.' })
-                                    setDragOver(null); return
-                                  }
-                                  moves.push({ from: si, to: toIdx })
-                                }
-                                setGrid(prev => {
-                                  const next = [...prev]
-                                  const moving = moves.map(({ from }) => ({ ...prev[from] }))
-                                  moves.forEach(({ from }) => {
-                                    next[from] = { ...next[from], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '' }
-                                  })
-                                  moves.forEach(({ to }, i) => {
-                                    next[to] = { ...moving[i], posicao: next[to].posicao }
-                                  })
-                                  return next
-                                })
-                                setSelectedSet(new Set(moves.map(({ to }) => to)))
-                              } else {
-                                setGrid(prev => {
-                                  const next = [...prev]
-                                  const srcPos = next[src].posicao
-                                  const dstPos = next[idx].posicao
-                                  next[src] = { ...next[idx], posicao: srcPos }
-                                  next[idx] = { ...prev[src], posicao: dstPos }
-                                  return next
-                                })
-                                setSelectedSet(new Set())
-                              }
-                              setSalva(false)
-                              dragSource.current = null
-                              isDraggingSelection.current = false
-                              setDragOver(null)
-                            }}
-                            onClick={(e) => {
-                              if (!isEditable) return
-                              if (e.ctrlKey || e.metaKey) {
-                                // Ctrl+click: adiciona/remove da seleção
-                                setSelectedSet(prev => {
-                                  const next = new Set(prev)
-                                  if (next.has(idx)) next.delete(idx)
-                                  else next.add(idx)
-                                  return next
-                                })
-                                lastClicked.current = idx
-                              } else if (e.shiftKey && lastClicked.current !== null) {
-                                // Shift+click: seleciona intervalo (ordem do grid)
-                                const from = Math.min(lastClicked.current, idx)
-                                const to = Math.max(lastClicked.current, idx)
-                                setSelectedSet(prev => {
-                                  const next = new Set(prev)
-                                  for (let i = from; i <= to; i++) {
-                                    if (grid[i].tipo_conteudo !== TIPO.VAZIO) next.add(i)
-                                  }
-                                  return next
-                                })
-                              } else {
-                                // Click simples: limpa seleção, comportamento original
-                                setSelectedSet(new Set())
-                                lastClicked.current = idx
-                                if (w.tipo_conteudo === TIPO.VAZIO) {
-                                  if (modo !== TIPO.AMOSTRA) placeControl(modo)
-                                  else setSelected(idx)
-                                } else {
-                                  setSelected(idx)
-                                }
-                              }
-                            }}
-                            onContextMenu={(e) => { e.preventDefault(); clearWell(idx) }}
-                            title={w.amostra_codigo || w.tipo_conteudo}
-                            style={{
-                              width: 62, height: 40,
-                              background: colors.bg,
-                              border: `2px solid ${isDragOver ? '#f59e0b' : isInSelection ? '#7c3aed' : isCursor ? '#1a3a5c' : colors.border}`,
-                              borderRadius: 4,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: isEditable && w.tipo_conteudo !== TIPO.VAZIO ? 'grab' : isEditable ? 'pointer' : 'default',
-                              fontSize: '0.7rem', lineHeight: 1.2,
-                              position: 'relative',
-                              boxShadow: isDragOver ? '0 0 0 2px #f59e0b' : isInSelection ? '0 0 0 2px #7c3aed' : isCursor ? '0 0 0 2px #3b82f6' : 'none',
-                              opacity: isDragSource ? 0.4 : 1,
-                            }}
-                          >
-                            {w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo && (
-                              <span style={{ fontWeight: 700, color: colors.text, fontSize: '0.7rem' }}>
-                                {w.amostra_codigo}
-                              </span>
-                            )}
-                            {w.tipo_conteudo === TIPO.CN && <span style={{ fontWeight: 700, color: colors.text }}>CN</span>}
-                            {w.tipo_conteudo === TIPO.CP && <span style={{ fontWeight: 700, color: colors.text }}>CP</span>}
-                            {w.tipo_conteudo !== TIPO.VAZIO && isEditable && (
-                              <span
-                                onClick={(e) => { e.stopPropagation(); clearWell(idx) }}
-                                style={{
-                                  position: 'absolute', top: 1, right: 3,
-                                  color: '#9ca3af', cursor: 'pointer', fontSize: '0.65rem',
-                                  lineHeight: 1,
-                                }}
-                              >
-                                x
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <WellGrid
+            grid={grid}
+            selected={selected}
+            isEditable={isEditable}
+            selectedSet={selectedSet}
+            dragOver={dragOver}
+            dragSource={dragSource}
+            isDraggingSelection={isDraggingSelection}
+            cursorColor="#1a3a5c"
+            cursorShadow="#3b82f6"
+            wellColors={wellColors}
+            onDrop={(src, dst) => {
+              setGrid(prev => {
+                const next = [...prev]
+                const srcPos = next[src].posicao
+                const dstPos = next[dst].posicao
+                next[src] = { ...next[dst], posicao: srcPos }
+                next[dst] = { ...prev[src], posicao: dstPos }
+                return next
+              })
+              setSelectedSet(new Set())
+            }}
+            onMultiDrop={(moves) => {
+              setGrid(prev => {
+                const next = [...prev]
+                const moving = moves.map(({ from }) => ({ ...prev[from] }))
+                moves.forEach(({ from }) => {
+                  next[from] = { ...next[from], tipo_conteudo: TIPO.VAZIO, amostra_id: null, amostra_codigo: '' }
+                })
+                moves.forEach(({ to }, i) => {
+                  next[to] = { ...moving[i], posicao: next[to].posicao }
+                })
+                return next
+              })
+              setSelectedSet(new Set(moves.map(({ to }) => to)))
+            }}
+            onDragOver={setDragOver}
+            onDragEnd={() => { dragSource.current = null; isDraggingSelection.current = false }}
+            onClick={(idx, e) => {
+              const w = grid[idx]
+              if (e.ctrlKey || e.metaKey) {
+                setSelectedSet(prev => {
+                  const next = new Set(prev)
+                  if (next.has(idx)) next.delete(idx); else next.add(idx)
+                  return next
+                })
+                lastClicked.current = idx
+              } else if (e.shiftKey && lastClicked.current !== null) {
+                const from = Math.min(lastClicked.current, idx)
+                const to = Math.max(lastClicked.current, idx)
+                setSelectedSet(prev => {
+                  const next = new Set(prev)
+                  for (let i = from; i <= to; i++) {
+                    if (grid[i].tipo_conteudo !== TIPO.VAZIO) next.add(i)
+                  }
+                  return next
+                })
+              } else {
+                setSelectedSet(new Set())
+                lastClicked.current = idx
+                if (w.tipo_conteudo === TIPO.VAZIO) {
+                  if (modo !== TIPO.AMOSTRA) placeControl(modo)
+                  else setSelected(idx)
+                } else {
+                  setSelected(idx)
+                }
+              }
+            }}
+            onContextMenu={clearWell}
+            onFeedback={setFeedback}
+            setSalva={setSalva}
+            setSelectedSet={setSelectedSet}
+          />
 
           {/* ---- Ações ---- */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
@@ -1030,14 +878,3 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   )
 }
 
-// ---- Helpers / Styles ----
-const btnStyle = (bg) => ({
-  background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem',
-  borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,
-})
-
-const feedbackStyles = {
-  sucesso: { background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7' },
-  aviso:   { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' },
-  erro:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
-}

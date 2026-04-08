@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
-import { getOperadorInicial, getCsrfToken } from '../utils/auth'
+import { getOperadorInicial } from '../utils/auth'
+import apiFetch from '../utils/apiFetch'
 
 const ROWS = ['A','B','C','D','E','F','G','H']
 const COLS = ['01','02','03','04','05','06','07','08','09','10','11','12']
@@ -18,25 +19,7 @@ const POCO_COR = {
   vazio:             { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
 }
 
-async function api(url, { csrfToken, method = 'GET', body } = {}) {
-  const token = localStorage.getItem('access_token')
-  const opts = {
-    method,
-    headers: {
-      'X-CSRFToken': getCsrfToken(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    credentials: 'same-origin',
-  }
-  if (body) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  }
-  const res = await fetch(url, opts)
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw { status: res.status, data }
-  return data
-}
+const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts)
 
 // ── Mini espelho de placa 8×12 ────────────────────────────────────────────────
 function EspelhoPlaca({ pocos }) {

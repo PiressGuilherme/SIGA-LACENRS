@@ -1,15 +1,8 @@
-from contextlib import contextmanager
-
 from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 
-
-@contextmanager
-def _noop_ctx():
-    """Context manager vazio — usado quando não há operador para o set_actor."""
-    yield
-
+from apps.utils.auditoria import noop_ctx as _noop_ctx
 from apps.amostras.models import Amostra, StatusAmostra
 
 

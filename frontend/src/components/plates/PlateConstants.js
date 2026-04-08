@@ -46,7 +46,6 @@ export function gridFromPocos(pocos, extraDefaults = {}) {
       tipo_conteudo: poco.tipo_conteudo,
       amostra_id: poco.amostra || null,
       amostra_codigo: poco.amostra_codigo || '',
-      ...extraDefaults,
       ...Object.fromEntries(
         Object.keys(extraDefaults).map(k => [k, poco[k] ?? extraDefaults[k]])
       ),

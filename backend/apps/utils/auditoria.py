@@ -1,9 +1,5 @@
 from contextlib import contextmanager
 
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
 
 @contextmanager
 def noop_ctx():
@@ -13,6 +9,8 @@ def noop_ctx():
 def resolver_operador(request):
     """Resolve o operador a partir de numero_cracha ou fallback para request.user."""
     from auditlog.context import set_actor
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     numero_cracha = (request.data.get('numero_cracha') or '').strip()
     if numero_cracha:
         try:

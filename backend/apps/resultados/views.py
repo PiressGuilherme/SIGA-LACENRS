@@ -289,7 +289,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado já foi confirmado.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         resultado.imutavel      = True
         resultado.confirmado_em  = timezone.now()
         resultado.confirmado_por = operador
@@ -314,7 +316,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'O resultado precisa ser confirmado antes de ser liberado.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         amostra = resultado.poco.amostra
         if amostra and amostra.status != StatusAmostra.RESULTADO_LIBERADO:
             with actor_ctx:
@@ -340,7 +344,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 {'erro': 'Resultado confirmado não pode solicitar repetição.'},
                 status=status.HTTP_409_CONFLICT,
             )
-        operador, actor_ctx, _err = _resolver_operador(request)
+        operador, actor_ctx, err = _resolver_operador(request)
+        if err:
+            return Response({'erro': err}, status=status.HTTP_400_BAD_REQUEST)
         amostra = resultado.poco.amostra
         if amostra:
             with actor_ctx:

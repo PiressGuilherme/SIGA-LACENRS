@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from rest_framework import status, viewsets, permissions
@@ -82,7 +84,6 @@ class PlacaViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """Ao excluir placa, reverte amostras vinculadas ao status anterior."""
         from auditlog.context import set_actor
-        from django.utils import timezone
         amostra_ids = instance._amostras_ids()
         actor_ctx = set_actor(self.request.user)
         with transaction.atomic(), actor_ctx:
@@ -121,7 +122,6 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from django.db.models import Q
         codigo_q = Q(codigo_interno=codigo) | Q(cod_amostra_gal=codigo) | Q(cod_exame_gal=codigo)
 
         if modulo == 'pcr':
@@ -274,7 +274,6 @@ class PlacaViewSet(viewsets.ModelViewSet):
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
             if amostras_a_atualizar:
-                from django.utils import timezone
                 novo_status = (
                     StatusAmostra.PCR if placa.tipo_placa == TipoPlaca.PCR
                     else StatusAmostra.EXTRACAO

@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -13,32 +11,12 @@ from rest_framework.response import Response
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.amostras.serializers import AmostraSerializer
 from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsLaboratorio
+from apps.utils.auditoria import noop_ctx as _noop_ctx, resolver_operador as _resolver_operador
 from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
 from .pdf import gerar_pdf_placa
 from .serializers import PlacaSerializer, PocoInputSerializer
 
 User = get_user_model()
-
-
-@contextmanager
-def _noop_ctx():
-    yield
-
-
-def _resolver_operador(request):
-    """Resolve o operador a partir de numero_cracha ou fallback para request.user (superuser)."""
-    from auditlog.context import set_actor
-    numero_cracha = (request.data.get('numero_cracha') or '').strip()
-    if numero_cracha:
-        try:
-            operador = User.objects.get(numero_cracha=numero_cracha, is_active=True)
-        except User.DoesNotExist:
-            return None, None, 'Crachá não reconhecido ou operador inativo.'
-        return operador, set_actor(operador), None
-    elif request.user.is_superuser:
-        return request.user, set_actor(request.user), None
-    else:
-        return request.user, set_actor(request.user), None
 
 # Statuses de amostra elegíveis para placa PCR (Extraída em diante, exceto cancelada)
 STATUS_ELEGIVEIS_PCR = {
@@ -104,18 +82,20 @@ class PlacaViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """Ao excluir placa, reverte amostras vinculadas ao status anterior."""
         from auditlog.context import set_actor
+        from django.utils import timezone
         amostra_ids = instance._amostras_ids()
         actor_ctx = set_actor(self.request.user)
         with transaction.atomic(), actor_ctx:
             if amostra_ids:
+                now = timezone.now()
                 if instance.tipo_placa == TipoPlaca.EXTRACAO:
-                    for amostra in Amostra.objects.filter(pk__in=amostra_ids):
-                        amostra.status = StatusAmostra.ALIQUOTADA
-                        amostra.save(update_fields=['status', 'atualizado_em'])
+                    Amostra.objects.filter(pk__in=amostra_ids).update(
+                        status=StatusAmostra.ALIQUOTADA, atualizado_em=now,
+                    )
                 elif instance.tipo_placa == TipoPlaca.PCR:
-                    for amostra in Amostra.objects.filter(pk__in=amostra_ids, status=StatusAmostra.PCR):
-                        amostra.status = StatusAmostra.EXTRAIDA
-                        amostra.save(update_fields=['status', 'atualizado_em'])
+                    Amostra.objects.filter(pk__in=amostra_ids, status=StatusAmostra.PCR).update(
+                        status=StatusAmostra.EXTRAIDA, atualizado_em=now,
+                    )
             instance.delete()
 
     # ------------------------------------------------------------------
@@ -141,25 +121,13 @@ class PlacaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from django.db.models import Q
+        codigo_q = Q(codigo_interno=codigo) | Q(cod_amostra_gal=codigo) | Q(cod_exame_gal=codigo)
+
         if modulo == 'pcr':
-            # Buscar amostras com status elegível para PCR
-            amostra = (
-                Amostra.objects.filter(
-                    codigo_interno=codigo, status__in=STATUS_ELEGIVEIS_PCR
-                ).first()
-                or Amostra.objects.filter(
-                    cod_amostra_gal=codigo, status__in=STATUS_ELEGIVEIS_PCR
-                ).first()
-                or Amostra.objects.filter(
-                    cod_exame_gal=codigo, status__in=STATUS_ELEGIVEIS_PCR
-                ).first()
-            )
+            amostra = Amostra.objects.filter(codigo_q, status__in=STATUS_ELEGIVEIS_PCR).first()
             if not amostra:
-                existe = (
-                    Amostra.objects.filter(codigo_interno=codigo).first()
-                    or Amostra.objects.filter(cod_amostra_gal=codigo).first()
-                    or Amostra.objects.filter(cod_exame_gal=codigo).first()
-                )
+                existe = Amostra.objects.filter(codigo_q).first()
                 if existe:
                     return Response(
                         {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Extraída ou superior.'},
@@ -174,18 +142,9 @@ class PlacaViewSet(viewsets.ModelViewSet):
             return Response(data)
 
         else:
-            # Extração: só amostras Aliquotadas
-            amostra = (
-                Amostra.objects.filter(codigo_interno=codigo, status=StatusAmostra.ALIQUOTADA).first()
-                or Amostra.objects.filter(cod_amostra_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
-                or Amostra.objects.filter(cod_exame_gal=codigo, status=StatusAmostra.ALIQUOTADA).first()
-            )
+            amostra = Amostra.objects.filter(codigo_q, status=StatusAmostra.ALIQUOTADA).first()
             if not amostra:
-                existe = (
-                    Amostra.objects.filter(codigo_interno=codigo).first()
-                    or Amostra.objects.filter(cod_amostra_gal=codigo).first()
-                    or Amostra.objects.filter(cod_exame_gal=codigo).first()
-                )
+                existe = Amostra.objects.filter(codigo_q).first()
                 if existe:
                     return Response(
                         {'erro': f'Amostra {codigo} está com status "{existe.get_status_display()}" — precisa estar Aliquotada.'},
@@ -315,13 +274,14 @@ class PlacaViewSet(viewsets.ModelViewSet):
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
             if amostras_a_atualizar:
+                from django.utils import timezone
                 novo_status = (
                     StatusAmostra.PCR if placa.tipo_placa == TipoPlaca.PCR
                     else StatusAmostra.EXTRACAO
                 )
-                for amostra in Amostra.objects.filter(pk__in=amostras_a_atualizar):
-                    amostra.status = novo_status
-                    amostra.save(update_fields=['status', 'atualizado_em'])
+                Amostra.objects.filter(pk__in=amostras_a_atualizar).update(
+                    status=novo_status, atualizado_em=timezone.now(),
+                )
 
         placa.refresh_from_db()
         return Response(PlacaSerializer(placa).data)

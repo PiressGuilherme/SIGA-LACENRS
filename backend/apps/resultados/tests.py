@@ -29,8 +29,8 @@ class TestResultadoPermissoes(APITestCase):
 
     def setUp(self):
         self.user_sem_grupo = make_user('semgrupo@lab.br')
-        self.user_extracao  = make_user('extracao@lab.br',  'extracao')
-        self.user_pcr       = make_user('pcr@lab.br',       'pcr')
+        self.user_extracao  = make_user('extracao@lab.br',  'tecnico')
+        self.user_pcr       = make_user('pcr@lab.br',       'especialista')
         self.user_supervisor= make_user('supervisor@lab.br','supervisor')
 
     # ---- list: qualquer autenticado ----
@@ -39,9 +39,9 @@ class TestResultadoPermissoes(APITestCase):
         r = self.client.get('/api/resultados/')
         self.assertEqual(r.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_list_sem_grupo_retorna_200(self):
+    def test_list_sem_grupo_retorna_403(self):
         r = self.client.get('/api/resultados/', **auth_header(self.user_sem_grupo))
-        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
     # ---- importar: apenas pcr ou supervisor ----
 

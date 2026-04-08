@@ -129,6 +129,9 @@ class ResultadoAmostra(models.Model):
         db_index=True,
     )
 
+    # Timestamps
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
+
     # Confirmação imutável
     confirmado_em = models.DateTimeField(null=True, blank=True, verbose_name='Confirmado em')
     confirmado_por = models.ForeignKey(

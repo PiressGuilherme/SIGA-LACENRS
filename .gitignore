@@ -1,5 +1,7 @@
 # Ambiente e segredos
 .env
+.env.dev
+.env.prod
 *.env.local
 
 # Arquivos CSV locais (podem conter dados sensíveis de pacientes)

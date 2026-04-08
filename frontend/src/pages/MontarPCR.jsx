@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
 import NavigationButtons from '../components/NavigationButtons'
-import { getOperadorInicial, getCsrfToken, isEspecialista } from '../utils/auth'
+import { getOperadorInicial, isEspecialista } from '../utils/auth'
+import apiFetch from '../utils/apiFetch'
 
 // ---- Constantes da placa 8x12 ----
 const ROWS = ['A','B','C','D','E','F','G','H']
@@ -72,21 +73,7 @@ function gridFromPocos(pocos) {
   return g
 }
 
-async function api(url, { csrfToken, method = 'GET', body } = {}) {
-  const opts = {
-    method,
-    headers: { 'X-CSRFToken': getCsrfToken() },
-    credentials: 'same-origin',
-  }
-  if (body) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
-  }
-  const res = await fetch(url, opts)
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw { status: res.status, data }
-  return data
-}
+const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts)
 
 const STATUS_PLACA = {
   aberta:                { bg: '#0d6efd', label: 'Aberta' },

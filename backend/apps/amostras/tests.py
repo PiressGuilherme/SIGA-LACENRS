@@ -112,8 +112,8 @@ class TestAmostraPermissoes(APITestCase):
     def setUp(self):
         self.user_anon      = None
         self.user_sem_grupo = make_user('semgrupo@lab.br')
-        self.user_extracao  = make_user('extracao@lab.br',  'extracao',  numero_cracha='CRACHA_EXT')
-        self.user_pcr       = make_user('pcr@lab.br',       'pcr')
+        self.user_extracao  = make_user('extracao@lab.br',  'tecnico',  numero_cracha='CRACHA_EXT')
+        self.user_pcr       = make_user('pcr@lab.br',       'especialista')
         self.user_supervisor= make_user('supervisor@lab.br','supervisor', is_superuser=True)
         self.amostra = make_amostra()
 
@@ -140,14 +140,14 @@ class TestAmostraPermissoes(APITestCase):
         )
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_receber_pcr_retorna_403(self):
+    def test_receber_especialista_nao_retorna_403(self):
         r = self.client.post(
             '/api/amostras/receber/',
             {'codigo': self.amostra.cod_exame_gal},
             format='json',
             **auth_header(self.user_pcr),
         )
-        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertNotEqual(r.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_receber_extracao_retorna_200(self):
         r = self.client.post(

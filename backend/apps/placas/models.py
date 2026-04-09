@@ -73,6 +73,12 @@ class Placa(models.Model):
         default=StatusPlaca.ABERTA, verbose_name='Status da placa',
         db_index=True,
     )
+    kit_interpretacao = models.ForeignKey(
+        'configuracoes.KitInterpretacao', on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Kit de interpretação',
+        help_text='Kit usado para interpretação dos resultados desta placa.',
+    )
     observacoes = models.TextField(blank=True, verbose_name='Observações')
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name='Data de criação')
     atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')

@@ -25,6 +25,7 @@ export default defineConfig({
         consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
         resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
         gal_ws: resolve(__dirname, 'src/entries/gal_ws.jsx'),
+        configuracoes: resolve(__dirname, 'src/entries/configuracoes.jsx'),
       },
     },
   },

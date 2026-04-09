@@ -52,9 +52,22 @@ export default function RevisarResultados({}) {
   const [overrideLoading, setOverrideLoading] = useState(false)
   const [overrideErro, setOverrideErro] = useState(null)
   const [actionLoading, setActionLoading] = useState({})
+  const [kits, setKits] = useState([])
+  const [kitId, setKitId] = useState(null)
   const fileRef = useRef()
 
   useEffect(() => { fetchPlacas() }, [])
+
+  // Carregar kits de interpretacao ativos
+  useEffect(() => {
+    apiFetch('/api/configuracoes/kits/?ativo=true')
+      .then(data => {
+        const lista = data.results || data
+        setKits(lista)
+        if (lista.length > 0 && !kitId) setKitId(lista[0].id)
+      })
+      .catch(() => {})
+  }, [])
 
   async function fetchPlacas() {
     try {
@@ -107,6 +120,7 @@ export default function RevisarResultados({}) {
       const form = new FormData()
       form.append('arquivo', arquivo)
       form.append('placa_id', placaSelecionada.id)
+      if (kitId) form.append('kit_id', kitId)
       if (operador?.numero_cracha) form.append('numero_cracha', operador.numero_cracha)
       const data = await apiFetch('/api/resultados/importar/', {
         method: 'POST', body: form, isMultipart: true,
@@ -289,6 +303,25 @@ export default function RevisarResultados({}) {
           <p style={{ color: '#374151', marginBottom: '1rem', fontSize: '0.9rem' }}>
             Placa <strong>{placaSelecionada.codigo}</strong> aguardando importação dos resultados do termociclador.
           </p>
+          {/* Kit de interpretacao */}
+          {kits.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, color: '#374151', marginBottom: '0.4rem', fontSize: '0.9rem' }}>
+                Kit de Interpretacao
+              </label>
+              <select
+                value={kitId || ''}
+                onChange={e => setKitId(Number(e.target.value))}
+                style={{ padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.85rem', minWidth: 220 }}
+              >
+                {kits.map(k => (
+                  <option key={k.id} value={k.id}>
+                    {k.nome} (CI ≤{k.cq_amostra_ci_max} / HPV ≤{k.cq_amostra_hpv_max})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <label style={{ display: 'block', fontWeight: 600, color: '#374151', marginBottom: '0.4rem', fontSize: '0.9rem' }}>
             Arquivo CSV do CFX Manager
           </label>

@@ -137,13 +137,28 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({'erro': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Carregar kit de interpretacao (do request ou default)
+        kit = None
+        kit_id = request.data.get('kit_id')
+        if kit_id:
+            from apps.configuracoes.models import KitInterpretacao
+            kit = KitInterpretacao.objects.filter(pk=kit_id, ativo=True).first()
+
+        # Limiares do kit ou defaults
+        cq_ctrl = kit.cq_controle_max if kit else None
+        cq_ci = kit.cq_amostra_ci_max if kit else None
+        cq_hpv = kit.cq_amostra_hpv_max if kit else None
+
         # Validação de controles — corrida inválida bloqueia import
-        cp_ok, cp_msg = validar_cp(parsed['controles']['cp'])
-        cn_ok, cn_msg = validar_cn(parsed['controles']['cn'])
+        cp_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
+        cn_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
+        cp_ok, cp_msg = validar_cp(parsed['controles']['cp'], **cp_kwargs)
+        cn_ok, cn_msg = validar_cn(parsed['controles']['cn'], **cn_kwargs)
         if not cp_ok or not cn_ok:
+            kit_nome = kit.nome if kit else 'IBMP (padrao)'
             return Response(
                 {
-                    'erro': 'Corrida inválida: controles não atendem os critérios IBMP.',
+                    'erro': f'Corrida invalida: controles nao atendem os criterios do kit {kit_nome}.',
                     'cp': cp_msg,
                     'cn': cn_msg,
                 },
@@ -157,12 +172,26 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
         avisos: list[str] = []
 
+        # Salvar kit na placa
+        if kit:
+            placa.kit_interpretacao = kit
+            placa.save(update_fields=['kit_interpretacao', 'atualizado_em'])
+
+        # Limiares para classificacao de amostras
+        classif_kwargs = {}
+        if cq_ci is not None:
+            classif_kwargs['cq_ci_max'] = cq_ci
+        if cq_hpv is not None:
+            classif_kwargs['cq_hpv_max'] = cq_hpv
+
         # Tudo a partir daqui é atômico e com actor correto no auditlog
         with transaction.atomic(), actor_ctx:
-            return self._processar_import(request, placa, parsed, cp_msg, cn_msg, operador, avisos)
+            return self._processar_import(request, placa, parsed, cp_msg, cn_msg, operador, avisos, classif_kwargs)
 
-    def _processar_import(self, request, placa, parsed, cp_msg, cn_msg, operador, avisos):
+    def _processar_import(self, request, placa, parsed, cp_msg, cn_msg, operador, avisos, classif_kwargs=None):
         """Lógica interna de importação, executada dentro de transaction.atomic() + set_actor()."""
+        ck = classif_kwargs or {}
+
         # ── 1. ResultadoPoco por poço × canal ────────────────────────────────
         # Mapa de posição → Poco para acesso rápido
         poco_map: dict[str, Poco] = {
@@ -183,7 +212,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
             for canal in _CANAIS:
                 cq = dados_poco.get(canal)
-                interpretacao = classificar_canal([cq], canal)
+                interpretacao = classificar_canal([cq], canal, **ck)
                 ResultadoPoco.objects.update_or_create(
                     poco=poco,
                     canal=canal,
@@ -213,10 +242,10 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 continue
 
             # Classificação usando Cq mínimo entre replicatas
-            ci    = classificar_canal(canais['CI'],     'CI')
-            hpv16 = classificar_canal(canais['HPV16'],  'HPV16')
-            hpv18 = classificar_canal(canais['HPV18'],  'HPV18')
-            hpvar = classificar_canal(canais['HPV_AR'], 'HPV_AR')
+            ci    = classificar_canal(canais['CI'],     'CI',     **ck)
+            hpv16 = classificar_canal(canais['HPV16'],  'HPV16',  **ck)
+            hpv18 = classificar_canal(canais['HPV18'],  'HPV18',  **ck)
+            hpvar = classificar_canal(canais['HPV_AR'], 'HPV_AR', **ck)
             resultado_final = calcular_resultado_final(ci, hpv16, hpv18, hpvar)
 
             poco_principal = pocos_amostra[0]

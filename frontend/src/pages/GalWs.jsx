@@ -34,7 +34,7 @@ const badge = (ok) => ({
 // ---------------------------------------------------------------------------
 // Tab: Configuração
 // ---------------------------------------------------------------------------
-function TabConfiguracao({ csrf }) {
+export function TabConfiguracao({ csrf }) {
   const [form, setForm] = useState({
     usuario: '', senha: '', codigo_laboratorio: '', url_ws: '', verificar_ssl: false,
   })
@@ -140,7 +140,7 @@ function TabConfiguracao({ csrf }) {
 // ---------------------------------------------------------------------------
 // Tab: Testar Conexão
 // ---------------------------------------------------------------------------
-function TabTestarConexao({ csrf }) {
+export function TabTestarConexao({ csrf }) {
   const [st, setSt] = useState(STATUS.idle)
   const [resultado, setResultado] = useState(null)
 
@@ -206,7 +206,7 @@ function ResultRow({ label: l, value, erro }) {
 // ---------------------------------------------------------------------------
 // Tab: Buscar Exames
 // ---------------------------------------------------------------------------
-function TabBuscarExames({ csrf }) {
+export function TabBuscarExames({ csrf }) {
   const [laboratorio, setLaboratorio] = useState('')
   const [st, setSt] = useState(STATUS.idle)
   const [resultado, setResultado] = useState(null)

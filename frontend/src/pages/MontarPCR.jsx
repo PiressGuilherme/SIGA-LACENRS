@@ -19,11 +19,6 @@ const TIPO_COLORS = {
 
 const REPETIDO_COLORS = { bg: '#fef9c3', border: '#eab308', text: '#713f12' }
 
-const REAGENTES = [
-  { nome: 'Master Mix', vol: 15 },
-  { nome: 'Primer Mix', vol: 5 },
-]
-
 const emptyGrid = () => baseEmptyGrid({ tem_resultado: false })
 const gridFromPocos = (pocos) => baseGridFromPocos(pocos, { tem_resultado: false })
 
@@ -49,6 +44,10 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   const [carregandoRascunho, setCarregandoRascunho] = useState(false)
 
 
+  // ---- State: protocolos de reacao ----
+  const [protocolos, setProtocolos] = useState([])
+  const [protocoloId, setProtocoloId] = useState(null)
+
   // ---- State: editor ----
   const [placa, setPlaca] = useState(null)
   const [grid, setGrid] = useState(emptyGrid)
@@ -67,6 +66,21 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
   const isDraggingSelection = useRef(false)
   const lastClicked = useRef(null)
   const [dragOver, setDragOver] = useState(null)
+
+  // Carregar protocolos de reacao ativos
+  useEffect(() => {
+    apiFetch('/api/configuracoes/reacoes/?ativo=true')
+      .then(data => {
+        const lista = data.results || data
+        setProtocolos(lista)
+        if (lista.length > 0 && !protocoloId) setProtocoloId(lista[0].id)
+      })
+      .catch(() => {})
+  }, [])
+
+  const protocoloSelecionado = protocolos.find(p => p.id === protocoloId) || null
+  const reagentes = protocoloSelecionado?.reagentes || []
+  const margemPct = protocoloSelecionado?.margem_percentual || 0
 
   // Foco automático no input após cada scan (quando carregando volta a false)
   useEffect(() => { if (!carregando) inputRef.current?.focus() }, [carregando])
@@ -331,7 +345,8 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
       }
 
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
+        csrfToken, method: 'POST',
+        body: { pocos, numero_cracha: operador?.numero_cracha, protocolo_id: protocoloId },
       })
       setPlaca(data)
       setSalva(true)
@@ -386,7 +401,8 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
         body: { tipo_placa: 'pcr', placa_origem: placa?.placa_origem || null },
       })
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
-        csrfToken, method: 'POST', body: { pocos, numero_cracha: operador?.numero_cracha },
+        csrfToken, method: 'POST',
+        body: { pocos, numero_cracha: operador?.numero_cracha, protocolo_id: protocoloId },
       })
       setPlaca(data)
       setSalva(true)
@@ -673,14 +689,35 @@ export default function MontarPCR({ csrfToken, editarPlacaId = null, onEditarDon
             </div>
           )}
 
+          {/* ---- Protocolo de reacao ---- */}
+          {isEditable && protocolos.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>Protocolo:</label>
+              <select
+                value={protocoloId || ''}
+                onChange={e => setProtocoloId(Number(e.target.value))}
+                style={{ padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', fontSize: '0.85rem' }}
+              >
+                {protocolos.map(p => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* ---- Reagentes ---- */}
-          {totalReacoes > 0 && (
+          {totalReacoes > 0 && reagentes.length > 0 && (
             <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', padding: '0.6rem 1rem', background: '#f0fdf4', borderRadius: 6, fontSize: '0.85rem', color: '#065f46', flexWrap: 'wrap' }}>
-              {REAGENTES.map(r => (
-                <span key={r.nome}>
-                  <b>{r.nome}:</b> {(totalReacoes * r.vol).toFixed(1)} uL ({r.vol} x {totalReacoes})
-                </span>
-              ))}
+              {reagentes.map(r => {
+                const vol = parseFloat(r.volume_por_reacao)
+                const volBase = totalReacoes * vol
+                const volTotal = margemPct > 0 ? volBase * (1 + margemPct / 100) : volBase
+                return (
+                  <span key={r.nome}>
+                    <b>{r.nome}:</b> {volTotal.toFixed(1)} uL ({vol} x {totalReacoes}{margemPct > 0 ? ` +${margemPct}%` : ''})
+                  </span>
+                )
+              })}
             </div>
           )}
 

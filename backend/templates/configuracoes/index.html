@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load django_vite %}
+
+{% block title %}Configuracoes — SIGA-LACEN{% endblock %}
+
+{% block extra_head %}
+  {% vite_hmr_client %}
+  {% vite_react_refresh %}
+  {% vite_asset 'entries/configuracoes.jsx' %}
+{% endblock %}
+
+{% block content %}
+  <div id="configuracoes-app" data-csrf="{{ csrf_token }}"></div>
+{% endblock %}

@@ -270,9 +270,22 @@ class PlacaViewSet(viewsets.ModelViewSet):
         if actor_ctx is None:
             actor_ctx = _noop_ctx()
 
+        # Protocolo de reacao (opcional, para placas PCR)
+        protocolo_id = request.data.get('protocolo_id')
+
         with transaction.atomic(), actor_ctx:
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
+
+            # Salvar associacao protocolo → grupo (por enquanto, grupo 1)
+            if protocolo_id and placa.tipo_placa == TipoPlaca.PCR:
+                from apps.configuracoes.models import PlacaGrupoReacao, ReacaoProtocolo
+                if ReacaoProtocolo.objects.filter(pk=protocolo_id, ativo=True).exists():
+                    PlacaGrupoReacao.objects.update_or_create(
+                        placa=placa, grupo=1,
+                        defaults={'protocolo_id': protocolo_id},
+                    )
+
             if amostras_a_atualizar:
                 novo_status = (
                     StatusAmostra.PCR if placa.tipo_placa == TipoPlaca.PCR

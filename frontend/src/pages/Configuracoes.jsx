@@ -136,20 +136,20 @@ function TabReacoes() {
     return (
       <div style={card}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '1rem' }}>
-          {editando.id ? 'Editar Protocolo' : 'Novo Protocolo de Reacao'}
+          {editando.id ? 'Editar Protocolo' : 'Novo Protocolo de Reação'}
         </h3>
         {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
         <form onSubmit={salvar}>
           <label style={label}>Nome</label>
           <input style={inputStyle} value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
-          <label style={label}>Descricao</label>
+          <label style={label}>Descrição</label>
           <textarea style={{ ...inputStyle, minHeight: 60 }} value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
           <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
             <label style={{ ...label, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0 }}>
               <input type="checkbox" checked={editando.ativo} onChange={e => setField('ativo', e.target.checked)} /> Ativo
             </label>
             <div style={{ flex: 1 }}>
-              <label style={label}>Margem extra (%)</label>
+              <label style={label}>Margem Extra (%)</label>
               <input style={{ ...inputStyle, width: 100, marginBottom: 0 }} type="number" step="0.1" min="0"
                 value={editando.margem_percentual} onChange={e => setField('margem_percentual', e.target.value)} />
             </div>
@@ -198,7 +198,7 @@ function TabReacoes() {
     <div>
       {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Protocolos de Reacao</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Protocolos de Reação</h3>
         <button onClick={novoProtocolo} style={btn()}>+ Novo Protocolo</button>
       </div>
       {protocolos.length === 0 && <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Nenhum protocolo cadastrado.</p>}
@@ -211,7 +211,7 @@ function TabReacoes() {
             {p.descricao && <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: 6 }}>{p.descricao}</div>}
             <div style={{ fontSize: '0.82rem', color: '#374151' }}>
               {p.reagentes.map(r => `${r.nome}: ${r.volume_por_reacao} uL`).join(' | ')}
-              {p.margem_percentual > 0 && <span style={{ color: '#6b7280' }}> (+{p.margem_percentual}% margem)</span>}
+              {p.margem_percentual > 0 && <span style={{ color: '#6b7280' }}> (+{p.margem_percentual}% Margem)</span>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
@@ -268,6 +268,7 @@ function TabKits() {
   const [abaKit, setAbaKit] = useState('basico') // 'basico' | 'alvos' | 'regras'
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [expandirLimiares, setExpandirLimiares] = useState(false)
 
   useEffect(() => { carregarKits() }, [])
 
@@ -302,6 +303,7 @@ function TabKits() {
     const regras = (k.regras_interpretacao || []).map(r => ({ ...r, _key: r.id || Math.random() }))
     setEditando({ ...k, alvos, regras_interpretacao: regras })
     setAbaKit('basico')
+    setExpandirLimiares(false)
     setMsg(null)
   }
 
@@ -421,7 +423,7 @@ function TabKits() {
     return (
       <div style={card}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '0.75rem' }}>
-          {editando.id ? 'Editar Kit' : 'Novo Kit de Interpretacao'}
+          {editando.id ? 'Editar Kit' : 'Novo Kit de Interpretação'}
         </h3>
         {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
 
@@ -445,30 +447,43 @@ function TabKits() {
             <>
               <label style={label}>Nome</label>
               <input style={inputStyle} value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
-              <label style={label}>Descricao</label>
+              <label style={label}>Descrição</label>
               <textarea style={{ ...inputStyle, minHeight: 60 }} value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
               <label style={{ ...label, display: 'flex', alignItems: 'center', gap: 6, marginBottom: '1rem' }}>
                 <input type="checkbox" checked={editando.ativo} onChange={e => setField('ativo', e.target.checked)} /> Ativo
               </label>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>
-                Limiares padrão (fallback quando alvos não configurados)
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={label}>Controles CP/CN CI</label>
-                  <input style={inputStyle} type="number" step="0.1" min="0"
-                    value={editando.cq_controle_max} onChange={e => setField('cq_controle_max', e.target.value)} />
-                </div>
-                <div>
-                  <label style={label}>Amostra CI</label>
-                  <input style={inputStyle} type="number" step="0.1" min="0"
-                    value={editando.cq_amostra_ci_max} onChange={e => setField('cq_amostra_ci_max', e.target.value)} />
-                </div>
-                <div>
-                  <label style={label}>Amostra HPV</label>
-                  <input style={inputStyle} type="number" step="0.1" min="0"
-                    value={editando.cq_amostra_hpv_max} onChange={e => setField('cq_amostra_hpv_max', e.target.value)} />
-                </div>
+
+              {/* Seção de limiares padrão com expansão */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                <button type="button" onClick={() => setExpandirLimiares(!expandirLimiares)} style={{
+                  width: '100%', padding: '0.75rem', background: '#f8fafc', border: 'none',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  fontSize: '0.875rem', fontWeight: 600, color: '#374151',
+                }}>
+                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>{expandirLimiares ? '▼' : '▶'}</span>
+                  Limiares Padrão (fallback quando alvos não configurados)
+                </button>
+                {expandirLimiares && (
+                  <div style={{ padding: '1rem', background: '#fff', borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                      <div>
+                        <label style={label}>Controles CP/CN CI</label>
+                        <input style={inputStyle} type="number" step="0.1" min="0"
+                          value={editando.cq_controle_max} onChange={e => setField('cq_controle_max', e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={label}>Amostra CI</label>
+                        <input style={inputStyle} type="number" step="0.1" min="0"
+                          value={editando.cq_amostra_ci_max} onChange={e => setField('cq_amostra_ci_max', e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={label}>Amostra HPV</label>
+                        <input style={inputStyle} type="number" step="0.1" min="0"
+                          value={editando.cq_amostra_hpv_max} onChange={e => setField('cq_amostra_hpv_max', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -637,7 +652,7 @@ function TabKits() {
     <div>
       {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Kits de Interpretacao</h3>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Kits de Interpretação</h3>
         <button onClick={novoKit} style={btn()}>+ Novo Kit</button>
       </div>
       {kits.length === 0 && <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Nenhum kit cadastrado.</p>}
@@ -698,8 +713,8 @@ function TabGalWs({ csrf }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const TABS = [
-  { id: 'reacoes', label: 'Reacoes' },
-  { id: 'kits',    label: 'Kits de Interpretacao' },
+  { id: 'reacoes', label: 'Reações' },
+  { id: 'kits',    label: 'Kits de Interpretação' },
   { id: 'gal-ws',  label: 'GAL WebService' },
 ]
 
@@ -714,9 +729,9 @@ export default function Configuracoes({ csrfToken }) {
       )}
 
       <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.4rem', color: '#1a3a5c', marginBottom: '0.25rem' }}>Configuracoes</h2>
+        <h2 style={{ fontSize: '1.4rem', color: '#1a3a5c', marginBottom: '0.25rem' }}>Configurações</h2>
         <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-          Gerencie protocolos de reacao, kits de interpretacao e integracao GAL.
+          Gerencie protocolos de reação, kits de interpretação e integração GAL.
         </p>
       </div>
 

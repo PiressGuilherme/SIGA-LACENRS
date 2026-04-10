@@ -39,7 +39,7 @@
       <a href="/placas/pcr/">PCR</a>
       <a href="/resultados/revisar/">Resultados</a>
       {% if user.is_superuser %}
-        <a href="{% url 'configuracoes-page' %}">Configuracoes</a>
+        <a href="{% url 'configuracoes-page' %}">Configurações</a>
         <a href="/admin/">Admin</a>
       {% endif %}
       {% if user.is_authenticated %}

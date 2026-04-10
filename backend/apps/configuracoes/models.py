@@ -98,3 +98,128 @@ class PlacaGrupoReacao(models.Model):
 
     def __str__(self):
         return f'Placa {self.placa_id} / Grupo {self.grupo} → {self.protocolo}'
+
+
+# ── Modelos para interpretação genérica dirigida por configuração ─────────────
+
+class TipoAlvo(models.TextChoices):
+    PATOGENO = 'PATOGENO', 'Patógeno'
+    CONTROLE_INTERNO = 'CONTROLE_INTERNO', 'Controle Interno'
+    CONTROLE_EXTERNO = 'CONTROLE_EXTERNO', 'Controle Externo'
+
+
+class ContextoLimiar(models.TextChoices):
+    CP = 'CP', 'Controle Positivo'
+    CN = 'CN', 'Controle Negativo'
+    AMOSTRA_POSITIVO = 'AMOSTRA_POSITIVO', 'Amostra Positivo'
+
+
+class OperadorLimiar(models.TextChoices):
+    LTE = 'LTE', 'Ct ≤ valor'
+    GTE = 'GTE', 'Ct ≥ valor'
+    SEM_AMP = 'SEM_AMP', 'Sem amplificação'
+
+
+class TipoResultado(models.TextChoices):
+    DETECTADO = 'DETECTADO', 'Detectado'
+    NAO_DETECTADO = 'NAO_DETECTADO', 'Não detectado'
+    INVALIDO_ENSAIO = 'INVALIDO_ENSAIO', 'Ensaio inválido'
+    INVALIDO_AMOSTRA = 'INVALIDO_AMOSTRA', 'Amostra inválida'
+    REVISAO_MANUAL = 'REVISAO_MANUAL', 'Revisão manual necessária'
+
+
+class KitAlvo(models.Model):
+    """
+    Alvo (canal/fluoróforo) de um kit PCR.
+    Ex: CI (controle interno), HPV16 (patógeno), HPV18, HPV_AR.
+    """
+    kit = models.ForeignKey(
+        KitInterpretacao, on_delete=models.CASCADE,
+        related_name='alvos', verbose_name='Kit',
+    )
+    nome = models.CharField(max_length=100, verbose_name='Nome')
+    tipo_alvo = models.CharField(
+        max_length=20, choices=TipoAlvo.choices,
+        default=TipoAlvo.PATOGENO, verbose_name='Tipo',
+    )
+    canal = models.CharField(max_length=50, blank=True, verbose_name='Canal/Fluoróforo')
+    ordem = models.PositiveSmallIntegerField(default=0, verbose_name='Ordem')
+
+    class Meta:
+        ordering = ['ordem', 'id']
+        unique_together = [('kit', 'nome')]
+        verbose_name = 'Alvo do kit'
+        verbose_name_plural = 'Alvos do kit'
+
+    def __str__(self):
+        return f'{self.kit.nome} / {self.nome}'
+
+
+class RegrasLimiar(models.Model):
+    """
+    Threshold de Cq para um alvo em um dado contexto de interpretação.
+    Ex: CI/CP → LTE 25.0 significa que o CI no poço CP deve ter Cq ≤ 25.
+    """
+    alvo = models.ForeignKey(
+        KitAlvo, on_delete=models.CASCADE,
+        related_name='limiares', verbose_name='Alvo',
+    )
+    contexto = models.CharField(
+        max_length=20, choices=ContextoLimiar.choices,
+        verbose_name='Contexto',
+    )
+    operador = models.CharField(
+        max_length=10, choices=OperadorLimiar.choices,
+        default=OperadorLimiar.LTE, verbose_name='Operador',
+    )
+    ct_limiar = models.FloatField(
+        null=True, blank=True, verbose_name='Ct limiar',
+        help_text='Valor do limiar de Cq. Vazio quando operador = SEM_AMP.',
+    )
+
+    class Meta:
+        unique_together = [('alvo', 'contexto')]
+        verbose_name = 'Limiar de Cq'
+        verbose_name_plural = 'Limiares de Cq'
+
+    def __str__(self):
+        if self.operador == OperadorLimiar.SEM_AMP:
+            return f'{self.alvo.nome}/{self.contexto}: sem amplificação'
+        return f'{self.alvo.nome}/{self.contexto}: {self.operador} {self.ct_limiar}'
+
+
+class RegraInterpretacao(models.Model):
+    """
+    Regra de interpretação: mapeia combinação de resultados por alvo a um laudo.
+    As regras são avaliadas em ordem crescente de prioridade; a primeira que
+    satisfizer todas as condições define o resultado da amostra.
+    """
+    kit = models.ForeignKey(
+        KitInterpretacao, on_delete=models.CASCADE,
+        related_name='regras_interpretacao', verbose_name='Kit',
+    )
+    prioridade = models.PositiveSmallIntegerField(default=10, verbose_name='Prioridade')
+    resultado_label = models.CharField(max_length=200, verbose_name='Laudo')
+    resultado_codigo = models.CharField(
+        max_length=50, blank=True, verbose_name='Código',
+        help_text='Código interno do resultado (ex: hpv16, hpv_nao_detectado, invalido).',
+    )
+    tipo_resultado = models.CharField(
+        max_length=20, choices=TipoResultado.choices,
+        verbose_name='Tipo de resultado',
+    )
+    condicoes = models.JSONField(
+        verbose_name='Condições',
+        help_text=(
+            'Dicionário: chave = nome do alvo ou "CP"/"CN"; '
+            'valor = "POSITIVO" | "NEGATIVO" | "QUALQUER" | "VALIDO" | "INVALIDO".'
+        ),
+    )
+
+    class Meta:
+        ordering = ['prioridade']
+        verbose_name = 'Regra de interpretação'
+        verbose_name_plural = 'Regras de interpretação'
+
+    def __str__(self):
+        return f'[{self.prioridade}] {self.resultado_label}'

@@ -20,13 +20,34 @@ const RESULTADO_FINAL = {
   pendente:          { label: 'Pendente',                             bg: '#6c757d' },
 }
 
-// canal key no DB → { label, resultKey }
-const CANAIS = [
+// canal key no DB → { label, resultKey }  (fallback quando kit não tem alvos)
+const CANAIS_PADRAO = [
   { canal: 'CI',     label: 'CI',     key: 'ci_resultado'    },
   { canal: 'HPV16',  label: 'HPV-16', key: 'hpv16_resultado' },
   { canal: 'HPV18',  label: 'HPV-18', key: 'hpv18_resultado' },
   { canal: 'HPV_AR', label: 'HPV AR', key: 'hpvar_resultado'  },
 ]
+
+// Mapeia nome do alvo → campo fixo de ResultadoAmostra
+const ALVO_PARA_CAMPO = {
+  CI:     'ci_resultado',
+  HPV16:  'hpv16_resultado',
+  HPV18:  'hpv18_resultado',
+  HPV_AR: 'hpvar_resultado',
+}
+
+function formatAlvoLabel(nome) {
+  const mapa = { CI: 'CI', HPV16: 'HPV-16', HPV18: 'HPV-18', HPV_AR: 'HPV AR' }
+  return mapa[nome] || nome
+}
+
+function canaisDynamic(kit) {
+  if (!kit?.alvos?.length) return CANAIS_PADRAO
+  return kit.alvos
+    .filter(a => a.tipo_alvo !== 'CONTROLE_EXTERNO')
+    .sort((a, b) => a.ordem - b.ordem)
+    .map(a => ({ canal: a.nome, label: formatAlvoLabel(a.nome), key: ALVO_PARA_CAMPO[a.nome] || null }))
+}
 
 const INTERP_STYLE = {
   positivo: { bg: '#fef2f2', color: '#b91c1c', border: '#fca5a5' },
@@ -316,7 +337,7 @@ export default function RevisarResultados({}) {
               >
                 {kits.map(k => (
                   <option key={k.id} value={k.id}>
-                    {k.nome} (CI ≤{k.cq_amostra_ci_max} / HPV ≤{k.cq_amostra_hpv_max})
+                    {k.nome}{k.alvos?.length ? ` — ${k.alvos.length} alvos, ${k.regras_interpretacao?.length || 0} regras` : ` (CI ≤${k.cq_amostra_ci_max} / HPV ≤${k.cq_amostra_hpv_max})`}
                   </option>
                 ))}
               </select>
@@ -376,6 +397,7 @@ export default function RevisarResultados({}) {
           ) : (
             <ResultadosTable
               resultados={resultados}
+              kit={kits.find(k => k.id === kitId) || null}
               actionLoading={actionLoading}
               onConfirmar={confirmarResultado}
               onConfirmarTodos={confirmarTodos}
@@ -442,7 +464,7 @@ export default function RevisarResultados({}) {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────
 
-function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTodos, onLiberar, onRepeticao, onOverride }) {
+function ResultadosTable({ resultados, kit, actionLoading, onConfirmar, onConfirmarTodos, onLiberar, onRepeticao, onOverride }) {
   if (resultados.length === 0) {
     return (
       <p style={{ color: '#9ca3af', fontSize: '0.9rem', padding: '1rem 0' }}>
@@ -451,6 +473,7 @@ function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTo
     )
   }
 
+  const canais = canaisDynamic(kit)
   const totalConfirmados = resultados.filter(r => r.imutavel).length
   const totalPendentes = resultados.length - totalConfirmados
 
@@ -476,7 +499,7 @@ function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTo
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
               <th style={thStyle}>Num. Interno</th>
-              {CANAIS.map(c => <th key={c.canal} style={{ ...thStyle, textAlign: 'center' }}>{c.label}</th>)}
+              {canais.map(c => <th key={c.canal} style={{ ...thStyle, textAlign: 'center' }}>{c.label}</th>)}
               <th style={thStyle}>Resultado Final</th>
               <th style={thStyle}>Status</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Ações</th>
@@ -487,6 +510,7 @@ function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTo
               <ResultadoRow
                 key={r.id}
                 resultado={r}
+                canais={canais}
                 actionLoading={actionLoading[r.id]}
                 onConfirmar={onConfirmar}
                 onLiberar={onLiberar}
@@ -501,8 +525,9 @@ function ResultadosTable({ resultados, actionLoading, onConfirmar, onConfirmarTo
   )
 }
 
-function ResultadoRow({ resultado, actionLoading, onConfirmar, onLiberar, onRepeticao, onOverride }) {
-  const rf = RESULTADO_FINAL[resultado.resultado_final] || RESULTADO_FINAL.pendente
+function ResultadoRow({ resultado, canais, actionLoading, onConfirmar, onLiberar, onRepeticao, onOverride }) {
+  const rf = RESULTADO_FINAL[resultado.resultado_final]
+    || { label: resultado.resultado_final || 'Pendente', bg: '#6c757d' }
   const statusLabel = resultado.imutavel
     ? (resultado.amostra_status === 'resultado_liberado' ? 'Liberado' : 'Confirmado')
     : 'Pendente'
@@ -514,8 +539,8 @@ function ResultadoRow({ resultado, actionLoading, onConfirmar, onLiberar, onRepe
     <tr style={{ borderBottom: '1px solid #f0f4f8' }}>
       <td style={{ ...tdStyle, fontWeight: 600 }}>{resultado.amostra_codigo || '—'}</td>
 
-      {CANAIS.map(c => {
-        const val = resultado[c.key]
+      {canais.map(c => {
+        const val = c.key ? resultado[c.key] : null
         const s = INTERP_STYLE[val] || INTERP_STYLE.pendente
         const canalObj = resultado.canais?.find(x => x.canal === c.canal)
         const hasManual = canalObj?.interpretacao_manual != null

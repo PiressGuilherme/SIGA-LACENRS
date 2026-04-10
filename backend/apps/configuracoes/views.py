@@ -35,7 +35,10 @@ class KitInterpretacaoViewSet(ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def get_queryset(self):
-        qs = KitInterpretacao.objects.all()
+        qs = KitInterpretacao.objects.prefetch_related(
+            'alvos__limiares',
+            'regras_interpretacao',
+        ).all()
         if self.request.query_params.get('ativo') == 'true':
             qs = qs.filter(ativo=True)
         return qs

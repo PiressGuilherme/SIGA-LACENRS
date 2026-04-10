@@ -77,12 +77,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsEspecialista]
 
     def get_permissions(self):
-        # Todas as ações requerem especialista ou supervisor
         return [IsEspecialista()]
 
     def get_serializer_class(self):
-        # Inclui canais aninhados em todas as leituras (list, retrieve, importar)
-        # para que o frontend possa editar overrides sem chamadas adicionais.
         if self.action in ('confirmar', 'liberar', 'solicitar_repeticao'):
             return ResultadoAmostraSerializer
         return ResultadoAmostraDetalheSerializer
@@ -105,7 +102,8 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
     def importar(self, request):
         """
         POST /api/resultados/importar/
-        Body: multipart/form-data com 'arquivo' (CSV), 'placa_id' e opcionalmente 'numero_cracha'.
+        Body: multipart/form-data com 'arquivo' (CSV), 'placa_id' e opcionalmente
+              'numero_cracha' e 'kit_id'.
 
         Fluxo:
         1. Parseia o CSV do CFX Manager.
@@ -137,28 +135,36 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({'erro': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Carregar kit de interpretacao (do request ou default)
+        # Carregar kit de interpretação (do request ou default)
         kit = None
         kit_id = request.data.get('kit_id')
         if kit_id:
             from apps.configuracoes.models import KitInterpretacao
-            kit = KitInterpretacao.objects.filter(pk=kit_id, ativo=True).first()
+            kit = KitInterpretacao.objects.prefetch_related(
+                'alvos__limiares', 'regras_interpretacao'
+            ).filter(pk=kit_id, ativo=True).first()
 
-        # Limiares do kit ou defaults
-        cq_ctrl = kit.cq_controle_max if kit else None
-        cq_ci = kit.cq_amostra_ci_max if kit else None
-        cq_hpv = kit.cq_amostra_hpv_max if kit else None
+        # Motor de interpretação configurado vs. fallback para parser legado
+        motor = None
+        if kit and kit.alvos.exists():
+            from apps.configuracoes.engine import MotorInterpretacao
+            motor = MotorInterpretacao(kit)
 
-        # Validação de controles — corrida inválida bloqueia import
-        cp_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
-        cn_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
-        cp_ok, cp_msg = validar_cp(parsed['controles']['cp'], **cp_kwargs)
-        cn_ok, cn_msg = validar_cn(parsed['controles']['cn'], **cn_kwargs)
+        # Validação de controles
+        if motor:
+            cp_ok, cp_msg = motor.validar_cp(parsed['controles']['cp'])
+            cn_ok, cn_msg = motor.validar_cn(parsed['controles']['cn'])
+        else:
+            cq_ctrl = kit.cq_controle_max if kit else None
+            cp_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
+            cp_ok, cp_msg = validar_cp(parsed['controles']['cp'], **cp_kwargs)
+            cn_ok, cn_msg = validar_cn(parsed['controles']['cn'], **cp_kwargs)
+
         if not cp_ok or not cn_ok:
-            kit_nome = kit.nome if kit else 'IBMP (padrao)'
+            kit_nome = kit.nome if kit else 'IBMP (padrão)'
             return Response(
                 {
-                    'erro': f'Corrida invalida: controles nao atendem os criterios do kit {kit_nome}.',
+                    'erro': f'Corrida inválida: controles não atendem os critérios do kit {kit_nome}.',
                     'cp': cp_msg,
                     'cn': cn_msg,
                 },
@@ -177,30 +183,36 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
             placa.kit_interpretacao = kit
             placa.save(update_fields=['kit_interpretacao', 'atualizado_em'])
 
-        # Limiares para classificacao de amostras
+        # Limiares para classificação legada (usados quando motor=None)
         classif_kwargs = {}
-        if cq_ci is not None:
-            classif_kwargs['cq_ci_max'] = cq_ci
-        if cq_hpv is not None:
-            classif_kwargs['cq_hpv_max'] = cq_hpv
+        if not motor and kit:
+            if kit.cq_amostra_ci_max:
+                classif_kwargs['cq_ci_max'] = kit.cq_amostra_ci_max
+            if kit.cq_amostra_hpv_max:
+                classif_kwargs['cq_hpv_max'] = kit.cq_amostra_hpv_max
 
-        # Tudo a partir daqui é atômico e com actor correto no auditlog
         with transaction.atomic(), actor_ctx:
-            return self._processar_import(request, placa, parsed, cp_msg, cn_msg, operador, avisos, classif_kwargs)
+            return self._processar_import(
+                request, placa, parsed, cp_msg, cn_msg, operador, avisos,
+                classif_kwargs=classif_kwargs,
+                motor=motor,
+                cp_ok=cp_ok,
+                cn_ok=cn_ok,
+            )
 
-    def _processar_import(self, request, placa, parsed, cp_msg, cn_msg, operador, avisos, classif_kwargs=None):
-        """Lógica interna de importação, executada dentro de transaction.atomic() + set_actor()."""
+    def _processar_import(
+        self, request, placa, parsed, cp_msg, cn_msg, operador, avisos,
+        classif_kwargs=None, motor=None, cp_ok=True, cn_ok=True,
+    ):
+        """Lógica interna de importação, dentro de transaction.atomic()."""
         ck = classif_kwargs or {}
 
         # ── 1. ResultadoPoco por poço × canal ────────────────────────────────
-        # Mapa de posição → Poco para acesso rápido
-        poco_map: dict[str, Poco] = {
-            p.posicao: p for p in placa.pocos.all()
-        }
+        poco_map: dict[str, Poco] = {p.posicao: p for p in placa.pocos.all()}
 
         for posicao, dados_poco in parsed['por_poco'].items():
             if dados_poco.get('_tipo') != 'amostra':
-                continue  # controles não geram ResultadoPoco no banco
+                continue
 
             poco = poco_map.get(posicao)
             if poco is None:
@@ -210,43 +222,59 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 )
                 continue
 
-            for canal in _CANAIS:
-                cq = dados_poco.get(canal)
-                interpretacao = classificar_canal([cq], canal, **ck)
-                ResultadoPoco.objects.update_or_create(
-                    poco=poco,
-                    canal=canal,
-                    defaults={'cq': cq, 'interpretacao': interpretacao},
-                )
+            if motor:
+                for alvo in motor.canais_amostra:
+                    cq = dados_poco.get(alvo.nome)
+                    interpretacao = motor.classificar_alvo([cq], alvo.nome)
+                    ResultadoPoco.objects.update_or_create(
+                        poco=poco,
+                        canal=alvo.nome,
+                        defaults={'cq': cq, 'interpretacao': interpretacao},
+                    )
+            else:
+                for canal in _CANAIS:
+                    cq = dados_poco.get(canal)
+                    interpretacao = classificar_canal([cq], canal, **ck)
+                    ResultadoPoco.objects.update_or_create(
+                        poco=poco,
+                        canal=canal,
+                        defaults={'cq': cq, 'interpretacao': interpretacao},
+                    )
 
-        # ── 2. ResultadoAmostra por amostra (classificação agregada) ─────────
+        # ── 2. ResultadoAmostra por amostra ──────────────────────────────────
         amostras_processadas = 0
         for sample_id, canais in parsed['amostras'].items():
-            # Localiza amostra pelo codigo_interno
             try:
                 amostra = Amostra.objects.get(codigo_interno=sample_id)
             except Amostra.DoesNotExist:
-                avisos.append(
-                    f'Amostra "{sample_id}" não encontrada no banco — ignorada.'
-                )
+                avisos.append(f'Amostra "{sample_id}" não encontrada no banco — ignorada.')
                 continue
 
-            # Poços dessa amostra nesta placa (para pegar o principal)
             pocos_amostra = list(
                 Poco.objects.filter(placa=placa, amostra=amostra).order_by('posicao')
             )
             if not pocos_amostra:
-                avisos.append(
-                    f'Amostra "{sample_id}" não está mapeada nesta placa — ignorada.'
-                )
+                avisos.append(f'Amostra "{sample_id}" não está mapeada nesta placa — ignorada.')
                 continue
 
-            # Classificação usando Cq mínimo entre replicatas
-            ci    = classificar_canal(canais['CI'],     'CI',     **ck)
-            hpv16 = classificar_canal(canais['HPV16'],  'HPV16',  **ck)
-            hpv18 = classificar_canal(canais['HPV18'],  'HPV18',  **ck)
-            hpvar = classificar_canal(canais['HPV_AR'], 'HPV_AR', **ck)
-            resultado_final = calcular_resultado_final(ci, hpv16, hpv18, hpvar)
+            # Classificação por alvo
+            if motor:
+                resultados_alvos = {
+                    alvo.nome: motor.classificar_alvo(canais.get(alvo.nome, []), alvo.nome)
+                    for alvo in motor.canais_amostra
+                }
+                resultado = motor.interpretar_amostra(resultados_alvos, cp_ok, cn_ok)
+                ci    = resultados_alvos.get('CI',     'invalido')
+                hpv16 = resultados_alvos.get('HPV16',  'negativo')
+                hpv18 = resultados_alvos.get('HPV18',  'negativo')
+                hpvar = resultados_alvos.get('HPV_AR', 'negativo')
+                resultado_final = resultado['codigo'] or 'invalido'
+            else:
+                ci    = classificar_canal(canais.get('CI',     []), 'CI',     **ck)
+                hpv16 = classificar_canal(canais.get('HPV16',  []), 'HPV16',  **ck)
+                hpv18 = classificar_canal(canais.get('HPV18',  []), 'HPV18',  **ck)
+                hpvar = classificar_canal(canais.get('HPV_AR', []), 'HPV_AR', **ck)
+                resultado_final = calcular_resultado_final(ci, hpv16, hpv18, hpvar)
 
             poco_principal = pocos_amostra[0]
 
@@ -254,9 +282,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
             try:
                 ra = ResultadoAmostra.objects.get(poco=poco_principal)
                 if ra.imutavel:
-                    avisos.append(
-                        f'Amostra "{sample_id}": resultado já confirmado — mantido.'
-                    )
+                    avisos.append(f'Amostra "{sample_id}": resultado já confirmado — mantido.')
                     continue
                 ra.ci_resultado    = ci
                 ra.hpv16_resultado = hpv16
@@ -307,11 +333,6 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='confirmar')
     def confirmar(self, request, pk=None):
-        """
-        POST /api/resultados/{id}/confirmar/
-        Torna o resultado imutável e registra o responsável.
-        Aceita numero_cracha para atribuir a ação ao operador do crachá.
-        """
         resultado = self.get_object()
         if resultado.imutavel:
             return Response(
@@ -334,11 +355,6 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='liberar')
     def liberar(self, request, pk=None):
-        """
-        POST /api/resultados/{id}/liberar/
-        Requer resultado confirmado. Atualiza a amostra para Resultado Liberado.
-        Aceita numero_cracha para atribuir a ação ao operador do crachá.
-        """
         resultado = self.get_object()
         if not resultado.imutavel:
             return Response(
@@ -361,12 +377,6 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='solicitar-repeticao')
     def solicitar_repeticao(self, request, pk=None):
-        """
-        POST /api/resultados/{id}/solicitar-repeticao/
-        Marca a amostra para novo ciclo de PCR.
-        Não pode ser aplicado a resultados já confirmados.
-        Aceita numero_cracha para atribuir a ação ao operador do crachá.
-        """
         resultado = self.get_object()
         if resultado.imutavel:
             return Response(

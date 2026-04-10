@@ -144,6 +144,20 @@ class ResultadoAmostra(models.Model):
         help_text='True após confirmação definitiva. Resultado não pode ser alterado.',
     )
 
+    # Rastreamento de controles inválidos
+    cp_valido = models.BooleanField(
+        default=True, verbose_name='CP válido',
+        help_text='False se o poço CP falhou na validação mas o import foi forçado.',
+    )
+    cn_valido = models.BooleanField(
+        default=True, verbose_name='CN válido',
+        help_text='False se o poço CN falhou na validação mas o import foi forçado.',
+    )
+    motivo_controle_invalido = models.TextField(
+        blank=True, verbose_name='Motivo da inválida',
+        help_text='Detalhamento dos erros de CP e CN quando forçado.',
+    )
+
     class Meta:
         verbose_name = 'Resultado da amostra'
         verbose_name_plural = 'Resultados das amostras'

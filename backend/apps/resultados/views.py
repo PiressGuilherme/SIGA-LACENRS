@@ -103,15 +103,16 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
         """
         POST /api/resultados/importar/
         Body: multipart/form-data com 'arquivo' (CSV), 'placa_id' e opcionalmente
-              'numero_cracha' e 'kit_id'.
+              'numero_cracha', 'kit_id', 'forcar_import' (ignorar validação).
 
         Fluxo:
         1. Parseia o CSV do CFX Manager.
-        2. Valida CP e CN — corrida inválida bloqueia o import.
-        3. Cria/atualiza ResultadoPoco por poço × canal.
-        4. Cria/atualiza ResultadoAmostra por amostra (classificação agregada).
-        5. Atualiza status das amostras → Resultado.
-        6. Atualiza status da placa → Resultados Importados.
+        2. Valida CP e CN — se falhar, retorna 422 com detalhes ANTES de questionar ao usuário.
+        3. Se forcar_import=true, prossegue mesmo com controles inválidos.
+        4. Cria/atualiza ResultadoPoco por poço × canal.
+        5. Cria/atualiza ResultadoAmostra por amostra (marca cp_valido/cn_valido=False se forçado).
+        6. Atualiza status das amostras → Resultado.
+        7. Atualiza status da placa → Resultados Importados.
         """
         serializer = ResultadoImportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -151,22 +152,29 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
             motor = MotorInterpretacao(kit)
 
         # Validação de controles
+        cp_detalhes = {}
+        cn_detalhes = {}
         if motor:
-            cp_ok, cp_msg = motor.validar_cp(parsed['controles']['cp'])
-            cn_ok, cn_msg = motor.validar_cn(parsed['controles']['cn'])
+            cp_ok, cp_msg, cp_detalhes = motor.validar_cp(parsed['controles']['cp'])
+            cn_ok, cn_msg, cn_detalhes = motor.validar_cn(parsed['controles']['cn'])
         else:
             cq_ctrl = kit.cq_controle_max if kit else None
             cp_kwargs = {'cq_max': cq_ctrl} if cq_ctrl else {}
             cp_ok, cp_msg = validar_cp(parsed['controles']['cp'], **cp_kwargs)
             cn_ok, cn_msg = validar_cn(parsed['controles']['cn'], **cp_kwargs)
 
-        if not cp_ok or not cn_ok:
+        # Se controles falharam e o usuário não quer forçar, retorna 422
+        forcar_import = request.data.get('forcar_import', '').lower() in ('true', '1', 'on')
+        if (not cp_ok or not cn_ok) and not forcar_import:
             kit_nome = kit.nome if kit else 'IBMP (padrão)'
             return Response(
                 {
                     'erro': f'Corrida inválida: controles não atendem os critérios do kit {kit_nome}.',
                     'cp': cp_msg,
                     'cn': cn_msg,
+                    'cp_detalhes': cp_detalhes,
+                    'cn_detalhes': cn_detalhes,
+                    'pode_forcar': True,
                 },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
@@ -190,6 +198,13 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 classif_kwargs['cq_ci_max'] = kit.cq_amostra_ci_max
             if kit.cq_amostra_hpv_max:
                 classif_kwargs['cq_hpv_max'] = kit.cq_amostra_hpv_max
+
+        # Mensagem de aviso se forçou import com controles inválidos
+        if forcar_import and (not cp_ok or not cn_ok):
+            avisos.append(
+                f'⚠ IMPORT FORÇADO COM CONTROLES INVÁLIDOS: '
+                f'{cp_msg if not cp_ok else ""} {cn_msg if not cn_ok else ""}'.strip()
+            )
 
         with transaction.atomic(), actor_ctx:
             return self._processar_import(
@@ -279,6 +294,12 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
             poco_principal = pocos_amostra[0]
 
             # Não reimportar sobre resultado já confirmado
+            motivo_controle = ''
+            if not cp_ok:
+                motivo_controle += f'CP inválido: {cp_msg}. '
+            if not cn_ok:
+                motivo_controle += f'CN inválido: {cn_msg}. '
+
             try:
                 ra = ResultadoAmostra.objects.get(poco=poco_principal)
                 if ra.imutavel:
@@ -289,9 +310,13 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 ra.hpv18_resultado = hpv18
                 ra.hpvar_resultado = hpvar
                 ra.resultado_final = resultado_final
+                ra.cp_valido = cp_ok
+                ra.cn_valido = cn_ok
+                ra.motivo_controle_invalido = motivo_controle
                 ra.save(update_fields=[
                     'ci_resultado', 'hpv16_resultado', 'hpv18_resultado',
                     'hpvar_resultado', 'resultado_final',
+                    'cp_valido', 'cn_valido', 'motivo_controle_invalido',
                 ])
             except ResultadoAmostra.DoesNotExist:
                 ResultadoAmostra.objects.create(
@@ -301,6 +326,9 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                     hpv18_resultado=hpv18,
                     hpvar_resultado=hpvar,
                     resultado_final=resultado_final,
+                    cp_valido=cp_ok,
+                    cn_valido=cn_ok,
+                    motivo_controle_invalido=motivo_controle,
                 )
 
             amostra.status = StatusAmostra.RESULTADO

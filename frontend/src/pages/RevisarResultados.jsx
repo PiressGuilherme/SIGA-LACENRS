@@ -75,6 +75,7 @@ export default function RevisarResultados({}) {
   const [actionLoading, setActionLoading] = useState({})
   const [kits, setKits] = useState([])
   const [kitId, setKitId] = useState(null)
+  const [controleInvalidoModal, setControleInvalidoModal] = useState(null)
   const fileRef = useRef()
 
   useEffect(() => { fetchPlacas() }, [])
@@ -132,7 +133,7 @@ export default function RevisarResultados({}) {
     }
   }
 
-  async function importarCSV() {
+  async function importarCSV(forcar = false) {
     if (!placaSelecionada || !arquivo) return
     setCarregando(true)
     setErro(null)
@@ -143,17 +144,26 @@ export default function RevisarResultados({}) {
       form.append('placa_id', placaSelecionada.id)
       if (kitId) form.append('kit_id', kitId)
       if (operador?.numero_cracha) form.append('numero_cracha', operador.numero_cracha)
+      if (forcar) form.append('forcar_import', 'true')
       const data = await apiFetch('/api/resultados/importar/', {
         method: 'POST', body: form, isMultipart: true,
       })
       setImportFeedback({ cp: data.cp, cn: data.cn, avisos: data.avisos, mensagem: data.mensagem })
       setResultados(data.resultados || [])
       setPlacaSelecionada(prev => ({ ...prev, status_placa: 'resultados_importados' }))
+      setControleInvalidoModal(null)
       setFase('revisao')
     } catch (err) {
       const d = err.data || {}
       if (err.status === 422) {
-        setErro(`Corrida inválida — ${[d.cp, d.cn].filter(Boolean).join('; ')}`)
+        // Mostrar modal com detalhes dos controles inválidos
+        setControleInvalidoModal({
+          cp_msg: d.cp || '',
+          cn_msg: d.cn || '',
+          cp_detalhes: d.cp_detalhes || {},
+          cn_detalhes: d.cn_detalhes || {},
+          pode_forcar: d.pode_forcar,
+        })
       } else {
         setErro(d.erro || d.detail || 'Erro ao importar CSV.')
       }
@@ -416,6 +426,70 @@ export default function RevisarResultados({}) {
         </>
       )}
 
+      {/* ── Modal de controle inválido ────────────────────────── */}
+      {controleInvalidoModal && (
+        <Modal onClose={() => setControleInvalidoModal(null)}>
+          <h3 style={{ marginBottom: '1rem', fontSize: '1rem', color: '#dc3545' }}>
+            ⚠ Controles de Qualidade Inválidos
+          </h3>
+          <div style={{ marginBottom: '1.25rem', fontSize: '0.9rem', color: '#374151' }}>
+            <p style={{ marginBottom: '0.75rem' }}>
+              A corrida do PCR não atende aos critérios de validação configurados no kit.
+              Você pode ignorar esta validação e continuar a análise, mas os resultados serão marcados como "amplificação analisada com controles inválidos".
+            </p>
+
+            {controleInvalidoModal.cp_detalhes && Object.keys(controleInvalidoModal.cp_detalhes).length > 0 && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '0.75rem' }}>
+                <p style={{ fontWeight: 600, color: '#b91c1c', marginBottom: '0.5rem' }}>CP (Controle Positivo):</p>
+                <ul style={{ margin: 0, paddingLeft: '1rem', color: '#7f1d1d' }}>
+                  {Object.entries(controleInvalidoModal.cp_detalhes).map(([alvo, det]) => (
+                    <li key={alvo} style={{ fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                      <strong>{alvo}</strong>: Cq = {det.cq_str} (limiar {det.operador} {det.limiar_str})
+                      {det.status === 'falha' && <span style={{ color: '#dc3545' }}> ❌ FALHOU</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {controleInvalidoModal.cn_detalhes && Object.keys(controleInvalidoModal.cn_detalhes).length > 0 && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '0.75rem' }}>
+                <p style={{ fontWeight: 600, color: '#b91c1c', marginBottom: '0.5rem' }}>CN (Controle Negativo):</p>
+                <ul style={{ margin: 0, paddingLeft: '1rem', color: '#7f1d1d' }}>
+                  {Object.entries(controleInvalidoModal.cn_detalhes).map(([alvo, det]) => (
+                    <li key={alvo} style={{ fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                      <strong>{alvo}</strong>: Cq = {det.cq_str} (limiar {det.operador} {det.limiar_str})
+                      {det.status === 'falha' && <span style={{ color: '#dc3545' }}> ❌ FALHOU</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setControleInvalidoModal(null)}
+              style={{ ...btnSecStyle, padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => importarCSV(true)}
+              disabled={carregando}
+              style={{
+                ...btnPrimStyle(carregando),
+                padding: '0.5rem 1rem',
+                fontSize: '0.9rem',
+                background: carregando ? '#9ca3af' : '#dc3545',
+              }}
+            >
+              {carregando ? 'Importando…' : 'Ignorar e Importar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* ── Modal de override manual ────────────────────────── */}
       {overrideModal && (
         <Modal onClose={() => setOverrideModal(null)}>
@@ -535,9 +609,17 @@ function ResultadoRow({ resultado, canais, actionLoading, onConfirmar, onLiberar
     ? (resultado.amostra_status === 'resultado_liberado' ? '#198754' : '#0d6efd')
     : '#6c757d'
 
+  const temControleInvalido = !resultado.cp_valido || !resultado.cn_valido
+  const bgRow = temControleInvalido ? '#fffbeb' : 'transparent'
+
   return (
-    <tr style={{ borderBottom: '1px solid #f0f4f8' }}>
-      <td style={{ ...tdStyle, fontWeight: 600 }}>{resultado.amostra_codigo || '—'}</td>
+    <tr style={{ borderBottom: '1px solid #f0f4f8', background: bgRow, borderLeft: temControleInvalido ? '3px solid #f59e0b' : 'none' }}
+        title={temControleInvalido ? resultado.motivo_controle_invalido : undefined}
+    >
+      <td style={{ ...tdStyle, fontWeight: 600 }}>
+        {resultado.amostra_codigo || '—'}
+        {temControleInvalido && <span title={resultado.motivo_controle_invalido} style={{ marginLeft: '0.25rem', color: '#f59e0b' }}>⚠</span>}
+      </td>
 
       {canais.map(c => {
         const val = c.key ? resultado[c.key] : null

@@ -66,38 +66,78 @@ class MotorInterpretacao:
 
     # ── validação de controles ────────────────────────────────────────────────
 
-    def validar_cp(self, canais: dict) -> tuple[bool, str]:
+    def validar_cp(self, canais: dict) -> tuple[bool, str, dict]:
         """
         Valida o poço CP.
         canais = {'CI': [cq,...], 'HPV16': [...], ...}
+
+        Retorna: (ok, msg, detalhes)
+        onde detalhes = {
+            'alvo_nome': {'cq': X, 'limiar': Y, 'operador': 'LTE', 'status': 'falha'|'ok'},
+            ...
+        }
         """
         falhos = []
+        detalhes = {}
         for alvo in self.alvos:
             limiar = self._get_limiar(alvo.nome, 'CP')
             if limiar is None:
                 continue
             cq = self._cq_min(canais.get(alvo.nome, []))
-            if not self._avaliar(cq, limiar):
-                cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
-                falhos.append(f'{alvo.nome} ({cq_str})')
-        if falhos:
-            return False, f'CP inválido — {", ".join(falhos)} fora do limiar'
-        return True, 'CP válido'
+            ok = self._avaliar(cq, limiar)
+            cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
+            limiar_str = f'{limiar.ct_limiar:.2f}' if limiar.ct_limiar is not None else 'N/A'
 
-    def validar_cn(self, canais: dict) -> tuple[bool, str]:
+            detalhes[alvo.nome] = {
+                'cq': cq,
+                'cq_str': cq_str,
+                'limiar': limiar.ct_limiar,
+                'limiar_str': limiar_str,
+                'operador': limiar.operador,
+                'status': 'ok' if ok else 'falha',
+            }
+
+            if not ok:
+                falhos.append(f'{alvo.nome} ({cq_str})')
+
+        if falhos:
+            return False, f'CP inválido — {", ".join(falhos)} fora do limiar', detalhes
+        return True, 'CP válido', detalhes
+
+    def validar_cn(self, canais: dict) -> tuple[bool, str, dict]:
         """
         Valida o poço CN.
         canais = {'CI': [cq,...], 'HPV16': [...], ...}
+
+        Retorna: (ok, msg, detalhes)
+        onde detalhes = {
+            'alvo_nome': {'cq': X, 'limiar': Y, 'operador': 'LTE', 'status': 'falha'|'ok'},
+            ...
+        }
         """
+        detalhes = {}
         for alvo in self.alvos:
             limiar = self._get_limiar(alvo.nome, 'CN')
             if limiar is None:
                 continue
             cq = self._cq_min(canais.get(alvo.nome, []))
-            if not self._avaliar(cq, limiar):
-                cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
-                return False, f'CN inválido — {alvo.nome}: {cq_str} não atende critério'
-        return True, 'CN válido'
+            ok = self._avaliar(cq, limiar)
+            cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
+            limiar_str = f'{limiar.ct_limiar:.2f}' if limiar.ct_limiar is not None else 'N/A'
+
+            detalhes[alvo.nome] = {
+                'cq': cq,
+                'cq_str': cq_str,
+                'limiar': limiar.ct_limiar,
+                'limiar_str': limiar_str,
+                'operador': limiar.operador,
+                'status': 'ok' if ok else 'falha',
+            }
+
+            if not ok:
+                return False, f'CN inválido — {alvo.nome}: {cq_str} não atende critério', detalhes
+
+        return True, 'CN válido', detalhes
 
     # ── classificação de alvos ────────────────────────────────────────────────
 

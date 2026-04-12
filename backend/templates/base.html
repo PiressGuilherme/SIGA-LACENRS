@@ -7,30 +7,277 @@
   <title>{% block title %}SIGA-LACEN{% endblock %}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-           background: #f4f6f9; color: #212529; min-height: 100vh; }
-    header {
-      background: #ffffff; color: #7b1020; padding: 0.75rem 1.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid #e5e7eb;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      color: #212529;
+      min-height: 100vh;
+      /* Espaço para o header fixo flutuante + barra tricolor */
+      padding-top: 80px;
     }
-    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; color: #7b1020; }
-    header nav a { color: #7b1020; text-decoration: none; margin-left: 1.5rem; font-size: 0.9rem; }
-    header nav a:hover { color: #4a0010; }
-    .tricolor-bar { display: flex; height: 5px; }
+
+    /* ── Barra tricolor colada na base do header flutuante ── */
+    /* Header: top=10px + height=54px = base em 64px                */
+    /* left/right espelham o header (16px) para alinhar bordas       */
+    .tricolor-bar {
+      position: fixed;
+      top: 64px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      height: 4px;
+      z-index: 999;
+      border-radius: 0 0 14px 14px;
+      overflow: hidden;
+    }
     .tricolor-bar span { flex: 1; }
     .tricolor-bar span:nth-child(3n+1) { background: #c8102e; }
     .tricolor-bar span:nth-child(3n+2) { background: #f5c518; }
     .tricolor-bar span:nth-child(3n+0) { background: #009c3b; }
-    main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+
+    /* ── Header flutuante ── */
+    .site-header {
+      position: fixed;
+      top: 10px;
+      left: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0,0,0,0.06);
+      padding: 0 1.25rem;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    /* ── Lado esquerdo: logo + nome ── */
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .header-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: #7b1020;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      /* Substituir pelo <img> do logo quando disponível */
+    }
+    .header-brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .header-brand-text strong {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #7b1020;
+      letter-spacing: 0.3px;
+    }
+    .header-brand-text span {
+      font-size: 0.68rem;
+      color: #9ca3af;
+      font-weight: 400;
+    }
+
+    /* ── Navegação central ── */
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      flex: 1;
+      justify-content: center;
+    }
+    .header-nav a {
+      color: #374151;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.65rem;
+      border-radius: 7px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .header-nav a:hover {
+      background: rgba(123, 16, 32, 0.08);
+      color: #7b1020;
+    }
+    .header-nav a.active {
+      background: rgba(123, 16, 32, 0.1);
+      color: #7b1020;
+    }
+
+    /* ── Lado direito: usuário + logout ── */
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .header-user-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(123, 16, 32, 0.07);
+      border: 1px solid rgba(123, 16, 32, 0.12);
+      border-radius: 999px;
+      padding: 0.25rem 0.75rem 0.25rem 0.35rem;
+    }
+    .header-user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #7b1020;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-user-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4a0010;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .header-logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: transparent;
+      border: 1px solid rgba(123, 16, 32, 0.25);
+      color: #7b1020;
+      padding: 0.3rem 0.65rem;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .header-logout-btn:hover {
+      background: rgba(123, 16, 32, 0.08);
+      border-color: rgba(123, 16, 32, 0.4);
+    }
+    .header-logout-btn svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    /* ── Menu hamburguer (mobile) ── */
+    .header-menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.4rem;
+      border-radius: 7px;
+      color: #374151;
+      transition: background 0.15s;
+    }
+    .header-menu-toggle:hover { background: rgba(0,0,0,0.06); }
+    .header-menu-toggle svg { width: 20px; height: 20px; display: block; }
+
+    /* ── Drawer mobile ── */
+    .header-drawer {
+      display: none;
+      position: fixed;
+      top: 72px;
+      left: 16px;
+      right: 16px;
+      z-index: 999;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      padding: 0.75rem;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .header-drawer.open { display: flex; }
+    .header-drawer a {
+      color: #374151;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .header-drawer a:hover {
+      background: rgba(123, 16, 32, 0.07);
+      color: #7b1020;
+    }
+    .header-drawer-divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 0.35rem 0;
+    }
+
+    /* ── Responsividade ── */
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .header-menu-toggle { display: flex; align-items: center; justify-content: center; }
+      .header-user-name { display: none; }
+    }
+    @media (max-width: 480px) {
+      .header-brand-text span { display: none; }
+    }
+
+    /* ── Conteúdo principal ── */
+    main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+
     {% block extra_style %}{% endblock %}
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <header>
-    <h1>SIGA-LACEN &mdash; Laboratório de HPV</h1>
-    <nav>
+
+  <!-- Barra tricolor fixa no topo absoluto -->
+  <div class="tricolor-bar">
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+  </div>
+
+  <!-- Header flutuante glassmorphism -->
+  <header class="site-header">
+
+    <!-- Esquerda: Logo + Nome -->
+    <a href="{% url 'home' %}" class="header-brand">
+      <div class="header-logo">
+        {# Substituir por: <img src="..." alt="LACEN"> quando o logo estiver disponível #}
+        🔬
+      </div>
+      <div class="header-brand-text">
+        <strong>SIGA-LACEN</strong>
+        <span>Laboratório de HPV</span>
+      </div>
+    </a>
+
+    <!-- Centro: Navegação -->
+    <nav class="header-nav">
       <a href="{% url 'home' %}">Início</a>
       <a href="/amostras/consulta/">Consulta</a>
       <a href="/amostras/importar/">Importar CSV</a>
@@ -42,19 +289,55 @@
         <a href="{% url 'configuracoes-page' %}">Configurações</a>
         <a href="/admin/">Admin</a>
       {% endif %}
-      {% if user.is_authenticated %}
-        <span id="header-usuario" style="color:#4a0010;margin-left:1.5rem;font-size:0.85rem;font-weight:500">{{ user.nome_completo }}</span>
-        <button onclick="logout()" style="background:#7b1020;color:#fff;border:1px solid #4a0010;padding:0.35rem 0.85rem;border-radius:6px;cursor:pointer;font-size:0.8rem;margin-left:0.75rem;">Sair</button>
-      {% endif %}
     </nav>
+
+    <!-- Direita: Usuário + Logout + Hamburguer -->
+    <div class="header-user">
+      {% if user.is_authenticated %}
+        <div class="header-user-badge">
+          <div class="header-user-avatar">{{ user.nome_completo|slice:":2"|upper }}</div>
+          <span class="header-user-name">{{ user.nome_completo }}</span>
+        </div>
+        <button class="header-logout-btn" onclick="logout()" title="Sair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sair
+        </button>
+      {% endif %}
+      <button class="header-menu-toggle" onclick="toggleDrawer()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
   </header>
-  <!-- Barra tricolor RS — 4 repetições de vermelho/amarelo/verde -->
-  <div class="tricolor-bar">
-    <span></span><span></span><span></span>
-    <span></span><span></span><span></span>
-    <span></span><span></span><span></span>
-    <span></span><span></span><span></span>
+
+  <!-- Drawer mobile -->
+  <div class="header-drawer" id="header-drawer">
+    <a href="{% url 'home' %}" onclick="closeDrawer()">Início</a>
+    <a href="/amostras/consulta/" onclick="closeDrawer()">Consulta</a>
+    <a href="/amostras/importar/" onclick="closeDrawer()">Importar CSV</a>
+    <a href="/amostras/aliquotagem/" onclick="closeDrawer()">Aliquotagem</a>
+    <a href="/placas/extracao/" onclick="closeDrawer()">Extração</a>
+    <a href="/placas/pcr/" onclick="closeDrawer()">PCR</a>
+    <a href="/resultados/revisar/" onclick="closeDrawer()">Resultados</a>
+    {% if user.is_superuser %}
+      <div class="header-drawer-divider"></div>
+      <a href="{% url 'configuracoes-page' %}" onclick="closeDrawer()">Configurações</a>
+      <a href="/admin/" onclick="closeDrawer()">Admin</a>
+    {% endif %}
+    {% if user.is_authenticated %}
+      <div class="header-drawer-divider"></div>
+      <a href="#" onclick="logout()">Sair — {{ user.nome_completo }}</a>
+    {% endif %}
   </div>
+
   <script>
     function logout() {
       localStorage.removeItem('access_token')
@@ -65,10 +348,37 @@
         headers: { 'X-CSRFToken': (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)||[])[1]||'' },
       }).finally(() => { window.location.href = '/login/' })
     }
+
+    function toggleDrawer() {
+      document.getElementById('header-drawer').classList.toggle('open')
+    }
+
+    function closeDrawer() {
+      document.getElementById('header-drawer').classList.remove('open')
+    }
+
+    // Fecha drawer ao clicar fora
+    document.addEventListener('click', function(e) {
+      const drawer = document.getElementById('header-drawer')
+      const toggle = document.querySelector('.header-menu-toggle')
+      if (drawer.classList.contains('open') && !drawer.contains(e.target) && !toggle.contains(e.target)) {
+        closeDrawer()
+      }
+    })
+
+    // Marca link ativo baseado na URL atual
+    document.querySelectorAll('.header-nav a, .header-drawer a').forEach(function(link) {
+      if (link.href === window.location.href ||
+          (link.pathname !== '/' && window.location.pathname.startsWith(link.pathname))) {
+        link.classList.add('active')
+      }
+    })
   </script>
+
   <main>
     {% block content %}{% endblock %}
   </main>
   {% block extra_body %}{% endblock %}
+
 </body>
 </html>

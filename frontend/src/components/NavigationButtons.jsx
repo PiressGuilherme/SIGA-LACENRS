@@ -1,9 +1,11 @@
 /**
  * NavigationButtons — Botões de navegação para o fluxo do laboratório
- * 
+ *
  * Props:
  *   currentStep — Etapa atual do fluxo (aliquotagem, extracao, pcr, resultados)
  */
+
+import Button from './Button'
 
 const FLUXO = {
   aliquotagem: {
@@ -38,73 +40,78 @@ const FLUXO = {
   }
 }
 
+// Ícones SVG inline — sem dependência externa
+const IconHome = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+)
+
+const IconArrowLeft = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+)
+
+const IconArrowRight = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/>
+    <polyline points="12 5 19 12 12 19"/>
+  </svg>
+)
+
 export default function NavigationButtons({ currentStep }) {
   const etapa = FLUXO[currentStep]
 
   if (!etapa) return null
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '0.75rem',
-      marginBottom: '1.5rem',
-      flexWrap: 'wrap',
-      alignItems: 'center'
-    }}>
-      {/* Botão Início */}
-      <button
+    <div className="flex flex-wrap items-center gap-2 mb-6">
+
+      {/* Início */}
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<IconHome />}
         onClick={() => window.location.href = '/'}
-        style={btnStyle('#6b7280')}
         title="Voltar à página inicial"
       >
         Início
-      </button>
+      </Button>
 
-      {/* Botão Anterior */}
+      {/* Etapa anterior */}
       {etapa.anterior && (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<IconArrowLeft />}
           onClick={() => window.location.href = etapa.anterior.path}
-          style={btnStyle('#1a3a5c')}
           title={etapa.anterior.label}
         >
-          ← {etapa.anterior.label}
-        </button>
+          {etapa.anterior.label}
+        </Button>
       )}
 
-      {/* Botão Próxima Etapa */}
+      {/* Próxima etapa */}
       {etapa.proxima && (
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
+          iconRight={<IconArrowRight />}
           onClick={() => window.location.href = etapa.proxima.path}
-          style={btnStyle('#065f46')}
           title={etapa.proxima.label}
         >
-          {etapa.proxima.label} →
-        </button>
+          {etapa.proxima.label}
+        </Button>
       )}
 
       {/* Indicador de etapa atual */}
-      <span style={{
-        marginLeft: 'auto',
-        fontSize: '0.85rem',
-        color: '#6b7280',
-        fontWeight: 500
-      }}>
-        Etapa: <strong style={{ color: '#1a3a5c' }}>{etapa.label}</strong>
+      <span className="ml-auto text-sm text-gray-400 font-medium">
+        Etapa: <strong className="text-[#1a3a5c]">{etapa.label}</strong>
       </span>
+
     </div>
   )
-}
-
-function btnStyle(bg) {
-  return {
-    background: bg,
-    color: '#fff',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    fontWeight: 500,
-    transition: 'opacity 0.15s'
-  }
 }

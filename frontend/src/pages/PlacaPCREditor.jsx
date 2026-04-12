@@ -1,52 +1,57 @@
-import React, { useState } from 'react'
-import MontarPCR from './MontarPCR'
-import ConsultarPCR from './ConsultarPCR'
+import React, { useState } from "react";
+import MontarPCR from "./MontarPCR";
+import ConsultarPCR from "./ConsultarPCR";
 
 const TABS = [
-  { id: 'montar',    label: 'Montar Placa PCR' },
-  { id: 'consultar', label: 'Consultar Placas PCR' },
-]
+  { id: "montar", label: "Montar Placa PCR" },
+  { id: "consultar", label: "Consultar Placas PCR" },
+];
 
 export default function PlacaPCREditor({ csrfToken }) {
-  const [activeTab, setActiveTab] = useState('montar')
-  const [editarPlacaId, setEditarPlacaId] = useState(null)
+  const [activeTab, setActiveTab] = useState("montar");
+  const [editarPlacaId, setEditarPlacaId] = useState(null);
 
   function handleEditar(id) {
-    setEditarPlacaId(id)
-    setActiveTab('montar')
+    setEditarPlacaId(id);
+    setActiveTab("montar");
   }
 
   return (
-    <div style={{ fontFamily: 'inherit' }}>
-      <h2 style={{ marginBottom: '1rem', fontSize: '1.3rem', color: '#065f46' }}>
+    <div>
+      <h2 className="mb-4 text-lg text-emerald-800 font-semibold">
         Módulo PCR
       </h2>
 
-      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        {TABS.map(tab => (
+      <div className="flex border-b-2 border-gray-200 mb-6">
+        {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '0.6rem 1.5rem',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #065f46' : '2px solid transparent',
-              background: 'none',
-              color: activeTab === tab.id ? '#065f46' : '#6b7280',
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              marginBottom: '-2px',
-              transition: 'color 0.15s',
-            }}
+            className={`
+              px-6 py-2.5 border-none bg-none cursor-pointer -mb-0.5
+              transition-colors duration-150 text-[0.95rem]
+              ${
+                activeTab === tab.id
+                  ? "border-b-2 border-emerald-800 text-emerald-800 font-bold"
+                  : "border-b-2 border-transparent text-gray-500 font-normal"
+              }
+            `}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'montar'    && <MontarPCR    csrfToken={csrfToken} editarPlacaId={editarPlacaId} onEditarDone={() => setEditarPlacaId(null)} />}
-      {activeTab === 'consultar' && <ConsultarPCR csrfToken={csrfToken} onEditar={handleEditar} />}
+      {activeTab === "montar" && (
+        <MontarPCR
+          csrfToken={csrfToken}
+          editarPlacaId={editarPlacaId}
+          onEditarDone={() => setEditarPlacaId(null)}
+        />
+      )}
+      {activeTab === "consultar" && (
+        <ConsultarPCR csrfToken={csrfToken} onEditar={handleEditar} />
+      )}
     </div>
-  )
+  );
 }

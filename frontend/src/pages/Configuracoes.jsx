@@ -1,44 +1,10 @@
 import { useState, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
+import Button from '../components/Button'
 import { getOperadorInicial } from '../utils/auth'
 import apiFetch from '../utils/apiFetch'
 import { TabConfiguracao, TabTestarConexao, TabBuscarExames } from './GalWs'
-
-// ── Estilos ──────────────────────────────────────────────────────────────────
-const card = {
-  background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0',
-  padding: '1.5rem', marginBottom: '1.5rem',
-}
-const label = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: 4 }
-const inputStyle = {
-  width: '100%', padding: '0.5rem 0.75rem', borderRadius: 6,
-  border: '1px solid #d1d5db', fontSize: '0.9rem', marginBottom: '0.75rem',
-  boxSizing: 'border-box',
-}
-const selectStyle = {
-  padding: '0.35rem 0.5rem', borderRadius: 5, border: '1px solid #d1d5db',
-  fontSize: '0.82rem', background: '#fff',
-}
-const btn = (color = '#1a3a5c') => ({
-  padding: '0.5rem 1.25rem', borderRadius: 6, border: 'none',
-  background: color, color: '#fff', fontWeight: 600, cursor: 'pointer',
-  fontSize: '0.875rem',
-})
-const btnSmall = (color = '#1a3a5c') => ({
-  padding: '0.3rem 0.75rem', borderRadius: 4, border: 'none',
-  background: color, color: '#fff', fontWeight: 500, cursor: 'pointer',
-  fontSize: '0.78rem',
-})
-const feedbackStyle = (tipo) => ({
-  padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.875rem',
-  background: tipo === 'ok' ? '#d1fae5' : '#fee2e2',
-  color: tipo === 'ok' ? '#065f46' : '#991b1b',
-})
-const thStyle = {
-  padding: '6px 8px', background: '#f8fafc', fontSize: '0.75rem',
-  fontWeight: 600, color: '#374151', textAlign: 'left', whiteSpace: 'nowrap',
-}
-const tdStyle = { padding: '4px 8px', fontSize: '0.82rem', color: '#374151', verticalAlign: 'middle' }
+import FeedbackBlock from '../components/FeedbackBlock'
 
 // ── Tab: Reacoes ─────────────────────────────────────────────────────────────
 function TabReacoes() {
@@ -134,60 +100,63 @@ function TabReacoes() {
 
   if (editando) {
     return (
-      <div style={card}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '1rem' }}>
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-base font-bold text-lacen-secondary mb-4">
           {editando.id ? 'Editar Protocolo' : 'Novo Protocolo de Reação'}
         </h3>
-        {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
+        <FeedbackBlock feedback={msg} />
         <form onSubmit={salvar}>
-          <label style={label}>Nome</label>
-          <input style={inputStyle} value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
-          <label style={label}>Descrição</label>
-          <textarea style={{ ...inputStyle, minHeight: 60 }} value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
-          <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-            <label style={{ ...label, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0 }}>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Nome</label>
+          <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm mb-3" value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
+
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Descrição</label>
+          <textarea className="w-full px-3 py-2 rounded border border-gray-300 text-sm mb-3 min-h-15" value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
+
+          <div className="flex gap-6 mb-3 items-center flex-wrap">
+            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
               <input type="checkbox" checked={editando.ativo} onChange={e => setField('ativo', e.target.checked)} /> Ativo
             </label>
-            <div style={{ flex: 1 }}>
-              <label style={label}>Margem Extra (%)</label>
-              <input style={{ ...inputStyle, width: 100, marginBottom: 0 }} type="number" step="0.1" min="0"
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Margem Extra (%)</label>
+              <input className="w-24 px-3 py-2 rounded border border-gray-300 text-sm" type="number" step="0.1" min="0"
                 value={editando.margem_percentual} onChange={e => setField('margem_percentual', e.target.value)} />
             </div>
           </div>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151', marginTop: '1rem', marginBottom: '0.5rem' }}>Reagentes</h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
+
+          <h4 className="text-sm font-bold text-gray-700 mt-4 mb-2">Reagentes</h4>
+          <table className="w-full border-collapse mb-3">
             <thead>
-              <tr style={{ fontSize: '0.78rem', color: '#6b7280', textAlign: 'left' }}>
-                <th style={{ padding: '4px 8px' }}>Reagente</th>
-                <th style={{ padding: '4px 8px', width: 120 }}>Volume (uL)</th>
-                <th style={{ padding: '4px 8px', width: 40 }}></th>
+              <tr className="text-xs text-gray-600 text-left">
+                <th className="px-2 py-1">Reagente</th>
+                <th className="px-2 py-1 w-30">Volume (uL)</th>
+                <th className="px-2 py-1 w-10"></th>
               </tr>
             </thead>
             <tbody>
               {editando.reagentes.map((r, idx) => (
                 <tr key={idx}>
-                  <td style={{ padding: '2px 8px' }}>
-                    <input style={{ ...inputStyle, marginBottom: 0 }} value={r.nome}
+                  <td className="px-2 py-0.5">
+                    <input className="w-full px-3 py-1 rounded border border-gray-300 text-sm" value={r.nome}
                       onChange={e => setReagente(idx, 'nome', e.target.value)} placeholder="Ex: Master Mix" />
                   </td>
-                  <td style={{ padding: '2px 8px' }}>
-                    <input style={{ ...inputStyle, marginBottom: 0 }} type="number" step="0.01" min="0"
+                  <td className="px-2 py-0.5">
+                    <input className="w-full px-3 py-1 rounded border border-gray-300 text-sm" type="number" step="0.01" min="0"
                       value={r.volume_por_reacao} onChange={e => setReagente(idx, 'volume_por_reacao', e.target.value)} />
                   </td>
-                  <td style={{ padding: '2px 8px', textAlign: 'center' }}>
+                  <td className="px-2 py-0.5 text-center">
                     {editando.reagentes.length > 1 && (
-                      <button type="button" onClick={() => removerReagente(idx)}
-                        style={{ ...btnSmall('#ef4444'), padding: '2px 6px' }}>x</button>
+                      <Button type="button" variant="danger" size="sm" onClick={() => removerReagente(idx)}>✕</Button>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button type="button" onClick={adicionarReagente} style={btnSmall('#6b7280')}>+ Reagente</button>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <button type="submit" style={btn()} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar Protocolo'}</button>
-            <button type="button" onClick={() => { setEditando(null); setMsg(null) }} style={btn('#6b7280')}>Cancelar</button>
+          <Button type="button" variant="ghost" size="sm" onClick={adicionarReagente} className="mb-4">+ Reagente</Button>
+
+          <div className="flex gap-3 mt-5">
+            <Button type="submit" variant="primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar Protocolo'}</Button>
+            <Button type="button" variant="ghost" onClick={() => { setEditando(null); setMsg(null) }}>Cancelar</Button>
           </div>
         </form>
       </div>
@@ -196,27 +165,27 @@ function TabReacoes() {
 
   return (
     <div>
-      {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Protocolos de Reação</h3>
-        <button onClick={novoProtocolo} style={btn()}>+ Novo Protocolo</button>
+      <FeedbackBlock feedback={msg} />
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-base font-bold text-lacen-secondary">Protocolos de Reação</h3>
+        <Button variant="primary" onClick={novoProtocolo}>+ Novo Protocolo</Button>
       </div>
-      {protocolos.length === 0 && <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Nenhum protocolo cadastrado.</p>}
+      {protocolos.length === 0 && <p className="text-gray-500 text-sm">Nenhum protocolo cadastrado.</p>}
       {protocolos.map(p => (
-        <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div key={p.id} className="bg-white rounded-lg border border-slate-200 p-6 mb-6 flex justify-between items-start">
           <div>
-            <div style={{ fontWeight: 700, color: '#1a3a5c', marginBottom: 4 }}>
-              {p.nome}{!p.ativo && <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#9ca3af' }}>(inativo)</span>}
+            <div className="font-bold text-lacen-secondary mb-1">
+              {p.nome}{!p.ativo && <span className="ml-2 text-xs text-gray-400">(inativo)</span>}
             </div>
-            {p.descricao && <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: 6 }}>{p.descricao}</div>}
-            <div style={{ fontSize: '0.82rem', color: '#374151' }}>
+            {p.descricao && <div className="text-xs text-gray-500 mb-1.5">{p.descricao}</div>}
+            <div className="text-xs text-gray-700">
               {p.reagentes.map(r => `${r.nome}: ${r.volume_por_reacao} uL`).join(' | ')}
-              {p.margem_percentual > 0 && <span style={{ color: '#6b7280' }}> (+{p.margem_percentual}% Margem)</span>}
+              {p.margem_percentual > 0 && <span className="text-gray-500"> (+{p.margem_percentual}% Margem)</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-            <button onClick={() => editarProtocolo(p)} style={btnSmall()}>Editar</button>
-            <button onClick={() => excluir(p.id)} style={btnSmall('#ef4444')}>Excluir</button>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button variant="secondary" size="sm" onClick={() => editarProtocolo(p)}>Editar</Button>
+            <Button variant="danger" size="sm" onClick={() => excluir(p.id)}>Excluir</Button>
           </div>
         </div>
       ))}
@@ -265,7 +234,7 @@ function novaRegra(prioridade, alvoNomes) {
 function TabKits() {
   const [kits, setKits] = useState([])
   const [editando, setEditando] = useState(null)
-  const [abaKit, setAbaKit] = useState('basico') // 'basico' | 'alvos' | 'regras'
+  const [abaKit, setAbaKit] = useState('basico')
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState(null)
   const [expandirLimiares, setExpandirLimiares] = useState(false)
@@ -291,7 +260,6 @@ function TabKits() {
   }
 
   function editarKit(k) {
-    // Normaliza alvos: garante limiares para todos os contextos
     const alvos = (k.alvos || []).map(a => ({
       ...a,
       _key: a.id || Math.random(),
@@ -309,7 +277,6 @@ function TabKits() {
 
   function setField(campo, valor) { setEditando(prev => ({ ...prev, [campo]: valor })) }
 
-  // ── Alvos ──
   function addAlvo() {
     setEditando(prev => ({ ...prev, alvos: [...prev.alvos, novoAlvo(prev.alvos.length + 1)] }))
   }
@@ -333,7 +300,6 @@ function TabKits() {
     })
   }
 
-  // ── Regras ──
   function addRegra() {
     const alvoNomes = (editando?.alvos || []).map(a => a.nome).filter(Boolean)
     const maxPrio = Math.max(0, ...(editando?.regras_interpretacao || []).map(r => r.prioridade))
@@ -412,7 +378,6 @@ function TabKits() {
     }
   }
 
-  // ── Form ──
   if (editando) {
     const alvoNomes = editando.alvos.map(a => a.nome).filter(Boolean)
     const subAbas = [
@@ -421,64 +386,58 @@ function TabKits() {
       { id: 'regras', label: `Regras (${editando.regras_interpretacao.length})` },
     ]
     return (
-      <div style={card}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c', marginBottom: '0.75rem' }}>
+      <div className="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-base font-bold text-lacen-secondary mb-3">
           {editando.id ? 'Editar Kit' : 'Novo Kit de Interpretação'}
         </h3>
-        {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
+        <FeedbackBlock feedback={msg} />
 
-        {/* Sub-abas do form */}
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', borderBottom: '2px solid #e2e8f0' }}>
+        <div className="flex gap-1 mb-5 border-b-2 border-slate-200">
           {subAbas.map(t => (
-            <button key={t.id} type="button" onClick={() => setAbaKit(t.id)} style={{
-              padding: '0.4rem 1rem', border: 'none', background: 'none', cursor: 'pointer',
-              fontSize: '0.84rem', fontWeight: 600,
-              color: abaKit === t.id ? '#1a3a5c' : '#6b7280',
-              borderBottom: abaKit === t.id ? '2px solid #1a3a5c' : '2px solid transparent', marginBottom: -2,
-            }}>
+            <button key={t.id} type="button" onClick={() => setAbaKit(t.id)} className={`px-4 py-2 border-none bg-transparent cursor-pointer text-sm font-semibold transition-colors -mb-0.5 ${
+              abaKit === t.id
+                ? 'text-lacen-secondary border-b-2 border-lacen-secondary'
+                : 'text-gray-500 border-b-2 border-transparent hover:text-gray-700'
+            }`}>
               {t.label}
             </button>
           ))}
         </div>
 
         <form onSubmit={salvar}>
-          {/* ── Aba: Informações Básicas ── */}
           {abaKit === 'basico' && (
             <>
-              <label style={label}>Nome</label>
-              <input style={inputStyle} value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
-              <label style={label}>Descrição</label>
-              <textarea style={{ ...inputStyle, minHeight: 60 }} value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
-              <label style={{ ...label, display: 'flex', alignItems: 'center', gap: 6, marginBottom: '1rem' }}>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Nome</label>
+              <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm mb-3" value={editando.nome} onChange={e => setField('nome', e.target.value)} required />
+
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Descrição</label>
+              <textarea className="w-full px-3 py-2 rounded border border-gray-300 text-sm mb-3 min-h-15" value={editando.descricao} onChange={e => setField('descricao', e.target.value)} />
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-4">
                 <input type="checkbox" checked={editando.ativo} onChange={e => setField('ativo', e.target.checked)} /> Ativo
               </label>
 
-              {/* Seção de limiares padrão com expansão */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                <button type="button" onClick={() => setExpandirLimiares(!expandirLimiares)} style={{
-                  width: '100%', padding: '0.75rem', background: '#f8fafc', border: 'none',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  fontSize: '0.875rem', fontWeight: 600, color: '#374151',
-                }}>
-                  <span style={{ fontSize: '1rem', lineHeight: 1 }}>{expandirLimiares ? '▼' : '▶'}</span>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => setExpandirLimiares(!expandirLimiares)} className="w-full px-3 py-3 bg-slate-100 border-none cursor-pointer flex items-center gap-2 text-sm font-semibold text-gray-700 hover:bg-slate-200">
+                  <span className="text-base leading-none">{expandirLimiares ? '▼' : '▶'}</span>
                   Limiares Padrão (fallback quando alvos não configurados)
                 </button>
                 {expandirLimiares && (
-                  <div style={{ padding: '1rem', background: '#fff', borderTop: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div className="p-4 bg-white border-t border-slate-200">
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label style={label}>Controles CP/CN CI</label>
-                        <input style={inputStyle} type="number" step="0.1" min="0"
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Controles CP/CN CI</label>
+                        <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" type="number" step="0.1" min="0"
                           value={editando.cq_controle_max} onChange={e => setField('cq_controle_max', e.target.value)} />
                       </div>
                       <div>
-                        <label style={label}>Amostra CI</label>
-                        <input style={inputStyle} type="number" step="0.1" min="0"
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Amostra CI</label>
+                        <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" type="number" step="0.1" min="0"
                           value={editando.cq_amostra_ci_max} onChange={e => setField('cq_amostra_ci_max', e.target.value)} />
                       </div>
                       <div>
-                        <label style={label}>Amostra HPV</label>
-                        <input style={inputStyle} type="number" step="0.1" min="0"
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Amostra HPV</label>
+                        <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" type="number" step="0.1" min="0"
                           value={editando.cq_amostra_hpv_max} onChange={e => setField('cq_amostra_hpv_max', e.target.value)} />
                       </div>
                     </div>
@@ -488,69 +447,67 @@ function TabKits() {
             </>
           )}
 
-          {/* ── Aba: Alvos + Limiares ── */}
           {abaKit === 'alvos' && (
             <div>
-              <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+              <p className="text-xs text-gray-500 mb-3">
                 Defina os alvos do kit (canais PCR) e os limiares de Cq para cada contexto.
               </p>
               {editando.alvos.length === 0 && (
-                <p style={{ color: '#9ca3af', fontSize: '0.82rem', marginBottom: '0.75rem' }}>Nenhum alvo definido.</p>
+                <p className="text-gray-400 text-xs mb-3">Nenhum alvo definido.</p>
               )}
               {editando.alvos.map((alvo, ai) => (
-                <div key={alvo._key || ai} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 120px' }}>
-                      <label style={label}>Nome (código)</label>
-                      <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="Ex: HPV16"
+                <div key={alvo._key || ai} className="border border-slate-200 rounded-lg p-3 mb-3">
+                  <div className="flex gap-2 items-end mb-2 flex-wrap">
+                    <div className="flex-1 min-w-30">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Nome (código)</label>
+                      <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" placeholder="Ex: HPV16"
                         value={alvo.nome} onChange={e => setAlvo(ai, 'nome', e.target.value)} />
                     </div>
-                    <div style={{ flex: '1 1 140px' }}>
-                      <label style={label}>Tipo</label>
-                      <select style={{ ...selectStyle, width: '100%' }}
+                    <div className="flex-1 min-w-36">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo</label>
+                      <select className="w-full px-3 py-2 rounded border border-gray-300 text-sm"
                         value={alvo.tipo_alvo} onChange={e => setAlvo(ai, 'tipo_alvo', e.target.value)}>
                         {TIPOS_ALVO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                       </select>
                     </div>
-                    <div style={{ flex: '1 1 100px' }}>
-                      <label style={label}>Canal/Fluoróforo</label>
-                      <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="FAM, VIC, ROX..."
+                    <div className="flex-1 min-w-28">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Canal/Fluoróforo</label>
+                      <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" placeholder="FAM, VIC, ROX..."
                         value={alvo.canal} onChange={e => setAlvo(ai, 'canal', e.target.value)} />
                     </div>
-                    <div style={{ flex: '0 0 50px' }}>
-                      <label style={label}>Ordem</label>
-                      <input style={{ ...inputStyle, marginBottom: 0, width: 50 }} type="number" min="0"
+                    <div className="w-16">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Ordem</label>
+                      <input className="w-full px-3 py-2 rounded border border-gray-300 text-sm" type="number" min="0"
                         value={alvo.ordem} onChange={e => setAlvo(ai, 'ordem', e.target.value)} />
                     </div>
-                    <button type="button" onClick={() => removeAlvo(ai)} style={{ ...btnSmall('#ef4444'), alignSelf: 'flex-end' }}>Remover</button>
+                    <Button type="button" variant="danger" size="sm" onClick={() => removeAlvo(ai)}>Remover</Button>
                   </div>
-                  {/* Limiares por contexto */}
-                  <div style={{ background: '#f8fafc', borderRadius: 6, padding: '0.5rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>Limiares de Cq</div>
-                    <table style={{ borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <div className="bg-slate-100 rounded p-2">
+                    <div className="text-xs font-semibold text-gray-700 mb-1">Limiares de Cq</div>
+                    <table className="border-collapse text-xs w-full">
                       <thead>
                         <tr>
-                          <th style={thStyle}>Contexto</th>
-                          <th style={thStyle}>Operador</th>
-                          <th style={thStyle}>Ct limiar</th>
+                          <th className="px-2 py-1 bg-slate-200 text-left font-semibold text-gray-700 whitespace-nowrap">Contexto</th>
+                          <th className="px-2 py-1 bg-slate-200 text-left font-semibold text-gray-700 whitespace-nowrap">Operador</th>
+                          <th className="px-2 py-1 bg-slate-200 text-left font-semibold text-gray-700 whitespace-nowrap">Ct limiar</th>
                         </tr>
                       </thead>
                       <tbody>
                         {alvo.limiares.map((l, li) => (
-                          <tr key={l.contexto}>
-                            <td style={tdStyle}>{CONTEXTO_LABEL[l.contexto] || l.contexto}</td>
-                            <td style={tdStyle}>
-                              <select style={selectStyle} value={l.operador}
+                          <tr key={l.contexto} className="border-b border-slate-200">
+                            <td className="px-2 py-1 text-gray-700">{CONTEXTO_LABEL[l.contexto] || l.contexto}</td>
+                            <td className="px-2 py-1 text-gray-700">
+                              <select className="px-2 py-0.5 rounded border border-gray-300 text-xs" value={l.operador}
                                 onChange={e => setLimiar(ai, li, 'operador', e.target.value)}>
                                 {OPERADORES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                               </select>
                             </td>
-                            <td style={tdStyle}>
+                            <td className="px-2 py-1 text-gray-700">
                               {l.operador !== 'SEM_AMP' ? (
                                 <input type="number" step="0.1" min="0"
-                                  style={{ width: 70, padding: '2px 6px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                                  className="w-16 px-2 py-0.5 rounded border border-gray-300 text-xs"
                                   value={l.ct_limiar} onChange={e => setLimiar(ai, li, 'ct_limiar', e.target.value)} />
-                              ) : <span style={{ color: '#9ca3af' }}>—</span>}
+                              ) : <span className="text-gray-400">—</span>}
                             </td>
                           </tr>
                         ))}
@@ -559,122 +516,119 @@ function TabKits() {
                   </div>
                 </div>
               ))}
-              <button type="button" onClick={addAlvo} style={btnSmall('#6b7280')}>+ Alvo</button>
+              <Button type="button" variant="ghost" size="sm" onClick={addAlvo}>+ Alvo</Button>
             </div>
           )}
 
-          {/* ── Aba: Regras de Interpretação ── */}
           {abaKit === 'regras' && (
             <div>
-              <p style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+              <p className="text-xs text-gray-500 mb-3">
                 Regras avaliadas em ordem crescente de prioridade. A primeira que casar define o resultado.
               </p>
               {editando.regras_interpretacao.length === 0 && (
-                <p style={{ color: '#9ca3af', fontSize: '0.82rem', marginBottom: '0.75rem' }}>Nenhuma regra definida.</p>
+                <p className="text-gray-400 text-xs mb-3">Nenhuma regra definida.</p>
               )}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem' }}>
+              <div className="overflow-x-auto">
+                <table className="border-collapse w-full text-xs">
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ ...thStyle, width: 55 }}>Prio.</th>
-                      {alvoNomes.map(n => <th key={n} style={thStyle}>{n}</th>)}
-                      <th style={thStyle}>CP</th>
-                      <th style={thStyle}>CN</th>
-                      <th style={{ ...thStyle, minWidth: 140 }}>Laudo</th>
-                      <th style={{ ...thStyle, minWidth: 100 }}>Código</th>
-                      <th style={{ ...thStyle, minWidth: 110 }}>Tipo</th>
-                      <th style={thStyle}></th>
+                    <tr className="bg-slate-100">
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap w-14">Prio.</th>
+                      {alvoNomes.map(n => <th key={n} className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap">{n}</th>)}
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap">CP</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap">CN</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap min-w-36">Laudo</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap min-w-28">Código</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap min-w-32">Tipo</th>
+                      <th className="px-2 py-1 text-left font-semibold text-gray-700 whitespace-nowrap"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {editando.regras_interpretacao.map((r, ri) => (
-                      <tr key={r._key || ri} style={{ borderBottom: '1px solid #f0f4f8' }}>
-                        <td style={tdStyle}>
-                          <input type="number" min="1" style={{ width: 50, padding: '2px 4px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      <tr key={r._key || ri} className="border-b border-slate-200">
+                        <td className="px-2 py-1 text-gray-700">
+                          <input type="number" min="1" className="w-12 px-1 py-0.5 rounded border border-gray-300 text-xs"
                             value={r.prioridade} onChange={e => setRegra(ri, 'prioridade', e.target.value)} />
                         </td>
                         {alvoNomes.map(n => (
-                          <td key={n} style={tdStyle}>
-                            <select style={selectStyle} value={r.condicoes[n] || 'QUALQUER'}
+                          <td key={n} className="px-2 py-1 text-gray-700">
+                            <select className="px-1 py-0.5 rounded border border-gray-300 text-xs" value={r.condicoes[n] || 'QUALQUER'}
                               onChange={e => setCondicao(ri, n, e.target.value)}>
                               {COND_ALVO_OPTS.map(v => <option key={v} value={v}>{v === 'QUALQUER' ? '—' : v.toLowerCase()}</option>)}
                             </select>
                           </td>
                         ))}
                         {['CP', 'CN'].map(k => (
-                          <td key={k} style={tdStyle}>
-                            <select style={selectStyle} value={r.condicoes[k] || 'QUALQUER'}
+                          <td key={k} className="px-2 py-1 text-gray-700">
+                            <select className="px-1 py-0.5 rounded border border-gray-300 text-xs" value={r.condicoes[k] || 'QUALQUER'}
                               onChange={e => setCondicao(ri, k, e.target.value)}>
                               {COND_CTRL_OPTS.map(v => <option key={v} value={v}>{v === 'QUALQUER' ? '—' : v.toLowerCase()}</option>)}
                             </select>
                           </td>
                         ))}
-                        <td style={tdStyle}>
-                          <input style={{ width: 140, padding: '2px 6px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        <td className="px-2 py-1 text-gray-700">
+                          <input className="w-full px-1 py-0.5 rounded border border-gray-300 text-xs"
                             placeholder="Laudo exibido" value={r.resultado_label}
                             onChange={e => setRegra(ri, 'resultado_label', e.target.value)} />
                         </td>
-                        <td style={tdStyle}>
-                          <input style={{ width: 100, padding: '2px 6px', borderRadius: 4, border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        <td className="px-2 py-1 text-gray-700">
+                          <input className="w-full px-1 py-0.5 rounded border border-gray-300 text-xs"
                             placeholder="hpv16..." value={r.resultado_codigo}
                             onChange={e => setRegra(ri, 'resultado_codigo', e.target.value)} />
                         </td>
-                        <td style={tdStyle}>
-                          <select style={selectStyle} value={r.tipo_resultado}
+                        <td className="px-2 py-1 text-gray-700">
+                          <select className="px-1 py-0.5 rounded border border-gray-300 text-xs" value={r.tipo_resultado}
                             onChange={e => setRegra(ri, 'tipo_resultado', e.target.value)}>
                             {TIPOS_RESULTADO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                         </td>
-                        <td style={tdStyle}>
-                          <button type="button" onClick={() => removeRegra(ri)}
-                            style={{ ...btnSmall('#ef4444'), padding: '2px 6px' }}>x</button>
+                        <td className="px-2 py-1 text-gray-700">
+                          <Button type="button" variant="danger" size="sm" onClick={() => removeRegra(ri)}>✕</Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <button type="button" onClick={addRegra} style={{ ...btnSmall('#6b7280'), marginTop: '0.5rem' }}>+ Regra</button>
+              <Button type="button" variant="ghost" size="sm" onClick={addRegra} className="mt-2">+ Regra</Button>
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-            <button type="submit" style={btn()} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar Kit'}</button>
-            <button type="button" onClick={() => { setEditando(null); setMsg(null) }} style={btn('#6b7280')}>Cancelar</button>
+          <div className="flex gap-3 mt-5">
+            <Button type="submit" variant="primary" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar Kit'}</Button>
+            <Button type="button" variant="ghost" onClick={() => { setEditando(null); setMsg(null) }}>Cancelar</Button>
           </div>
         </form>
       </div>
     )
   }
 
-  // ── Lista ──
   return (
     <div>
-      {msg && <div style={feedbackStyle(msg.tipo)}>{msg.texto}</div>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1a3a5c' }}>Kits de Interpretação</h3>
-        <button onClick={novoKit} style={btn()}>+ Novo Kit</button>
+      <FeedbackBlock feedback={msg} />
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-base font-bold text-lacen-secondary">Kits de Interpretação</h3>
+        <Button variant="primary" onClick={novoKit}>+ Novo Kit</Button>
       </div>
-      {kits.length === 0 && <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Nenhum kit cadastrado.</p>}
+      {kits.length === 0 && <p className="text-gray-500 text-sm">Nenhum kit cadastrado.</p>}
       {kits.map(k => (
-        <div key={k.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div key={k.id} className="bg-white rounded-lg border border-slate-200 p-6 mb-6 flex justify-between items-start">
           <div>
-            <div style={{ fontWeight: 700, color: '#1a3a5c', marginBottom: 4 }}>
-              {k.nome}{!k.ativo && <span style={{ marginLeft: 8, fontSize: '0.72rem', color: '#9ca3af' }}>(inativo)</span>}
+            <div className="font-bold text-lacen-secondary mb-1">
+              {k.nome}{!k.ativo && <span className="ml-2 text-xs text-gray-400">(inativo)</span>}
             </div>
-            {k.descricao && <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: 4 }}>{k.descricao}</div>}
+            {k.descricao && <div className="text-xs text-gray-500 mb-1">{k.descricao}</div>}
             {k.alvos?.length > 0
-              ? <div style={{ fontSize: '0.82rem', color: '#374151' }}>
+              ? <div className="text-xs text-gray-700">
                   {k.alvos.map(a => a.nome).join(', ')} — {k.regras_interpretacao?.length || 0} regras
                 </div>
-              : <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>
+              : <div className="text-xs text-gray-500">
                   Limiares padrão: CI ≤{k.cq_amostra_ci_max} / HPV ≤{k.cq_amostra_hpv_max}
                 </div>
             }
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-            <button onClick={() => editarKit(k)} style={btnSmall()}>Editar</button>
-            <button onClick={() => excluir(k.id)} style={btnSmall('#ef4444')}>Excluir</button>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button variant="secondary" size="sm" onClick={() => editarKit(k)}>Editar</Button>
+            <Button variant="danger" size="sm" onClick={() => excluir(k.id)}>Excluir</Button>
           </div>
         </div>
       ))}
@@ -692,14 +646,13 @@ function TabGalWs({ csrf }) {
   ]
   return (
     <div>
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+      <div className="flex gap-1 mb-4">
         {subTabs.map(t => (
-          <button key={t.id} onClick={() => setSubAba(t.id)} style={{
-            padding: '0.35rem 0.9rem', border: '1px solid #d1d5db', borderRadius: 4,
-            background: subAba === t.id ? '#1a3a5c' : '#fff',
-            color: subAba === t.id ? '#fff' : '#374151',
-            cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500,
-          }}>
+          <button key={t.id} onClick={() => setSubAba(t.id)} className={`px-3 py-1.5 rounded text-sm font-medium border border-gray-300 cursor-pointer transition-colors ${
+            subAba === t.id
+              ? 'bg-lacen-secondary text-white border-lacen-secondary'
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}>
             {t.label}
           </button>
         ))}
@@ -723,26 +676,25 @@ export default function Configuracoes({ csrfToken }) {
   const [aba, setAba] = useState('reacoes')
 
   return (
-    <div style={{ maxWidth: 960 }}>
+    <div className="max-w-5xl">
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Configuracoes" />
       )}
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.4rem', color: '#1a3a5c', marginBottom: '0.25rem' }}>Configurações</h2>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-lacen-secondary mb-1">Configurações</h2>
+        <p className="text-gray-500 text-sm">
           Gerencie protocolos de reação, kits de interpretação e integração GAL.
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0' }}>
+      <div className="flex gap-1 mb-6 border-b-2 border-slate-200">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setAba(t.id)} style={{
-            padding: '0.5rem 1.25rem', border: 'none', background: 'none',
-            cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600,
-            color: aba === t.id ? '#1a3a5c' : '#6b7280',
-            borderBottom: aba === t.id ? '2px solid #1a3a5c' : '2px solid transparent', marginBottom: -2,
-          }}>
+          <button key={t.id} onClick={() => setAba(t.id)} className={`px-5 py-2 border-none bg-transparent cursor-pointer text-sm font-semibold transition-colors -mb-0.5 ${
+            aba === t.id
+              ? 'text-lacen-secondary border-b-2 border-lacen-secondary'
+              : 'text-gray-500 border-b-2 border-transparent hover:text-gray-700'
+          }`}>
             {t.label}
           </button>
         ))}

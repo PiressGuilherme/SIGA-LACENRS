@@ -54,6 +54,56 @@ export function gridFromPocos(pocos, extraDefaults = {}) {
   return g
 }
 
+// ── Temas para WellGrid (grid interativo) ────────────────────────────────────
+export const THEMES = {
+  extracao: {
+    amostra: { bg: 'bg-blue-100',   border: 'border-blue-500',   text: 'text-blue-800'   },
+    cn:      { bg: 'bg-amber-100',  border: 'border-amber-500',  text: 'text-amber-800'  },
+    cp:      { bg: 'bg-pink-100',   border: 'border-pink-500',   text: 'text-pink-800'   },
+    vazio:   { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400'   },
+    cursor:  { border: 'border-[#1a3a5c]', ring: 'ring-[#3b82f6]' },
+  },
+  pcr: {
+    amostra: { bg: 'bg-blue-100',   border: 'border-blue-500',   text: 'text-blue-800'   },
+    cn:      { bg: 'bg-amber-100',  border: 'border-amber-500',  text: 'text-amber-800'  },
+    cp:      { bg: 'bg-pink-100',   border: 'border-pink-500',   text: 'text-pink-800'   },
+    vazio:   { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400'   },
+    cursor:  { border: 'border-emerald-700', ring: 'ring-emerald-400' },
+  },
+}
+
+// ── Temas para PlacaMiniGrid (mini grid read-only) ────────────────────────────
+// As chaves de tipo usam os valores exatos que a API retorna para placas:
+// 'amostra', 'controle_positivo', 'controle_negativo', 'vazio'
+// header: cor dos rótulos de linha/coluna
+// rowBg:  cor de fundo da linha expandida na tabela pai (usado pela LinhaPlaca)
+export const MINI_THEMES = {
+  extracao: {
+    amostra:           { bg: 'bg-blue-100',   border: 'border-blue-300',   text: 'text-blue-900'   },
+    controle_positivo: { bg: 'bg-amber-100',  border: 'border-amber-300',  text: 'text-amber-900'  },
+    controle_negativo: { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-900' },
+    vazio:             { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400'   },
+    header: 'text-blue-400',
+    rowBg:  'bg-purple-50',
+  },
+  pcr: {
+    amostra:           { bg: 'bg-blue-100',   border: 'border-blue-300',   text: 'text-blue-900'   },
+    controle_positivo: { bg: 'bg-amber-100',  border: 'border-amber-400',  text: 'text-amber-900'  },
+    controle_negativo: { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-900' },
+    vazio:             { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400'   },
+    header: 'text-emerald-400',
+    rowBg:  'bg-orange-50',
+  },
+  default: {
+    amostra:           { bg: 'bg-blue-100',   border: 'border-blue-300',   text: 'text-blue-900'   },
+    controle_positivo: { bg: 'bg-amber-100',  border: 'border-amber-400',  text: 'text-amber-900'  },
+    controle_negativo: { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-900' },
+    vazio:             { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400'   },
+    header: 'text-gray-400',
+    rowBg:  'bg-gray-50',
+  },
+}
+
 export const btnStyle = (bg) => ({
   background: bg, color: '#fff', border: 'none', padding: '0.6rem 1.25rem',
   borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,

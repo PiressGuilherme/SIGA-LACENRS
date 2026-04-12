@@ -1,30 +1,31 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import CrachaModal from '../components/CrachaModal'
-import NavigationButtons from '../components/NavigationButtons'
-import { getOperadorInicial } from '../utils/auth'
-import apiFetch from '../utils/apiFetch'
-import WellGrid from '../components/plates/WellGrid'
+import { useState, useRef, useCallback, useEffect } from "react";
+import CrachaModal from "../components/CrachaModal";
+import NavigationButtons from "../components/NavigationButtons";
+import Button from "../components/Button";
+import { getOperadorInicial } from "../utils/auth";
+import apiFetch from "../utils/apiFetch";
+import WellGrid from "../components/plates/WellGrid";
 import {
-  ALL_POSITIONS, FILL_ORDER, FILL_POS, TIPO,
+  ALL_POSITIONS, FILL_ORDER, FILL_POS, TIPO, THEMES,
   emptyGrid as baseEmptyGrid, gridFromPocos as baseGridFromPocos,
-  btnStyle, feedbackStyles,
-} from '../components/plates/PlateConstants'
+} from "../components/plates/PlateConstants";
 
-// Cores fixas para CN/CP e vazio
+// Cores fixas para CN/CP e vazio — classes Tailwind
 const CTRL_COLORS = {
-  [TIPO.CN]:    { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  [TIPO.CP]:    { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },
-  [TIPO.VAZIO]: { bg: '#f9fafb', border: '#e5e7eb', text: '#9ca3af' },
-}
+  [TIPO.CN]:    { bg: 'bg-amber-100',  border: 'border-amber-500',  text: 'text-amber-800' },
+  [TIPO.CP]:    { bg: 'bg-pink-100',   border: 'border-pink-500',   text: 'text-pink-800' },
+  [TIPO.VAZIO]: { bg: 'bg-gray-50',    border: 'border-gray-200',   text: 'text-gray-400' },
+};
 
-// Cores de amostras por grupo (índice 0 = grupo 1)
+// Cores de amostras por grupo (índice 0 = grupo 1) — classes Tailwind
+// NOTA: bgActive deve ser declarado explicitamente (nunca derivado via .replace()) para o Tailwind detectar
 const GROUP_COLORS = [
-  { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },  // grupo 1 — azul
-  { bg: '#d1fae5', border: '#10b981', text: '#065f46' },  // grupo 2 — verde
-  { bg: '#fde8d8', border: '#f97316', text: '#9a3412' },  // grupo 3 — laranja
-  { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' },  // grupo 4 — roxo
-  { bg: '#fce7f3', border: '#db2777', text: '#9d174d' },  // grupo 5 — rosa
-]
+  { bg: 'bg-blue-100',   border: 'border-blue-500',   bgActive: 'bg-blue-500',    text: 'text-blue-800'    },  // grupo 1
+  { bg: 'bg-emerald-100',border: 'border-emerald-500',bgActive: 'bg-emerald-500', text: 'text-emerald-800' },  // grupo 2
+  { bg: 'bg-orange-100', border: 'border-orange-500', bgActive: 'bg-orange-500',  text: 'text-orange-800'  },  // grupo 3
+  { bg: 'bg-violet-100', border: 'border-violet-500', bgActive: 'bg-violet-500',  text: 'text-violet-800'  },  // grupo 4
+  { bg: 'bg-pink-100',   border: 'border-pink-600',   bgActive: 'bg-pink-600',    text: 'text-pink-800'    },  // grupo 5
+];
 
 function wellColors(w) {
   if (w.tipo_conteudo === TIPO.AMOSTRA) {
@@ -37,26 +38,24 @@ const REAGENTES = [
   { nome: 'Tampão de Lise', vol: 200 },
   { nome: 'Oligomix',       vol: 5 },
   { nome: 'Enzima',         vol: 0.5 },
-]
+];
 
 const STATUS_PLACA = {
-  aberta:                { bg: '#0d6efd', label: 'Aberta' },
-  extracao_confirmada:   { bg: '#6f42c1', label: 'Extração confirmada' },
-  submetida:             { bg: '#fd7e14', label: 'Submetida' },
-  resultados_importados: { bg: '#198754', label: 'Resultados' },
-}
+  aberta:                { bg: 'bg-blue-600', label: 'Aberta' },
+  extracao_confirmada:   { bg: 'bg-purple-700', label: 'Extração confirmada' },
+  submetida:             { bg: 'bg-orange-500', label: 'Submetida' },
+  resultados_importados: { bg: 'bg-green-600', label: 'Resultados' },
+};
 
 const emptyGrid = () => baseEmptyGrid({ grupo: 1 })
 const gridFromPocos = (pocos) => baseGridFromPocos(pocos, { grupo: 1 })
 
-const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts)
+const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts);
 
 // ================================================================
 export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarDone }) {
   // ---- State: operador (crachá ou admin) ----
   const [operador, setOperador] = useState(() => getOperadorInicial())
-
-
 
   // ---- State: editor ----
   const [placa, setPlaca] = useState(null)
@@ -479,7 +478,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
   // Render
   // ================================================================
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div>
       <NavigationButtons currentStep="extracao" />
 
       {/* Modal bloqueante de identificação */}
@@ -489,66 +488,43 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* Barra do operador */}
       {operador && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: '#f0fdf4', border: '1px solid #6ee7b7', borderRadius: 8,
-          padding: '0.6rem 1rem', marginBottom: '1rem',
-        }}>
-          <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+        <div className="flex items-center gap-3 bg-green-50 border border-green-400 rounded-lg px-4 py-2 mb-4">
+          <span className="text-[0.9rem] text-green-800 font-semibold">
             Operador: {operador.nome_completo}
           </span>
-          <span style={{
-            fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
-            padding: '1px 6px', borderRadius: 10, fontWeight: 500,
-          }}>
+          <span className="text-[0.72rem] bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
             {operador.perfil}
           </span>
-          <button
-            onClick={() => setOperador(null)}
-            style={{
-              marginLeft: 'auto', background: 'none', border: '1px solid #6ee7b7',
-              borderRadius: 6, padding: '0.3rem 0.75rem', fontSize: '0.78rem',
-              color: '#065f46', cursor: 'pointer', fontWeight: 500,
-            }}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setOperador(null)} className="ml-auto">
             Trocar operador
-          </button>
+          </Button>
         </div>
       )}
 
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+        <div className="mb-6">
+          <p className="text-gray-500 mb-4">
             Crie uma nova placa ou use a aba "Consultar Placas" para abrir uma existente.
           </p>
-          <button onClick={criarPlaca} disabled={carregando} style={btnStyle('#1a3a5c')}>
+          <Button variant="secondary" onClick={criarPlaca} disabled={carregando}>
             {carregando ? 'Criando...' : 'Criar Nova Placa'}
-          </button>
+          </Button>
         </div>
       )}
 
       {/* ---- Info da placa ativa ---- */}
       {placa && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '1rem',
-          marginBottom: '1rem', flexWrap: 'wrap',
-        }}>
-          <span style={{
-            background: '#1a3a5c', color: '#fff', padding: '0.4rem 1rem',
-            borderRadius: 6, fontWeight: 600, fontSize: '1rem', letterSpacing: 1,
-          }}>
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          <span className="bg-blue-900 text-white px-4 py-1.5 rounded-md font-semibold text-[1rem] tracking-wider">
             {placa.local ? 'Nova Placa' : placa.codigo}
           </span>
-          <span style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+          <span className="text-gray-500 text-[0.85rem]">
             {totalAmostras} amostras | {totalCN} CN | {totalCP} CP | {totalReacoes} reações
           </span>
-          {salva && <span style={{ color: '#065f46', fontWeight: 500, fontSize: '0.85rem' }}>Salva</span>}
+          {salva && <span className="text-green-700 font-medium text-[0.85rem]">Salva</span>}
           {placa.status_placa && placa.status_placa !== 'aberta' && (
-            <span style={{
-              background: (STATUS_PLACA[placa.status_placa] || {}).bg || '#6c757d',
-              color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: '0.8rem', fontWeight: 500,
-            }}>
+            <span className={`${(STATUS_PLACA[placa.status_placa] || {}).bg || 'bg-gray-600'} text-white px-3 py-0.5 rounded text-[0.8rem] font-medium`}>
               {(STATUS_PLACA[placa.status_placa] || {}).label || placa.status_display}
             </span>
           )}
@@ -557,30 +533,23 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
       {/* ---- Feedback ---- */}
       {feedback && (
-        <div style={{
-          padding: '0.6rem 1rem', borderRadius: 6, marginBottom: '1rem',
-          ...feedbackStyles[feedback.tipo],
-          display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-        }}>
+        <div className={`px-4 py-2 rounded-md mb-4 flex items-center gap-3 flex-wrap ${
+          feedback.tipo === 'sucesso' ? 'bg-green-100 text-green-800 border border-green-300' :
+          feedback.tipo === 'erro' ? 'bg-red-100 text-red-800 border border-red-300' :
+          'bg-amber-100 text-amber-800 border border-amber-300'
+        }`}>
           <span>{feedback.msg}</span>
           {pendingDuplicate && (
-            <button
-              onClick={forceAddDuplicate}
-              style={{ ...btnStyle('#92400e'), padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
-            >
+            <Button variant="ghost" size="sm" onClick={forceAddDuplicate}>
               Adicionar mesmo assim
-            </button>
+            </Button>
           )}
         </div>
       )}
 
       {/* ---- Aviso de controles ---- */}
       {placa && isEditable && !hasControls && (
-        <div style={{
-          padding: '0.5rem 1rem', borderRadius: 6, marginBottom: '1rem',
-          background: '#fee2e2', color: '#b91c1c', fontSize: '0.85rem',
-          border: '1px solid #fca5a5',
-        }}>
+        <div className="px-4 py-2 rounded-md mb-4 bg-red-100 text-red-700 border border-red-300 text-[0.85rem]">
           A placa precisa de pelo menos um CN e um CP para ser salva.
         </div>
       )}
@@ -589,8 +558,8 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
         <>
           {/* ---- Scanner + modo (só para placa aberta) ---- */}
           {isEditable && (
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <form onSubmit={handleScan} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: 280 }}>
+            <div className="flex gap-2 mb-4 flex-wrap items-center">
+              <form onSubmit={handleScan} className="flex gap-2 flex-1 min-w-[280px]">
                 <input
                   ref={inputRef}
                   type="text"
@@ -599,33 +568,34 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                   placeholder={modo === TIPO.AMOSTRA ? 'Escanear código da amostra...' : `Clique no poço ou Enter para ${modo === TIPO.CN ? 'CN' : 'CP'}`}
                   disabled={carregando}
                   autoComplete="off"
-                  style={{
-                    flex: 1, padding: '0.6rem 0.75rem', fontSize: '1rem',
-                    border: '2px solid #93c5fd', borderRadius: 6, outline: 'none',
-                  }}
+                  className="flex-1 px-3 py-2 text-[1rem] border-2 border-blue-300 rounded-md outline-none focus:border-blue-500"
                 />
-                <button type="submit" disabled={carregando} style={btnStyle('#1a3a5c')}>
+                <Button type="submit" variant="secondary" disabled={carregando}>
                   {modo === TIPO.AMOSTRA ? 'Buscar' : 'Inserir'}
-                </button>
+                </Button>
               </form>
 
-              <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <div className="flex gap-1">
                 {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map(t => {
-                  const modeColor = t === TIPO.AMOSTRA
-                    ? GROUP_COLORS[0].border
-                    : (CTRL_COLORS[t]?.border || '#d1d5db')
+                  const gc = t === TIPO.AMOSTRA ? GROUP_COLORS[0] : null
+                  const cc = t !== TIPO.AMOSTRA ? CTRL_COLORS[t] : null
+                  const isActive = modo === t
+                  // classe de fundo ativo: usa classes Tailwind onde possível
+                  const activeClass = gc
+                    ? `bg-blue-500 border-blue-500`
+                    : t === TIPO.CN ? `bg-amber-500 border-amber-500` : `bg-pink-500 border-pink-500`
                   return (
-                  <button
-                    key={t}
-                    onClick={() => setModo(t)}
-                    style={{
-                      ...btnStyle(modo === t ? modeColor : '#d1d5db'),
-                      color: modo === t ? '#fff' : '#374151',
-                      padding: '0.5rem 0.75rem', fontSize: '0.8rem',
-                    }}
-                  >
-                    {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
-                  </button>
+                    <button
+                      key={t}
+                      onClick={() => setModo(t)}
+                      className={`px-3 py-2 rounded-md text-[0.8rem] font-medium transition-colors border-2 ${
+                        isActive
+                          ? `${activeClass} text-white`
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border-transparent'
+                      }`}
+                    >
+                      {t === TIPO.AMOSTRA ? 'Amostra' : t.toUpperCase()}
+                    </button>
                   )
                 })}
               </div>
@@ -634,24 +604,21 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
 
           {/* ---- Barra de grupos ---- */}
           {isEditable && (
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="flex gap-1 mb-4 flex-wrap items-center">
               {Array.from({ length: totalGrupos }, (_, i) => i + 1).map(g => {
                 const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length]
                 const isAtivo = g === grupoAtivo
+                const hasNext = g === totalGrupos && totalGrupos > 1
                 return (
-                  <div key={g} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                  <div key={g} className="flex items-center">
                     <button
                       onClick={() => setGrupoAtivo(g)}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        background: isAtivo ? gc.border : '#f9fafb',
-                        color: isAtivo ? '#fff' : gc.text,
-                        border: `2px solid ${gc.border}`,
-                        borderRadius: g === totalGrupos && totalGrupos > 1 ? '6px 0 0 6px' : 6,
-                        cursor: 'pointer',
-                        fontSize: '0.82rem',
-                        fontWeight: isAtivo ? 700 : 500,
-                      }}
+                      className={`px-3 py-1.5 text-[0.82rem] border-2 cursor-pointer font-medium transition-colors
+                        ${hasNext ? 'rounded-l-md' : 'rounded-md'}
+                        ${isAtivo
+                          ? `${gc.bgActive} ${gc.border} text-white font-bold`
+                          : `bg-gray-50 ${gc.text} ${gc.border}`
+                        }`}
                     >
                       Grupo {g}
                     </button>
@@ -659,88 +626,31 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
                       <button
                         onClick={() => removerGrupo(g)}
                         title={`Remover Grupo ${g}`}
-                        style={{
-                          padding: '0.35rem 0.4rem',
-                          background: isAtivo ? gc.border : '#f9fafb',
-                          color: isAtivo ? '#fff' : '#9ca3af',
-                          border: `2px solid ${gc.border}`,
-                          borderLeft: 'none',
-                          borderRadius: '0 6px 6px 0',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          lineHeight: 1,
-                        }}
+                        className={`px-2 py-1.5 text-[0.75rem] border-2 border-l-0 rounded-r-md cursor-pointer font-bold transition-colors
+                          ${isAtivo
+                            ? `${gc.bgActive} ${gc.border} text-white`
+                            : `bg-gray-50 text-gray-400 ${gc.border}`
+                          }`}
                       >
-                        ×
+                        ✕
                       </button>
                     )}
                   </div>
                 )
               })}
-              {totalGrupos < GROUP_COLORS.length && (
-                <button
-                  onClick={adicionarGrupo}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    background: '#fff',
-                    color: '#374151',
-                    border: '2px dashed #d1d5db',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    fontSize: '0.82rem',
-                  }}
-                >
-                  + Adicionar Grupo
-                </button>
-              )}
-              {/* Mover seleção/cursor para outro grupo */}
-              {totalGrupos > 1 && (selectedSet.size > 0 || grid[selected]?.tipo_conteudo !== TIPO.VAZIO) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem', paddingLeft: '0.75rem', borderLeft: '2px solid #e5e7eb' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {selectedSet.size > 1 ? `Mover ${selectedSet.size} selecionados →` : 'Mover para →'}
-                  </span>
-                  {Array.from({ length: totalGrupos }, (_, i) => i + 1).map(g => {
-                    const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length]
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => moverParaGrupo(g)}
-                        title={`Mover para Grupo ${g}`}
-                        style={{
-                          padding: '0.25rem 0.6rem',
-                          background: gc.bg,
-                          color: gc.text,
-                          border: `2px solid ${gc.border}`,
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        G{g}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
             </div>
           )}
 
           {/* ---- Reagentes por grupo ---- */}
           {totalReacoes > 0 && (
-            <div style={{ marginBottom: '1rem' }}>
+            <div className="mb-4">
               {(gruposAtivos.length > 0 ? gruposAtivos : [1]).map(g => {
                 const rg = reacoesPorGrupo(g)
                 const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length]
                 return (
-                  <div key={g} style={{
-                    display: 'flex', gap: '1.5rem', padding: '0.5rem 1rem',
-                    background: gc.bg, borderRadius: 6, fontSize: '0.85rem', color: gc.text,
-                    flexWrap: 'wrap', marginBottom: '0.35rem',
-                    border: `1px solid ${gc.border}`,
-                  }}>
+                  <div key={g} className={`flex gap-6 px-4 py-2 ${gc.bg} ${gc.text} border ${gc.border} rounded-md text-[0.85rem] flex-wrap mb-1`}>
                     {gruposAtivos.length > 1 && (
-                      <span style={{ fontWeight: 700, minWidth: 60 }}>Grupo {g}:</span>
+                      <span className="font-bold min-w-[60px]">Grupo {g}:</span>
                     )}
                     {REAGENTES.map(r => (
                       <span key={r.nome}>
@@ -762,8 +672,7 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
             dragOver={dragOver}
             dragSource={dragSource}
             isDraggingSelection={isDraggingSelection}
-            cursorColor="#1a3a5c"
-            cursorShadow="#3b82f6"
+            theme={THEMES.extracao}
             wellColors={wellColors}
             onDrop={(src, dst) => {
               setGrid(prev => {
@@ -829,52 +738,51 @@ export default function MontarPlaca({ csrfToken, editarPlacaId = null, onEditarD
           />
 
           {/* ---- Ações ---- */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+          <div className="flex gap-3 flex-wrap mb-8">
             {isEditable && (
-              <button
+              <Button
+                variant="primary"
                 onClick={salvarPlaca}
                 disabled={carregando || totalAmostras === 0 || !hasControls}
-                style={{ ...btnStyle('#065f46'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
               >
                 {carregando ? 'Salvando...' : 'Salvar Placa'}
-              </button>
+              </Button>
             )}
             {placa && !placa.local && (
-              <button
+              <Button
+                variant="secondary"
                 onClick={salvarComoNova}
                 disabled={carregando || totalAmostras === 0 || !hasControls}
                 title="Cria uma nova placa com os mesmos poços, sem alterar a original"
-                style={{ ...btnStyle('#1a3a5c'), opacity: (carregando || totalAmostras === 0 || !hasControls) ? 0.5 : 1 }}
               >
                 {carregando ? 'Salvando...' : 'Salvar como nova placa'}
-              </button>
-            )}
-            {placa && (
-              <button
-                onClick={excluirPlaca}
-                disabled={carregando}
-                style={{ ...btnStyle('#dc3545'), opacity: carregando ? 0.5 : 1 }}
-              >
-                Excluir Placa
-              </button>
+              </Button>
             )}
             {salva && placa && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ ...btnStyle('#4b5563'), textDecoration: 'none', display: 'inline-block' }}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-[#374151] border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:-translate-y-px transition-all duration-200 no-underline"
               >
                 Exportar PDF
               </a>
             )}
-            <button onClick={resetar} style={btnStyle('#6b7280')}>
+            <Button variant="ghost" onClick={resetar}>
               {placa ? 'Fechar Placa' : 'Nova Placa'}
-            </button>
+            </Button>
+            {placa && (
+              <Button
+                variant="danger"
+                onClick={excluirPlaca}
+                disabled={carregando}
+              >
+                Excluir Placa
+              </Button>
+            )}
           </div>
         </>
       )}
     </div>
   )
 }
-

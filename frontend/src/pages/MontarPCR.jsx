@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import NavigationButtons from "../components/NavigationButtons";
 import Button from "../components/Button";
 import { isEspecialista } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
@@ -626,7 +625,6 @@ export default function MontarPCR({
   // ================================================================
   return (
     <div className="font-inherit">
-      <NavigationButtons currentStep="pcr" />
 
       {/* ---- Tela de escolha de início ---- */}
       {!placa && modoInicio === null && (

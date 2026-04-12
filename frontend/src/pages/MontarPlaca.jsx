@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import NavigationButtons from "../components/NavigationButtons";
 import Button from "../components/Button";
 import apiFetch from "../utils/apiFetch";
 import WellGrid from "../components/plates/WellGrid";
@@ -666,8 +665,6 @@ export default function MontarPlaca({
   // ================================================================
   return (
     <div>
-      <NavigationButtons currentStep="extracao" />
-
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (
         <div className="mb-6">

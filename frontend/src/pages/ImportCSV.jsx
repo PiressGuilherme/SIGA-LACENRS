@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
+import NavigationButtons from "../components/NavigationButtons";
 import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 
@@ -195,6 +196,8 @@ export default function ImportCSV({ csrfToken }) {
         operador={operador}
         onTrocarOperador={() => setOperador(null)}
       />
+
+      <NavigationButtons currentStep="importar" />
 
       <h2 className="mb-6 text-xl font-medium text-slate-800">
         Importar CSV do GAL

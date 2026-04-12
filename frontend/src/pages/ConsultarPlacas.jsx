@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import NavigationButtons from "../components/NavigationButtons";
 import apiFetch from "../utils/apiFetch";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
 import { MINI_THEMES } from "../components/plates/PlateConstants";
@@ -175,8 +174,6 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
 
   return (
     <div>
-      <NavigationButtons currentStep="extracao" />
-
       <div>
         <div className="flex gap-2 mb-4 flex-wrap items-center">
           <input

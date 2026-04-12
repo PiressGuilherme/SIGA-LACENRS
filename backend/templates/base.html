@@ -244,9 +244,11 @@
       .header-brand-text span { display: none; }
     }
 
-    /* ── Conteúdo principal ── */
+    /* Conteudo principal */
     main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
 
+  </style>
+  <style>
     {% block extra_style %}{% endblock %}
   </style>
   {% block extra_head %}{% endblock %}
@@ -280,11 +282,6 @@
     <nav class="header-nav">
       <a href="{% url 'home' %}">Início</a>
       <a href="/amostras/consulta/">Consulta</a>
-      <a href="/amostras/importar/">Importar CSV</a>
-      <a href="/amostras/aliquotagem/">Aliquotagem</a>
-      <a href="/placas/extracao/">Extração</a>
-      <a href="/placas/pcr/">PCR</a>
-      <a href="/resultados/revisar/">Resultados</a>
       {% if user.is_superuser %}
         <a href="{% url 'configuracoes-page' %}">Configurações</a>
         <a href="/admin/">Admin</a>
@@ -322,11 +319,6 @@
   <div class="header-drawer" id="header-drawer">
     <a href="{% url 'home' %}" onclick="closeDrawer()">Início</a>
     <a href="/amostras/consulta/" onclick="closeDrawer()">Consulta</a>
-    <a href="/amostras/importar/" onclick="closeDrawer()">Importar CSV</a>
-    <a href="/amostras/aliquotagem/" onclick="closeDrawer()">Aliquotagem</a>
-    <a href="/placas/extracao/" onclick="closeDrawer()">Extração</a>
-    <a href="/placas/pcr/" onclick="closeDrawer()">PCR</a>
-    <a href="/resultados/revisar/" onclick="closeDrawer()">Resultados</a>
     {% if user.is_superuser %}
       <div class="header-drawer-divider"></div>
       <a href="{% url 'configuracoes-page' %}" onclick="closeDrawer()">Configurações</a>

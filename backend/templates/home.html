@@ -3,9 +3,151 @@
 {% block title %}Início — SIGA-LACEN{% endblock %}
 
 {% block extra_style %}
+/* ── Contadores ── */
+.counters-bar {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+.counter-item { display: flex; flex-direction: column; gap: 0.15rem; }
+.counter-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+.counter-label { font-size: 0.72rem; color: #6b7280; white-space: nowrap; }
+
+/* ── Hero ── */
+.hero-card {
+  background: linear-gradient(135deg, #6b0f1a 0%, #8b1a2a 100%);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.07) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+.hero-step {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+}
+.hero-arrow { color: rgba(255,255,255,0.4); font-size: 0.8rem; }
+.hero-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.hero-sub {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.65);
+  max-width: 420px;
+  line-height: 1.5;
+}
+.hero-btn {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fff;
+  color: #6b0f1a;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.8rem 2rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.hero-btn:hover {
+  background: #fdecea;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+}
+
+/* ── Seção / mini-cards ── */
+.section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  margin: 1.75rem 0 0.75rem;
+}
+.quick-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+.card-sm {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: box-shadow 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+  flex: 1 0 140px;
+  max-width: 210px;
+}
+.card-sm:hover {
+  box-shadow: 0 4px 16px rgba(26,58,92,0.13);
+  transform: translateY(-2px);
+}
+.card-sm-accent {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 10px 10px 0 0;
+}
+.card-sm-header { display: flex; align-items: center; gap: 0.45rem; }
+.card-sm-icon { font-size: 1rem; line-height: 1; }
+.card-sm-step {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.card-sm-title { font-size: 0.85rem; font-weight: 700; color: #1a3a5c; line-height: 1.3; }
+
+/* ── Cards grandes ── */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.25rem;
   margin-bottom: 2rem;
 }
@@ -23,32 +165,12 @@
   position: relative;
   overflow: hidden;
 }
-.card:hover {
-  box-shadow: 0 4px 20px rgba(26,58,92,0.12);
-  transform: translateY(-2px);
-}
-.card-accent {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-  border-radius: 10px 10px 0 0;
-}
-.card-icon {
-  font-size: 2rem;
-  line-height: 1;
-  margin-bottom: 0.25rem;
-}
-.card-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1a3a5c;
-}
-.card-desc {
-  font-size: 0.82rem;
-  color: #6b7280;
-  line-height: 1.5;
-  flex: 1;
-}
+.card:hover { box-shadow: 0 4px 20px rgba(26,58,92,0.12); transform: translateY(-2px); }
+.card-accent { position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 10px 10px 0 0; }
+.card-icon { font-size: 2rem; line-height: 1; margin-bottom: 0.25rem; }
+.card-title { font-size: 1rem; font-weight: 700; color: #1a3a5c; }
+.card-desc { font-size: 0.82rem; color: #6b7280; line-height: 1.5; flex: 1; }
+.card-step { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #9ca3af; }
 .card-badge {
   display: inline-block;
   font-size: 0.72rem;
@@ -58,49 +180,11 @@
   margin-top: 0.25rem;
   align-self: flex-start;
 }
-.card-step {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #9ca3af;
-}
-.section-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #9ca3af;
-  margin: 1.75rem 0 0.75rem;
-}
-.counters-bar {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 1rem 1.5rem;
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-.counter-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-.counter-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.counter-label {
-  font-size: 0.72rem;
-  color: #6b7280;
-  white-space: nowrap;
-}
 {% endblock %}
 
 {% block content %}
+
+<!-- Saudação -->
 <div style="margin-bottom:1.5rem">
   <h2 style="font-size:1.4rem;color:#4a0010;margin-bottom:0.25rem">
     Olá, {{ user.nome_completo }}
@@ -113,7 +197,7 @@
 <!-- Contadores de status -->
 <div class="counters-bar">
   <div class="counter-item">
-    <span class="counter-value" style="color:#0d6efd">{{ cnt.aguardando }}</span>
+    <span class="counter-value" style="color:#015be2">{{ cnt.aguardando }}</span>
     <span class="counter-label">Aguardando cadastramento</span>
   </div>
   <div class="counter-item">
@@ -149,73 +233,91 @@
   </div>
 </div>
 
-<!-- Fluxo laboratorial -->
-<p class="section-title">Fluxo Laboratorial</p>
-<div class="cards-grid">
+<!-- Hero: Iniciar Fluxo -->
+<div class="hero-card">
+  <div class="hero-pipeline">
+    <span class="hero-step">📥 Importar CSV</span>
+    <span class="hero-arrow">›</span>
+    <span class="hero-step">🔬 Aliquotagem</span>
+    <span class="hero-arrow">›</span>
+    <span class="hero-step">🧫 Extração</span>
+    <span class="hero-arrow">›</span>
+    <span class="hero-step">🧬 PCR</span>
+    <span class="hero-arrow">›</span>
+    <span class="hero-step">📊 Resultados</span>
+  </div>
+  <div class="hero-title">Iniciar Fluxo Laboratorial</div>
+  <div class="hero-sub">Do recebimento do arquivo CSV até a liberação dos resultados de HPV</div>
+  <a class="hero-btn" href="{% url 'importar-csv-page' %}">
+    Iniciar Fluxo
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12"/>
+      <polyline points="12 5 19 12 12 19"/>
+    </svg>
+  </a>
+</div>
 
-  <a class="card" href="{% url 'importar-csv-page' %}">
-    <div class="card-accent" style="background:#0d6efd"></div>
-    <div class="card-icon">📥</div>
-    <div class="card-step">Recebimento</div>
-    <div class="card-title">Importar CSV GAL</div>
-    <div class="card-desc">
-      Importa o arquivo CSV do sistema GAL com as requisições de amostras.
-      Cria as amostras no sistema e define o status inicial.
+<!-- Acesso rápido às etapas -->
+<p class="section-title">Ou acesse diretamente uma etapa</p>
+<div class="quick-grid">
+
+  <a class="card-sm" href="{% url 'importar-csv-page' %}">
+    <div class="card-sm-accent" style="background:#0d6efd"></div>
+    <div class="card-sm-header">
+      <span class="card-sm-icon">📥</span>
+      <span class="card-sm-step">Recebimento</span>
     </div>
+    <div class="card-sm-title">Importar CSV</div>
   </a>
 
-  <a class="card" href="{% url 'aliquotagem-page' %}">
-    <div class="card-accent" style="background:#6f42c1"></div>
-    <div class="card-icon">🔬</div>
-    <div class="card-step">Aliquotagem</div>
-    <div class="card-title">Aliquotagem de Amostras</div>
-    <div class="card-desc">
-      Scanner de alíquota: confirma a aliquotagem das amostras com
-      identificação do operador por crachá. Status → Aliquotada.
+  <a class="card-sm" href="{% url 'aliquotagem-page' %}">
+    <div class="card-sm-accent" style="background:#6f42c1"></div>
+    <div class="card-sm-header">
+      <span class="card-sm-icon">🔬</span>
+      <span class="card-sm-step">Aliquotagem</span>
     </div>
+    <div class="card-sm-title">Aliquotagem</div>
     {% if cnt.aguardando %}
-    <span class="card-badge" style="background:#ede9fe;color:#5b21b6">
-      {{ cnt.aguardando }} para receber
-    </span>
+    <span class="card-badge" style="background:#ede9fe;color:#5b21b6">{{ cnt.aguardando }} para receber</span>
     {% endif %}
   </a>
 
-  <a class="card" href="{% url 'montar-placa-page' %}">
-    <div class="card-accent" style="background:#fd7e14"></div>
-    <div class="card-icon">🧫</div>
-    <div class="card-step">Extração</div>
-    <div class="card-title">Montagem de Placa</div>
-    <div class="card-desc">
-      Espelho de placa 8×12: posiciona amostras, controles, calcula
-      reagentes e exporta o PDF FR-HPV-001.
-      Confirma extração por scan do código da placa.
+  <a class="card-sm" href="{% url 'montar-placa-page' %}">
+    <div class="card-sm-accent" style="background:#fd7e14"></div>
+    <div class="card-sm-header">
+      <span class="card-sm-icon">🧫</span>
+      <span class="card-sm-step">Extração</span>
     </div>
+    <div class="card-sm-title">Placas de Extração</div>
     {% if cnt.aliquotadas %}
-    <span class="card-badge" style="background:#ffedd5;color:#9a3412">
-      {{ cnt.aliquotadas }} aliquotadas disponíveis
-    </span>
+    <span class="card-badge" style="background:#ffedd5;color:#9a3412">{{ cnt.aliquotadas }} disponíveis</span>
     {% endif %}
   </a>
 
-  <a class="card" href="{% url 'revisar-resultados-page' %}">
-    <div class="card-accent" style="background:#198754"></div>
-    <div class="card-icon">📊</div>
-    <div class="card-step">Resultados</div>
-    <div class="card-title">Revisão de Resultados PCR</div>
-    <div class="card-desc">
-      Importa o CSV do CFX Manager, valida controles (CP/CN),
-      classifica amostras pelos critérios IBMP e permite
-      confirmar ou solicitar repetição.
+  <a class="card-sm" href="{% url 'pcr-page' %}">
+    <div class="card-sm-accent" style="background:#0891b2"></div>
+    <div class="card-sm-header">
+      <span class="card-sm-icon">🧬</span>
+      <span class="card-sm-step">PCR</span>
     </div>
+    <div class="card-sm-title">Placas PCR</div>
+    {% if cnt.extracao %}
+    <span class="card-badge" style="background:#cffafe;color:#164e63">{{ cnt.extracao }} em extração</span>
+    {% endif %}
+  </a>
+
+  <a class="card-sm" href="{% url 'revisar-resultados-page' %}">
+    <div class="card-sm-accent" style="background:#198754"></div>
+    <div class="card-sm-header">
+      <span class="card-sm-icon">📊</span>
+      <span class="card-sm-step">Resultados</span>
+    </div>
+    <div class="card-sm-title">Revisão de Resultados</div>
     {% if placas_submetidas %}
-    <span class="card-badge" style="background:#d1fae5;color:#065f46">
-      {{ placas_submetidas }} placa{{ placas_submetidas|pluralize }} aguardando
-    </span>
+    <span class="card-badge" style="background:#d1fae5;color:#065f46">{{ placas_submetidas }} placa{{ placas_submetidas|pluralize }} aguardando</span>
     {% endif %}
     {% if cnt.resultado %}
-    <span class="card-badge" style="background:#d1fae5;color:#065f46">
-      {{ cnt.resultado }} resultado{{ cnt.resultado|pluralize }} pendente{{ cnt.resultado|pluralize }}
-    </span>
+    <span class="card-badge" style="background:#d1fae5;color:#065f46">{{ cnt.resultado }} pendente{{ cnt.resultado|pluralize }}</span>
     {% endif %}
   </a>
 
@@ -224,7 +326,6 @@
 <!-- Consulta -->
 <p class="section-title">Consulta</p>
 <div class="cards-grid">
-
   <a class="card" href="{% url 'consulta-amostras-page' %}">
     <div class="card-accent" style="background:#0dcaf0"></div>
     <div class="card-icon">🔍</div>
@@ -235,14 +336,12 @@
       código interno. Visualiza status e histórico de cada amostra.
     </div>
   </a>
-
 </div>
 
 {% if user.is_superuser %}
 <!-- Administração -->
 <p class="section-title">Administração</p>
 <div class="cards-grid">
-
   <a class="card" href="{% url 'configuracoes-page' %}">
     <div class="card-accent" style="background:#0891b2"></div>
     <div class="card-icon">⚙️</div>
@@ -253,7 +352,6 @@
       de resultados e integração com o GAL WebService.
     </div>
   </a>
-
   <a class="card" href="/admin/">
     <div class="card-accent" style="background:#6c757d"></div>
     <div class="card-icon">⚙️</div>
@@ -264,7 +362,6 @@
       alterações e edição direta de registros.
     </div>
   </a>
-
 </div>
 {% endif %}
 

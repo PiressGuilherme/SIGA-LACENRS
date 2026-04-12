@@ -3,6 +3,7 @@ import MontarPCR from "./MontarPCR";
 import ConsultarPCR from "./ConsultarPCR";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
+import NavigationButtons from "../components/NavigationButtons";
 import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
@@ -30,6 +31,8 @@ export default function PlacaPCREditor({ csrfToken }) {
         operador={operador}
         onTrocarOperador={() => setOperador(null)}
       />
+
+      <NavigationButtons currentStep="pcr" />
 
       <h2 className="mb-4 text-lg text-emerald-800 font-semibold">
         Módulo PCR

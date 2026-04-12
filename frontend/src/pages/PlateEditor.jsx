@@ -4,6 +4,7 @@ import ConfirmarExtracao from "./ConfirmarExtracao";
 import ConsultarPlacas from "./ConsultarPlacas";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
+import NavigationButtons from "../components/NavigationButtons";
 import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
@@ -32,6 +33,8 @@ export default function PlateEditor({ csrfToken }) {
         operador={operador}
         onTrocarOperador={() => setOperador(null)}
       />
+
+      <NavigationButtons currentStep="extracao" />
 
       <h2 className="mb-4 text-lg text-blue-900 font-semibold">
         Placas de Extração

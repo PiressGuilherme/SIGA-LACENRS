@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import CrachaModal from "../components/CrachaModal";
+import OperatorBadge from "../components/OperatorBadge";
 import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 
@@ -188,6 +189,12 @@ export default function ImportCSV({ csrfToken }) {
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Importar CSV" />
       )}
+
+      {/* Barra do operador */}
+      <OperatorBadge
+        operador={operador}
+        onTrocarOperador={() => setOperador(null)}
+      />
 
       <h2 className="mb-6 text-xl font-medium text-slate-800">
         Importar CSV do GAL

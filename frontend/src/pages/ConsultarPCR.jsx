@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import CrachaModal from "../components/CrachaModal";
-import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
 import { MINI_THEMES } from "../components/plates/PlateConstants";
@@ -193,7 +191,6 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
 }
 
 export default function ConsultarPCR({ csrfToken, onEditar }) {
-  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [placas, setPlacas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -221,10 +218,6 @@ export default function ConsultarPCR({ csrfToken, onEditar }) {
 
   return (
     <div>
-      {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="Consultar Placas PCR" />
-      )}
-
       <div className="flex gap-2 mb-4 flex-wrap items-center">
         <input
           type="text"

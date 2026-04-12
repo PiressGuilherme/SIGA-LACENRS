@@ -304,8 +304,6 @@ export default function RevisarResultados({}) {
 
   return (
     <div className="max-w-6xl">
-      <NavigationButtons currentStep="resultados" />
-
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal
@@ -314,10 +312,6 @@ export default function RevisarResultados({}) {
           gruposRequeridos={["especialista", "supervisor"]}
         />
       )}
-
-      <h2 className="mb-5 text-lg text-blue-900 font-semibold">
-        Revisão de Resultados PCR
-      </h2>
 
       {/* Barra do operador */}
       {operador && (
@@ -333,6 +327,12 @@ export default function RevisarResultados({}) {
           </Button>
         </div>
       )}
+
+      <NavigationButtons currentStep="resultados" />
+
+      <h2 className="mb-5 text-lg text-blue-900 font-semibold">
+        Revisão de Resultados PCR
+      </h2>
 
       {/* Seletor de placa */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import MontarPCR from "./MontarPCR";
 import ConsultarPCR from "./ConsultarPCR";
+import CrachaModal from "../components/CrachaModal";
+import OperatorBadge from "../components/OperatorBadge";
+import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
   { id: "montar", label: "Montar Placa PCR" },
@@ -8,6 +11,7 @@ const TABS = [
 ];
 
 export default function PlacaPCREditor({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [activeTab, setActiveTab] = useState("montar");
   const [editarPlacaId, setEditarPlacaId] = useState(null);
 
@@ -18,6 +22,15 @@ export default function PlacaPCREditor({ csrfToken }) {
 
   return (
     <div>
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="PCR" />
+      )}
+
+      <OperatorBadge
+        operador={operador}
+        onTrocarOperador={() => setOperador(null)}
+      />
+
       <h2 className="mb-4 text-lg text-emerald-800 font-semibold">
         Módulo PCR
       </h2>
@@ -47,10 +60,11 @@ export default function PlacaPCREditor({ csrfToken }) {
           csrfToken={csrfToken}
           editarPlacaId={editarPlacaId}
           onEditarDone={() => setEditarPlacaId(null)}
+          operador={operador}
         />
       )}
       {activeTab === "consultar" && (
-        <ConsultarPCR csrfToken={csrfToken} onEditar={handleEditar} />
+        <ConsultarPCR csrfToken={csrfToken} onEditar={handleEditar} operador={operador} />
       )}
     </div>
   );

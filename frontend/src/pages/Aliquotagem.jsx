@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import CrachaModal from "../components/CrachaModal";
 import NavigationButtons from "../components/NavigationButtons";
 import Button from "../components/Button";
+import OperatorBadge from "../components/OperatorBadge";
 import { getOperadorInicial, getCsrfToken } from "../utils/auth";
 
 const STATUS_BADGE = {
@@ -88,32 +89,18 @@ export default function Aliquotagem({ csrfToken }) {
 
   return (
     <div className="font-inherit">
-      <NavigationButtons currentStep="aliquotagem" />
-
       {/* Modal bloqueante de identificação */}
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Aliquotagem" />
       )}
 
       {/* Barra do operador */}
-      {operador && (
-        <div className="flex items-center gap-3 bg-green-50 border border-green-300 rounded-lg p-2.5 mb-4">
-          <span className="text-sm text-green-800 font-semibold">
-            Operador: {operador.nome_completo}
-          </span>
-          <span className="text-xs bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full font-medium">
-            {operador.perfil}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setOperador(null)}
-            className="ml-auto"
-          >
-            Trocar operador
-          </Button>
-        </div>
-      )}
+      <OperatorBadge
+        operador={operador}
+        onTrocarOperador={() => setOperador(null)}
+      />
+
+      <NavigationButtons currentStep="aliquotagem" />
 
       {/* Input de leitura da amostra */}
       <form onSubmit={handleSubmit} className="flex gap-3 mb-4">

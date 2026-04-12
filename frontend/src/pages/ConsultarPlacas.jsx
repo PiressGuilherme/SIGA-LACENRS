@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import CrachaModal from "../components/CrachaModal";
 import NavigationButtons from "../components/NavigationButtons";
-import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
 import { MINI_THEMES } from "../components/plates/PlateConstants";
@@ -138,7 +136,6 @@ function LinhaPlaca({ p, onEditar }) {
 }
 
 export default function ConsultarPlacas({ csrfToken, onEditar }) {
-  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [placas, setPlacas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -179,10 +176,6 @@ export default function ConsultarPlacas({ csrfToken, onEditar }) {
   return (
     <div>
       <NavigationButtons currentStep="extracao" />
-
-      {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="Consultar Placas" />
-      )}
 
       <div>
         <div className="flex gap-2 mb-4 flex-wrap items-center">

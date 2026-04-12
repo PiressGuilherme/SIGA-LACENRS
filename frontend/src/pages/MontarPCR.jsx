@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import CrachaModal from "../components/CrachaModal";
 import NavigationButtons from "../components/NavigationButtons";
 import Button from "../components/Button";
-import { getOperadorInicial, isEspecialista } from "../utils/auth";
+import { isEspecialista } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 import WellGrid from "../components/plates/WellGrid";
 import {
@@ -16,13 +15,33 @@ import {
 } from "../components/plates/PlateConstants";
 
 const TIPO_COLORS = {
-  [TIPO.AMOSTRA]: { bg: 'bg-blue-100',   border: 'border-blue-500',  text: 'text-blue-800' },
-  [TIPO.CN]:      { bg: 'bg-amber-100',  border: 'border-amber-500', text: 'text-amber-800' },
-  [TIPO.CP]:      { bg: 'bg-pink-100',   border: 'border-pink-500',  text: 'text-pink-800' },
-  [TIPO.VAZIO]:   { bg: 'bg-gray-50',    border: 'border-gray-200',  text: 'text-gray-400' },
+  [TIPO.AMOSTRA]: {
+    bg: "bg-blue-100",
+    border: "border-blue-500",
+    text: "text-blue-800",
+  },
+  [TIPO.CN]: {
+    bg: "bg-amber-100",
+    border: "border-amber-500",
+    text: "text-amber-800",
+  },
+  [TIPO.CP]: {
+    bg: "bg-pink-100",
+    border: "border-pink-500",
+    text: "text-pink-800",
+  },
+  [TIPO.VAZIO]: {
+    bg: "bg-gray-50",
+    border: "border-gray-200",
+    text: "text-gray-400",
+  },
 };
 
-const REPETIDO_COLORS = { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-900' };
+const REPETIDO_COLORS = {
+  bg: "bg-yellow-100",
+  border: "border-yellow-400",
+  text: "text-yellow-900",
+};
 
 const emptyGrid = () => baseEmptyGrid({ tem_resultado: false });
 const gridFromPocos = (pocos) =>
@@ -31,9 +50,9 @@ const gridFromPocos = (pocos) =>
 const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts);
 
 const STATUS_PLACA = {
-  aberta:                { bg: 'bg-blue-600',   label: 'Aberta' },
-  submetida:             { bg: 'bg-orange-500', label: 'Submetida' },
-  resultados_importados: { bg: 'bg-green-600',  label: 'Resultados' },
+  aberta: { bg: "bg-blue-600", label: "Aberta" },
+  submetida: { bg: "bg-orange-500", label: "Submetida" },
+  resultados_importados: { bg: "bg-green-600", label: "Resultados" },
 };
 
 // ================================================================
@@ -41,9 +60,8 @@ export default function MontarPCR({
   csrfToken,
   editarPlacaId = null,
   onEditarDone,
+  operador,
 }) {
-  // ---- State: operador (crachá ou admin) ----
-  const [operador, setOperador] = useState(() => getOperadorInicial());
 
   // ---- State: escolha de origem ----
   const [modoInicio, setModoInicio] = useState(null); // null | 'rascunho' | 'zero'
@@ -610,26 +628,6 @@ export default function MontarPCR({
     <div className="font-inherit">
       <NavigationButtons currentStep="pcr" />
 
-      {/* Modal bloqueante de identificação */}
-      {!operador && (
-        <CrachaModal onValidado={setOperador} modulo="PCR — Montar Placa" />
-      )}
-
-      {/* Barra do operador */}
-      {operador && (
-        <div className="flex items-center gap-3 bg-green-50 border border-green-300 rounded-lg py-2.5 px-4 mb-4">
-          <span className="text-sm text-green-800 font-semibold">
-            Operador: {operador.nome_completo}
-          </span>
-          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium">
-            {operador.perfil}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => setOperador(null)} className="ml-auto">
-            Trocar operador
-          </Button>
-        </div>
-      )}
-
       {/* ---- Tela de escolha de início ---- */}
       {!placa && modoInicio === null && (
         <div className="mb-6">
@@ -640,7 +638,10 @@ export default function MontarPCR({
           <div className="flex gap-3 flex-wrap mb-4">
             <Button
               variant="secondary"
-              onClick={() => { setModoInicio("rascunho"); fetchPlacasExtracao(); }}
+              onClick={() => {
+                setModoInicio("rascunho");
+                fetchPlacasExtracao();
+              }}
             >
               Carregar de Extração
             </Button>
@@ -658,7 +659,11 @@ export default function MontarPCR({
             <h3 className="text-base text-slate-800 font-semibold m-0">
               Selecionar Placa de Extração
             </h3>
-            <Button variant="ghost" size="sm" onClick={() => setModoInicio(null)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setModoInicio(null)}
+            >
               Voltar
             </Button>
           </div>
@@ -746,7 +751,7 @@ export default function MontarPCR({
           )}
           {placa.status_placa && placa.status_placa !== "aberta" && (
             <span
-              className={`${(STATUS_PLACA[placa.status_placa] || {}).bg || 'bg-gray-500'} text-white px-2.5 py-0.5 rounded text-xs font-medium`}
+              className={`${(STATUS_PLACA[placa.status_placa] || {}).bg || "bg-gray-500"} text-white px-2.5 py-0.5 rounded text-xs font-medium`}
             >
               {(STATUS_PLACA[placa.status_placa] || {}).label ||
                 placa.status_display}
@@ -772,7 +777,13 @@ export default function MontarPCR({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => placeSample(pendingComResultado.amostra, pendingComResultado.idx, true)}
+              onClick={() =>
+                placeSample(
+                  pendingComResultado.amostra,
+                  pendingComResultado.idx,
+                  true,
+                )
+              }
             >
               Confirmar repetição
             </Button>
@@ -781,7 +792,13 @@ export default function MontarPCR({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => placeSample(pendingDuplicate.amostra, pendingDuplicate.idx, pendingDuplicate.temResultado)}
+              onClick={() =>
+                placeSample(
+                  pendingDuplicate.amostra,
+                  pendingDuplicate.idx,
+                  pendingDuplicate.temResultado,
+                )
+              }
             >
               Adicionar mesmo assim
             </Button>
@@ -825,11 +842,12 @@ export default function MontarPCR({
               </form>
               <div className="flex gap-1.5">
                 {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map((t) => {
-                  const activeClass = t === TIPO.AMOSTRA
-                    ? 'bg-blue-500 border-blue-500'
-                    : t === TIPO.CN
-                      ? 'bg-amber-500 border-amber-500'
-                      : 'bg-pink-500 border-pink-500'
+                  const activeClass =
+                    t === TIPO.AMOSTRA
+                      ? "bg-blue-500 border-blue-500"
+                      : t === TIPO.CN
+                        ? "bg-amber-500 border-amber-500"
+                        : "bg-pink-500 border-pink-500";
                   return (
                     <button
                       key={t}
@@ -837,12 +855,12 @@ export default function MontarPCR({
                       className={`py-2 px-3 text-sm rounded-md font-medium transition-colors border-2 ${
                         modo === t
                           ? `${activeClass} text-white`
-                          : 'text-gray-700 bg-gray-300 hover:bg-gray-400 border-transparent'
+                          : "text-gray-700 bg-gray-300 hover:bg-gray-400 border-transparent"
                       }`}
                     >
                       {t === TIPO.AMOSTRA ? "Amostra" : t.toUpperCase()}
                     </button>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -852,11 +870,15 @@ export default function MontarPCR({
           {isEditable && (
             <div className="flex gap-4 mb-3 text-xs text-gray-500">
               <span className="flex items-center gap-1">
-                <span className={`inline-block w-3 h-3 rounded-sm border ${TIPO_COLORS[TIPO.AMOSTRA].bg} ${TIPO_COLORS[TIPO.AMOSTRA].border}`} />
+                <span
+                  className={`inline-block w-3 h-3 rounded-sm border ${TIPO_COLORS[TIPO.AMOSTRA].bg} ${TIPO_COLORS[TIPO.AMOSTRA].border}`}
+                />
                 Amostra extraída
               </span>
               <span className="flex items-center gap-1">
-                <span className={`inline-block w-3 h-3 rounded-sm border ${REPETIDO_COLORS.bg} ${REPETIDO_COLORS.border}`} />
+                <span
+                  className={`inline-block w-3 h-3 rounded-sm border ${REPETIDO_COLORS.bg} ${REPETIDO_COLORS.border}`}
+                />
                 Repetição (com resultado)
               </span>
             </div>
@@ -1008,21 +1030,30 @@ export default function MontarPCR({
                 {carregando ? "Salvando..." : "Salvar como nova placa"}
               </Button>
             )}
-            {placa && !placa.local && placa.status_placa === "aberta" && salva && (
-              <Button
-                variant="secondary"
-                onClick={submeterTermociclador}
-                disabled={carregando}
-              >
-                Enviar ao Termociclador
-              </Button>
-            )}
-            {placa && !placa.local &&
-              (placa.status_placa === "submetida" || placa.status_placa === "resultados_importados") && (
-              <Button variant="secondary" onClick={rodarReplicata} disabled={carregando}>
-                Rodar Replicata
-              </Button>
-            )}
+            {placa &&
+              !placa.local &&
+              placa.status_placa === "aberta" &&
+              salva && (
+                <Button
+                  variant="secondary"
+                  onClick={submeterTermociclador}
+                  disabled={carregando}
+                >
+                  Enviar ao Termociclador
+                </Button>
+              )}
+            {placa &&
+              !placa.local &&
+              (placa.status_placa === "submetida" ||
+                placa.status_placa === "resultados_importados") && (
+                <Button
+                  variant="secondary"
+                  onClick={rodarReplicata}
+                  disabled={carregando}
+                >
+                  Rodar Replicata
+                </Button>
+              )}
             {salva && placa && !placa.local && isEspecialista() && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
@@ -1037,7 +1068,11 @@ export default function MontarPCR({
               {placa ? "Fechar" : "Voltar"}
             </Button>
             {isEditable && placa && (
-              <Button variant="danger" onClick={excluirPlaca} disabled={carregando}>
+              <Button
+                variant="danger"
+                onClick={excluirPlaca}
+                disabled={carregando}
+              >
                 Excluir Placa
               </Button>
             )}

@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import MontarPlaca from "./MontarPlaca";
 import ConfirmarExtracao from "./ConfirmarExtracao";
 import ConsultarPlacas from "./ConsultarPlacas";
+import CrachaModal from "../components/CrachaModal";
+import OperatorBadge from "../components/OperatorBadge";
+import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
   { id: "montar", label: "Montar Placa" },
@@ -10,6 +13,7 @@ const TABS = [
 ];
 
 export default function PlateEditor({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [activeTab, setActiveTab] = useState("montar");
   const [editarPlacaId, setEditarPlacaId] = useState(null);
 
@@ -20,6 +24,15 @@ export default function PlateEditor({ csrfToken }) {
 
   return (
     <div>
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Extração" />
+      )}
+
+      <OperatorBadge
+        operador={operador}
+        onTrocarOperador={() => setOperador(null)}
+      />
+
       <h2 className="mb-4 text-lg text-blue-900 font-semibold">
         Placas de Extração
       </h2>
@@ -50,9 +63,10 @@ export default function PlateEditor({ csrfToken }) {
           csrfToken={csrfToken}
           editarPlacaId={editarPlacaId}
           onEditarDone={() => setEditarPlacaId(null)}
+          operador={operador}
         />
       )}
-      {activeTab === "confirmar" && <ConfirmarExtracao csrfToken={csrfToken} />}
+      {activeTab === "confirmar" && <ConfirmarExtracao csrfToken={csrfToken} operador={operador} />}
       {activeTab === "consultar" && (
         <ConsultarPlacas csrfToken={csrfToken} onEditar={handleEditar} />
       )}

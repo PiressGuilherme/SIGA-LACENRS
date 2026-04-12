@@ -4,6 +4,9 @@ import "../styles.css";
 import ErrorBoundary from "../components/ErrorBoundary";
 import ConsultaAmostras from "../pages/ConsultaAmostras";
 import ConsultarPlacas from "../pages/ConsultarPlacas";
+import CrachaModal from "../components/CrachaModal";
+import OperatorBadge from "../components/OperatorBadge";
+import { getOperadorInicial } from "../utils/auth";
 
 const ABAS = [
   { key: "amostras", label: "Amostras" },
@@ -11,10 +14,20 @@ const ABAS = [
 ];
 
 function ConsultaApp({ csrfToken }) {
+  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [aba, setAba] = useState("amostras");
 
   return (
     <div style={{ fontFamily: "inherit" }}>
+      {!operador && (
+        <CrachaModal onValidado={setOperador} modulo="Consulta" />
+      )}
+
+      <OperatorBadge
+        operador={operador}
+        onTrocarOperador={() => setOperador(null)}
+      />
+
       {/* Abas */}
       <div
         style={{

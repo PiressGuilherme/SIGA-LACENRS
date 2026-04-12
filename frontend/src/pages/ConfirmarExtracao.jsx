@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import CrachaModal from "../components/CrachaModal";
 import Button from "../components/Button";
-import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 import FeedbackBlock from "../components/FeedbackBlock";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
@@ -89,9 +87,7 @@ function LinhaPlaca({ p, onConfirmar }) {
                 <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-y-1 gap-x-4 text-xs text-gray-700">
                   {amostras.map((w) => (
                     <div key={w.id} className="flex gap-1">
-                      <span className="text-gray-400 min-w-7">
-                        {w.posicao}
-                      </span>
+                      <span className="text-gray-400 min-w-7">{w.posicao}</span>
                       <span className="font-semibold text-blue-900 min-w-16">
                         {w.amostra_codigo}
                       </span>
@@ -110,12 +106,10 @@ function LinhaPlaca({ p, onConfirmar }) {
   );
 }
 
-export default function ConfirmarExtracao({ csrfToken }) {
+export default function ConfirmarExtracao({ csrfToken, operador }) {
   const [placas, setPlacas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-
-  const [operador, setOperador] = useState(() => getOperadorInicial());
   const [codigoExtracao, setCodigoExtracao] = useState("");
   const [feedbackExtracao, setFeedbackExtracao] = useState(null);
   const [amostrasExtraidas, setAmostrasExtraidas] = useState([]);
@@ -189,33 +183,11 @@ export default function ConfirmarExtracao({ csrfToken }) {
 
   return (
     <div>
-      {!operador && (
-        <CrachaModal
-          onValidado={(op) => {
-            setOperador(op);
-            setTimeout(() => extracaoRef.current?.focus(), 100);
-          }}
-          modulo="Confirmar Extração"
-        />
-      )}
-
       {operador && (
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-5 mb-7">
           <h3 className="text-base text-purple-700 mb-3 font-semibold">
             Confirmar Extração
           </h3>
-
-          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-lg px-4 py-2.5 mb-4">
-            <span className="text-sm text-emerald-800 font-semibold">
-              Operador: {operador.nome_completo}
-            </span>
-            <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">
-              {operador.perfil}
-            </span>
-            <Button variant="ghost" size="sm" onClick={() => setOperador(null)} className="ml-auto">
-              Trocar operador
-            </Button>
-          </div>
 
           <p className="text-gray-600 text-sm mb-3">
             Escaneie o código de barras da placa após a extração de DNA para
@@ -290,11 +262,21 @@ export default function ConfirmarExtracao({ csrfToken }) {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-100 border-b-2 border-gray-200">
-                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Código</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Amostras</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Responsável</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Data</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Ação</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    Código
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    Amostras
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    Responsável
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    Data
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    Ação
+                  </th>
                 </tr>
               </thead>
               <tbody>

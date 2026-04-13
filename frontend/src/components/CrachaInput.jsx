@@ -11,6 +11,7 @@
  *   - Foco automático no input ao montar
  */
 import { useState, useRef, useEffect } from 'react'
+import Icon from './Icon'
 
 export default function CrachaInput({ onValidado, label = 'Identificação do Operador' }) {
   const [codigo, setCodigo]       = useState('')
@@ -102,7 +103,7 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
       {operador && (
         <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
-            ✓ {operador.nome_completo}
+            <Icon name="check" /> {operador.nome_completo}
           </span>
           <span style={{
             fontSize: '0.72rem', background: '#d1fae5', color: '#065f46',
@@ -119,7 +120,7 @@ export default function CrachaInput({ onValidado, label = 'Identificação do Op
       {/* Erro de validação */}
       {erro && (
         <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#b91c1c' }}>
-          ⚠ {erro}
+          <Icon name="warning" /> {erro}
         </div>
       )}
     </div>

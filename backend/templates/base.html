@@ -1,4 +1,5 @@
 {% load django_vite %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -60,20 +61,21 @@
     .header-brand {
       display: flex;
       align-items: center;
-      gap: 0.65rem;
+      gap: 0.45rem;
       text-decoration: none;
       flex-shrink: 0;
     }
     .header-logo {
-      width: 34px;
+      width: 130px;
       height: 34px;
-      border-radius: 8px;
-      background: #7b1020;
+      border-radius: 6px;
+      background: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.1rem;
-      /* Substituir pelo <img> do logo quando disponível */
+      overflow: hidden;
+      flex-shrink: 0;
     }
     .header-brand-text {
       display: flex;
@@ -269,8 +271,7 @@
     <!-- Esquerda: Logo + Nome -->
     <a href="{% url 'home' %}" class="header-brand">
       <div class="header-logo">
-        {# Substituir por: <img src="..." alt="LACEN"> quando o logo estiver disponível #}
-        🔬
+        <img src="{% static 'images/logo_LACEN (2).png' %}" alt="LACEN" style="width: 100%; height: 100%; object-fit: cover; object-position: center;">
       </div>
       <div class="header-brand-text">
         <strong>SIGA-LACEN</strong>

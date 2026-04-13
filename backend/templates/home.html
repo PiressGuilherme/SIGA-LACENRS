@@ -20,7 +20,8 @@
 
 /* ── Hero ── */
 .hero-card {
-  background: linear-gradient(135deg, #6b0f1a 0%, #8b1a2a 100%);
+  background: #fff;
+  border: 3px solid #7b1020;
   border-radius: 16px;
   padding: 2.5rem 2rem;
   display: flex;
@@ -36,7 +37,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.07) 0%, transparent 60%);
+  background: none;
   pointer-events: none;
 }
 .hero-pipeline {
@@ -48,26 +49,26 @@
   margin-bottom: 0.5rem;
 }
 .hero-step {
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  border: 1px solid #7b1020;
   border-radius: 6px;
   padding: 0.25rem 0.65rem;
   font-size: 0.72rem;
   font-weight: 600;
-  color: rgba(255,255,255,0.85);
+  color: #7b1020;
   white-space: nowrap;
 }
-.hero-arrow { color: rgba(255,255,255,0.4); font-size: 0.8rem; }
+.hero-arrow { color: #7b1020; font-size: 0.8rem; }
 .hero-title {
   font-size: 1.7rem;
   font-weight: 800;
-  color: #fff;
+  color: #7b1020;
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
 .hero-sub {
   font-size: 0.88rem;
-  color: rgba(255,255,255,0.65);
+  color: #6b7280;
   max-width: 420px;
   line-height: 1.5;
 }
@@ -76,20 +77,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: #fff;
-  color: #6b0f1a;
+  background: #7b1020;
+  color: #fff;
   font-size: 1rem;
   font-weight: 700;
   padding: 0.8rem 2rem;
   border-radius: 10px;
   text-decoration: none;
   transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 16px rgba(123,16,32,0.18);
 }
 .hero-btn:hover {
-  background: #fdecea;
+  background: #5a0817;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.22);
+  box-shadow: 0 6px 20px rgba(123,16,32,0.22);
 }
 
 /* ── Seção / mini-cards ── */

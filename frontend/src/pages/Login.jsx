@@ -15,17 +15,33 @@ function TabEmail({ onSuccess, csrf }) {
     try {
       const res = await fetch("/api/auth/login/", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf || ""
+        },
         body: JSON.stringify({ email: form.email, senha: form.senha }),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        setErro(data.erro || "Erro ao autenticar.");
+        // 403 Forbidden geralmente indica erro de CSRF token
+        if (res.status === 403) {
+          console.error(
+            "[SIGA Login] 403 Forbidden — Possível erro de CSRF token. " +
+            "Recarregue a página e tente novamente."
+          );
+          setErro(
+            "Erro de segurança (CSRF). Recarregue a página e tente novamente."
+          );
+        } else {
+          setErro(data.erro || `Erro ${res.status} ao autenticar.`);
+        }
         return;
       }
       onSuccess(data);
-    } catch {
-      setErro("Não foi possível conectar ao servidor.");
+    } catch (err) {
+      console.error("[SIGA Login] Erro de rede:", err);
+      setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
       setCarregando(false);
     }
@@ -129,16 +145,28 @@ function TabCracha({ onSuccess, csrf }) {
     try {
       const res = await fetch("/api/auth/login-cracha/", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf || ""
+        },
         body: JSON.stringify({ numero_cracha: numero }),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        setErro(data.erro || "Crachá não reconhecido.");
+        if (res.status === 403) {
+          console.error("[SIGA Cracha] 403 Forbidden — Possível erro de CSRF.");
+          setErro(
+            "Erro de segurança (CSRF). Recarregue a página e tente novamente."
+          );
+        } else {
+          setErro(data.erro || `Erro ${res.status} ao autenticar.`);
+        }
       } else {
         onSuccess(data);
       }
-    } catch {
+    } catch (err) {
+      console.error("[SIGA Cracha] Erro de rede:", err);
       setErro("Não foi possível conectar ao servidor.");
     }
   }

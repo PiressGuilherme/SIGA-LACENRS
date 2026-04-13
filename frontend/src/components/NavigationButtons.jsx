@@ -5,6 +5,8 @@
  *   currentStep — Etapa atual: 'aliquotagem' | 'extracao' | 'pcr' | 'resultados'
  */
 
+import Icon from './Icon';
+
 const STEPS = [
   { key: "importar",    label: "Importar CSV",  path: "/amostras/importar/",    short: "Importar"    },
   { key: "aliquotagem", label: "Aliquotagem",   path: "/amostras/aliquotagem/", short: "Aliquotagem" },
@@ -126,7 +128,7 @@ export default function NavigationButtons({ currentStep }) {
                 color: c.text,
               }}
             >
-              {state === "done" ? "✓" : i + 1}
+              {state === "done" ? <Icon name="check" /> : i + 1}
             </span>
 
             {/* Label */}

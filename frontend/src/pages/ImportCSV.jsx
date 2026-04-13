@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
 import NavigationButtons from "../components/NavigationButtons";
+import Icon from "../components/Icon";
 import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 
@@ -225,7 +226,7 @@ export default function ImportCSV({ csrfToken }) {
               className="hidden"
               onChange={(e) => handleArquivo(e.target.files[0])}
             />
-            <div className="text-5xl mb-2">📁</div>
+            <div className="text-5xl mb-2"><Icon name="folder" /></div>
             <p className="text-blue-800 font-medium">
               Clique ou arraste o arquivo CSV ou ZIP do GAL aqui
             </p>
@@ -238,7 +239,7 @@ export default function ImportCSV({ csrfToken }) {
           {arquivo && (
             <div className="mt-4 flex items-center gap-4">
               <span className="text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded text-sm">
-                ✓ {arquivo.name}
+                <Icon name="check" className="mr-1" /> {arquivo.name}
               </span>
               <button
                 onClick={handlePreview}
@@ -285,7 +286,7 @@ export default function ImportCSV({ csrfToken }) {
           {/* Aviso de diagnóstico quando 0 amostras detectadas */}
           {preview.aviso && (
             <div className="bg-amber-100 text-amber-800 px-4 py-3 rounded-md mb-4 text-sm">
-              ⚠️ {preview.aviso}
+              <Icon name="warning" className="mr-1" /> {preview.aviso}
             </div>
           )}
 
@@ -427,7 +428,7 @@ export default function ImportCSV({ csrfToken }) {
         <div>
           <div className="bg-emerald-100 border border-emerald-300 rounded-lg p-6 mb-6">
             <h3 className="text-emerald-800 font-semibold mb-4">
-              ✓ Importação concluída
+              <Icon name="check" className="mr-1" /> Importação concluída
             </h3>
             <div className="flex gap-8 flex-wrap">
               <Stat label="Novas criadas" valor={resultado.importadas} />

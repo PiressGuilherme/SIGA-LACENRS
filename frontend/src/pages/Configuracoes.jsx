@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import CrachaModal from '../components/CrachaModal'
 import Button from '../components/Button'
+import Icon from '../components/Icon'
 import { getOperadorInicial } from '../utils/auth'
 import apiFetch from '../utils/apiFetch'
 import { TabConfiguracao, TabTestarConexao, TabBuscarExames } from './GalWs'
@@ -145,7 +146,7 @@ function TabReacoes() {
                   </td>
                   <td className="px-2 py-0.5 text-center">
                     {editando.reagentes.length > 1 && (
-                      <Button type="button" variant="danger" size="sm" onClick={() => removerReagente(idx)}>✕</Button>
+                      <Button type="button" variant="danger" size="sm" onClick={() => removerReagente(idx)}><Icon name="close" /></Button>
                     )}
                   </td>
                 </tr>
@@ -582,7 +583,7 @@ function TabKits() {
                           </select>
                         </td>
                         <td className="px-2 py-1 text-gray-700">
-                          <Button type="button" variant="danger" size="sm" onClick={() => removeRegra(ri)}>✕</Button>
+                          <Button type="button" variant="danger" size="sm" onClick={() => removeRegra(ri)}><Icon name="close" /></Button>
                         </td>
                       </tr>
                     ))}

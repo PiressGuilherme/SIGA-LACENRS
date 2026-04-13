@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import CrachaModal from "../components/CrachaModal";
 import NavigationButtons from "../components/NavigationButtons";
 import Button from "../components/Button";
+import Icon from "../components/Icon";
 import { getOperadorInicial } from "../utils/auth";
 import apiFetch from "../utils/apiFetch";
 
@@ -474,7 +475,7 @@ export default function RevisarResultados({}) {
       {controleInvalidoModal && (
         <Modal onClose={() => setControleInvalidoModal(null)}>
           <h3 className="mb-4 text-base text-red-600">
-            ⚠ Controles de Qualidade Inválidos
+            <Icon name="warning" /> Controles de Qualidade Inválidos
           </h3>
           <div className="mb-5 text-sm text-gray-700">
             <p className="mb-3">
@@ -497,7 +498,7 @@ export default function RevisarResultados({}) {
                           <strong>{alvo}</strong>: Cq = {det.cq_str} (limiar{" "}
                           {det.operador} {det.limiar_str})
                           {det.status === "falha" && (
-                            <span className="text-red-600"> ❌ FALHOU</span>
+                            <span className="text-red-600"> <Icon name="close" /> FALHOU</span>
                           )}
                         </li>
                       ),
@@ -519,7 +520,7 @@ export default function RevisarResultados({}) {
                           <strong>{alvo}</strong>: Cq = {det.cq_str} (limiar{" "}
                           {det.operador} {det.limiar_str})
                           {det.status === "falha" && (
-                            <span className="text-red-600"> ❌ FALHOU</span>
+                            <span className="text-red-600"> <Icon name="close" /> FALHOU</span>
                           )}
                         </li>
                       ),
@@ -722,7 +723,7 @@ function ResultadoRow({
             title={resultado.motivo_controle_invalido}
             className="ml-1 text-amber-400"
           >
-            ⚠
+            <Icon name="warning" />
           </span>
         )}
       </td>
@@ -756,7 +757,7 @@ function ResultadoRow({
                   title="Editar interpretação"
                   className="bg-transparent border-none cursor-pointer px-0.5 py-0.5 text-gray-400 hover:text-gray-600 text-xs leading-none transition-colors"
                 >
-                  ✎
+                  <Icon name="edit" />
                 </button>
               )}
             </div>

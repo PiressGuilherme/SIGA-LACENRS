@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Button from "../components/Button";
+import Icon from "../components/Icon";
 import apiFetch from "../utils/apiFetch";
 import WellGrid from "../components/plates/WellGrid";
 import {
@@ -824,7 +825,7 @@ export default function MontarPlaca({
                               : `bg-gray-50 text-gray-400 ${gc.border}`
                           }`}
                       >
-                        ✕
+                        <Icon name="close" />
                       </button>
                     )}
                   </div>

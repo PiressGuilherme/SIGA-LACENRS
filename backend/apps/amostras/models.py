@@ -11,7 +11,7 @@ class StatusAmostra(models.TextChoices):
     ALIQUOTADA           = 'aliquotada',           'Aliquotada'
     EXTRACAO             = 'extracao',             'Extração'
     EXTRAIDA             = 'extraida',             'Extraída'
-    PCR                  = 'pcr',                  'PCR'
+    PCR                  = 'pcr',                  'PCR em andamento'
     RESULTADO            = 'resultado',            'Resultado'
     RESULTADO_LIBERADO   = 'resultado_liberado',   'Resultado Liberado'
     # Exceções

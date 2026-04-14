@@ -58,6 +58,45 @@ CQ_AMOSTRA_HPV_MAX = 40.0   # Amostra HPV: Cq ≤ 40 → positivo
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def normalizar_nome_alvo(nome: str) -> str:
+    """Normaliza nome de alvo: remove separadores (-, _, espaço) e minúsculas.
+
+    Garante que variações como 'HPV-16', 'HPV_16', 'HPV 16', 'hpv16' e 'HPV16'
+    sejam tratadas como o mesmo alvo.
+    """
+    return nome.lower().replace('-', '').replace('_', '').replace(' ', '')
+
+
+def buscar_canal(canais: dict, nome: str, default=None):
+    """Busca valor em dicionário de canais com normalização de nome.
+
+    Tenta match exato primeiro; se falhar, compara por normalização.
+    """
+    if nome in canais:
+        return canais[nome]
+    nome_norm = normalizar_nome_alvo(nome)
+    for key in canais:
+        if normalizar_nome_alvo(key) == nome_norm:
+            return canais[key]
+    return default
+
+
+def resolver_canal(target: str) -> Optional[str]:
+    """Resolve nome de target do instrumento para canal canônico.
+
+    Tenta match exato em TARGET_CANAL_MAP; se falhar, usa normalização
+    para tolerar variações de maiúsculas, espaços e separadores.
+    """
+    canal = TARGET_CANAL_MAP.get(target)
+    if canal is not None:
+        return canal
+    norm = normalizar_nome_alvo(target)
+    for key, value in TARGET_CANAL_MAP.items():
+        if normalizar_nome_alvo(key) == norm:
+            return value
+    return None
+
+
 def _safe_cq(val: str) -> Optional[float]:
     """Converte string de Cq para float; retorna None se NaN ou inválido."""
     if not val or val.strip().upper() == 'NAN':
@@ -151,7 +190,7 @@ def parse_cfx_csv(content: bytes, filename: str = '') -> dict:
         sample  = row[col_idx['Sample']].strip()
         cq_raw  = row[col_idx['Cq']].strip()
 
-        canal = TARGET_CANAL_MAP.get(target)
+        canal = resolver_canal(target)
         if canal is None:
             continue  # canal não reconhecido — ignora
 
@@ -182,31 +221,31 @@ def parse_cfx_csv(content: bytes, filename: str = '') -> dict:
 
 # ── Validação de controles IBMP ───────────────────────────────────────────────
 
-def validar_cp(cp_canais: dict) -> tuple[bool, str]:
+def validar_cp(cp_canais: dict, cq_max: float = CQ_CONTROLE_MAX) -> tuple[bool, str]:
     """
-    CP: todos os 4 canais devem ter pelo menos uma replicata com Cq ≤ 25.
+    CP: todos os 4 canais devem ter pelo menos uma replicata com Cq ≤ cq_max.
     Retorna ``(is_valid, mensagem)``.
     """
     falhos = []
     for canal in _CANAIS:
         cq = _cq_min(cp_canais.get(canal, []))
-        if cq is None or cq > CQ_CONTROLE_MAX:
+        if cq is None or cq > cq_max:
             cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
             falhos.append(f'{canal} ({cq_str})')
     if falhos:
-        return False, f'CP inválido — {", ".join(falhos)} não atendem Cq ≤ {CQ_CONTROLE_MAX}'
+        return False, f'CP inválido — {", ".join(falhos)} não atendem Cq ≤ {cq_max}'
     return True, 'CP válido'
 
 
-def validar_cn(cn_canais: dict) -> tuple[bool, str]:
+def validar_cn(cn_canais: dict, cq_max: float = CQ_CONTROLE_MAX) -> tuple[bool, str]:
     """
-    CN: CI deve amplificar (Cq ≤ 25); nenhum HPV deve amplificar.
+    CN: CI deve amplificar (Cq ≤ cq_max); nenhum HPV deve amplificar.
     Retorna ``(is_valid, mensagem)``.
     """
     ci_cq = _cq_min(cn_canais.get('CI', []))
-    if ci_cq is None or ci_cq > CQ_CONTROLE_MAX:
+    if ci_cq is None or ci_cq > cq_max:
         cq_str = f'{ci_cq:.2f}' if ci_cq is not None else 'sem amplificação'
-        return False, f'CN inválido — CI não atende Cq ≤ {CQ_CONTROLE_MAX} ({cq_str})'
+        return False, f'CN inválido — CI não atende Cq ≤ {cq_max} ({cq_str})'
     for canal in ('HPV16', 'HPV18', 'HPV_AR'):
         cq = _cq_min(cn_canais.get(canal, []))
         if cq is not None:
@@ -216,17 +255,22 @@ def validar_cn(cn_canais: dict) -> tuple[bool, str]:
 
 # ── Classificação de amostras IBMP ────────────────────────────────────────────
 
-def classificar_canal(cq_values: list, canal: str) -> str:
+def classificar_canal(
+    cq_values: list,
+    canal: str,
+    cq_ci_max: float = CQ_AMOSTRA_CI_MAX,
+    cq_hpv_max: float = CQ_AMOSTRA_HPV_MAX,
+) -> str:
     """
-    Classifica um canal de uma amostra pelos critérios IBMP.
+    Classifica um canal de uma amostra.
 
-    - CI:  positivo se qualquer replicata tiver Cq ≤ 33
-    - HPV: positivo se qualquer replicata tiver Cq ≤ 40
+    - CI:  positivo se qualquer replicata tiver Cq ≤ cq_ci_max
+    - HPV: positivo se qualquer replicata tiver Cq ≤ cq_hpv_max
 
     Retorna ``'positivo'`` | ``'negativo'``.
     """
     cq = _cq_min(cq_values)
-    threshold = CQ_AMOSTRA_CI_MAX if canal == 'CI' else CQ_AMOSTRA_HPV_MAX
+    threshold = cq_ci_max if canal == 'CI' else cq_hpv_max
     return 'positivo' if (cq is not None and cq <= threshold) else 'negativo'
 
 

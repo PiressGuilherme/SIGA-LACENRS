@@ -42,6 +42,7 @@ LOCAL_APPS = [
     'apps.placas',
     'apps.resultados',
     'apps.gal_ws',
+    'apps.configuracoes',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

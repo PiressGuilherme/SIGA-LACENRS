@@ -21,6 +21,16 @@
   {% vite_asset 'entries/login.jsx' %}
 </head>
 <body>
-  <div id="login-app" data-csrf="{{ csrf_token }}" data-next="{{ request.GET.next|default:'/' }}"></div>
+  <!--
+    IMPORTANTE: data-csrf="{{ csrf_token }}" é obrigatório.
+    O React Login.jsx extrai este token e o envia no header X-CSRFToken.
+    Sem isso, POST /api/auth/login/ retorna 403 Forbidden.
+    Alternativa: extrair do cookie csrftoken (veja entries/login.jsx).
+  -->
+  <div
+    id="login-app"
+    data-csrf="{{ csrf_token }}"
+    data-next="{{ request.GET.next|default:'/' }}"
+  ></div>
 </body>
 </html>

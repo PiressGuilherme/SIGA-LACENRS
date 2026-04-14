@@ -1,4 +1,4 @@
-import { ROWS, COLS, TIPO } from './PlateConstants'
+import { ROWS, COLS, TIPO, THEMES } from './PlateConstants'
 
 /**
  * Grid 8x12 reutilizável para MontarPlaca e MontarPCR.
@@ -11,18 +11,30 @@ import { ROWS, COLS, TIPO } from './PlateConstants'
  *   dragOver      — índice com hover de drag (ou null)
  *   dragSource    — ref para índice de origem do drag
  *   isDraggingSelection — ref booleana
- *   cursorColor   — cor da borda/sombra do cursor (default '#1a3a5c')
- *   wellColors    — fn(well) → { bg, border, text }
- *   onDrop        — fn(srcIdx, dstIdx) chamado quando drop ocorre
- *   onMultiDrop   — fn(moves[{from,to}]) chamado quando drop de seleção
+ *   theme         — objeto de tema (de THEMES em PlateConstants); define cores dos poços e cursor
+ *                   Se omitido, usa THEMES.extracao
+ *   wellColors    — fn(well) → { bg, border, text } | null  (escape hatch opcional)
+ *                   Se fornecido e retornar não-null, tem prioridade sobre theme.
+ *                   Útil para MontarPlaca (5 cores de grupo) e overrides pontuais.
+ *   onDrop        — fn(srcIdx, dstIdx)
+ *   onMultiDrop   — fn(moves[{from,to}])
  *   onDragOver    — fn(idx)
  *   onDragEnd     — fn()
  *   onClick       — fn(idx, event)
  *   onContextMenu — fn(idx)
- *   onFeedback    — fn({tipo, msg}) para erros de drag
+ *   onFeedback    — fn({tipo, msg})
  *   setSalva      — fn(bool)
  *   setSelectedSet — fn(Set)
  */
+
+function resolveColors(w, theme, wellColors) {
+  if (wellColors) {
+    const custom = wellColors(w)
+    if (custom) return custom
+  }
+  return theme[w.tipo_conteudo] ?? theme.vazio
+}
+
 export default function WellGrid({
   grid,
   selected,
@@ -31,8 +43,7 @@ export default function WellGrid({
   dragOver,
   dragSource,
   isDraggingSelection,
-  cursorColor = '#1a3a5c',
-  cursorShadow,
+  theme = THEMES.extracao,
   wellColors,
   onDrop,
   onMultiDrop,
@@ -44,7 +55,8 @@ export default function WellGrid({
   setSalva,
   setSelectedSet,
 }) {
-  cursorShadow = cursorShadow ?? cursorColor
+  const cursorBorder = theme.cursor?.border ?? 'border-[#1a3a5c]'
+  const cursorRing   = theme.cursor?.ring   ?? 'ring-[#1a3a5c]'
 
   function handleDrop(e, idx) {
     e.preventDefault()
@@ -81,13 +93,13 @@ export default function WellGrid({
   }
 
   return (
-    <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-      <table style={{ borderCollapse: 'collapse' }}>
+    <div className="overflow-x-auto mb-6">
+      <table className="border-collapse">
         <thead>
           <tr>
-            <th style={{ width: 28 }} />
+            <th className="w-7" />
             {COLS.map(c => (
-              <th key={c} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#6b7280', padding: '2px 0 4px' }}>
+              <th key={c} className="text-center text-[0.75rem] text-gray-500 font-medium px-0 pb-1">
                 {c}
               </th>
             ))}
@@ -96,20 +108,29 @@ export default function WellGrid({
         <tbody>
           {ROWS.map((row, ri) => (
             <tr key={row}>
-              <td style={{ fontWeight: 600, fontSize: '0.8rem', color: '#6b7280', textAlign: 'center', paddingRight: 4 }}>
+              <td className="font-semibold text-[0.8rem] text-gray-500 text-center pr-1">
                 {row}
               </td>
               {COLS.map((col, ci) => {
                 const idx = ri * 12 + ci
                 const w = grid[idx]
-                const colors = wellColors(w)
+                const colors = resolveColors(w, theme, wellColors)
                 const isDOver = dragOver === idx
                 const isDSrc = dragSource.current === idx
                 const isInSel = selectedSet.has(idx)
                 const isCursor = idx === selected && isEditable && selectedSet.size === 0
 
+                // borda: drag-over > seleção > cursor > cor do tipo
+                const borderClass = isDOver
+                  ? 'border-amber-400 ring-2 ring-amber-400'
+                  : isInSel
+                    ? 'border-violet-600 ring-2 ring-violet-400'
+                    : isCursor
+                      ? `${cursorBorder} ring-2 ${cursorRing}`
+                      : colors.border
+
                 return (
-                  <td key={col} style={{ padding: 1.5 }}>
+                  <td key={col} className="p-[1.5px]">
                     <div
                       draggable={isEditable && w.tipo_conteudo !== TIPO.VAZIO}
                       onDragStart={() => {
@@ -123,33 +144,30 @@ export default function WellGrid({
                       onClick={(e) => { if (isEditable) onClick(idx, e) }}
                       onContextMenu={(e) => { e.preventDefault(); if (isEditable) onContextMenu(idx) }}
                       title={w.amostra_codigo || w.tipo_conteudo}
-                      style={{
-                        width: 62, height: 40,
-                        background: colors.bg,
-                        border: `2px solid ${isDOver ? '#f59e0b' : isInSel ? '#7c3aed' : isCursor ? cursorColor : colors.border}`,
-                        borderRadius: 4,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: isEditable && w.tipo_conteudo !== TIPO.VAZIO ? 'grab' : isEditable ? 'pointer' : 'default',
-                        fontSize: '0.7rem', lineHeight: 1.2,
-                        position: 'relative',
-                        boxShadow: isDOver ? '0 0 0 2px #f59e0b' : isInSel ? '0 0 0 2px #7c3aed' : isCursor ? `0 0 0 2px ${cursorShadow}` : 'none',
-                        opacity: isDSrc ? 0.4 : 1,
-                      }}
+                      className={[
+                        'w-[62px] h-10 border-2 rounded flex items-center justify-center relative',
+                        'text-[0.7rem] leading-tight select-none transition-opacity',
+                        colors.bg,
+                        borderClass,
+                        isDSrc ? 'opacity-40' : 'opacity-100',
+                        isEditable && w.tipo_conteudo !== TIPO.VAZIO ? 'cursor-grab' : isEditable ? 'cursor-pointer' : 'cursor-default',
+                      ].join(' ')}
                     >
                       {w.tipo_conteudo === TIPO.AMOSTRA && w.amostra_codigo && (
-                        <span style={{ fontWeight: 700, color: colors.text, fontSize: '0.7rem' }}>
+                        <span className={`font-bold text-[0.7rem] ${colors.text}`}>
                           {w.amostra_codigo}
                         </span>
                       )}
-                      {w.tipo_conteudo === TIPO.CN && <span style={{ fontWeight: 700, color: colors.text }}>CN</span>}
-                      {w.tipo_conteudo === TIPO.CP && <span style={{ fontWeight: 700, color: colors.text }}>CP</span>}
+                      {w.tipo_conteudo === TIPO.CN && (
+                        <span className={`font-bold ${colors.text}`}>CN</span>
+                      )}
+                      {w.tipo_conteudo === TIPO.CP && (
+                        <span className={`font-bold ${colors.text}`}>CP</span>
+                      )}
                       {w.tipo_conteudo !== TIPO.VAZIO && isEditable && (
                         <span
                           onClick={(e) => { e.stopPropagation(); onContextMenu(idx) }}
-                          style={{
-                            position: 'absolute', top: 1, right: 3,
-                            color: '#9ca3af', cursor: 'pointer', fontSize: '0.65rem', lineHeight: 1,
-                          }}
+                          className="absolute top-[2px] right-[3px] text-gray-400 hover:text-gray-600 cursor-pointer text-[0.65rem] leading-none"
                         >
                           x
                         </span>

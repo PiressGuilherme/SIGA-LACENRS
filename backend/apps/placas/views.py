@@ -15,6 +15,7 @@ from apps.amostras.serializers import AmostraSerializer
 from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsLaboratorio
 from apps.utils.auditoria import noop_ctx as _noop_ctx, resolver_operador as _resolver_operador
 from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
+from .ods_amplio import gerar_sample_info_amplio
 from .pdf import gerar_pdf_placa
 from .serializers import PlacaSerializer, PocoInputSerializer
 
@@ -270,9 +271,22 @@ class PlacaViewSet(viewsets.ModelViewSet):
         if actor_ctx is None:
             actor_ctx = _noop_ctx()
 
+        # Protocolo de reacao (opcional, para placas PCR)
+        protocolo_id = request.data.get('protocolo_id')
+
         with transaction.atomic(), actor_ctx:
             placa.pocos.all().delete()
             Poco.objects.bulk_create(pocos_to_create)
+
+            # Salvar associacao protocolo → grupo (por enquanto, grupo 1)
+            if protocolo_id and placa.tipo_placa == TipoPlaca.PCR:
+                from apps.configuracoes.models import PlacaGrupoReacao, ReacaoProtocolo
+                if ReacaoProtocolo.objects.filter(pk=protocolo_id, ativo=True).exists():
+                    PlacaGrupoReacao.objects.update_or_create(
+                        placa=placa, grupo=1,
+                        defaults={'protocolo_id': protocolo_id},
+                    )
+
             if amostras_a_atualizar:
                 novo_status = (
                     StatusAmostra.PCR if placa.tipo_placa == TipoPlaca.PCR
@@ -412,7 +426,7 @@ class PlacaViewSet(viewsets.ModelViewSet):
             actor_ctx = _noop_ctx()
 
         with transaction.atomic(), actor_ctx:
-            # Cria nova placa PCR
+            # Cria nova placa PCR  # noqa: E265
             nova_placa = Placa.objects.create(
                 tipo_placa=TipoPlaca.PCR,
                 placa_origem=placa_original.placa_origem,
@@ -433,3 +447,42 @@ class PlacaViewSet(viewsets.ModelViewSet):
             Poco.objects.bulk_create(pocos_para_criar)
 
         return Response(PlacaSerializer(nova_placa).data, status=status.HTTP_201_CREATED)
+
+    # ------------------------------------------------------------------
+    # Download da planilha Sample Info para o Amplio® 96
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=['get'], url_path='sample-info')
+    def sample_info(self, request, pk=None):
+        """
+        GET /api/placas/{id}/sample-info/
+
+        Retorna o arquivo .ods com as informações de amostra da placa
+        no formato esperado pelo software do Amplio® 96.
+
+        A placa pode estar em qualquer status (rascunho ou submetida).
+        Restrito a Especialista ou Supervisor.
+        """
+        placa = self.get_object()
+
+        perm = IsEspecialista()
+        if not perm.has_permission(request, self):
+            return Response(
+                {'erro': 'Exportar planilha do Amplio® é restrito ao perfil Especialista ou Supervisor.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if placa.tipo_placa != TipoPlaca.PCR:
+            return Response(
+                {'erro': 'Planilha Sample Info é gerada apenas para placas PCR.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        xlsx_bytes = gerar_sample_info_amplio(placa)
+        nome_arquivo = f'{placa.codigo}_sample_info.xlsx'
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+        return response

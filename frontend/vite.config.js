@@ -25,6 +25,7 @@ export default defineConfig({
         consulta: resolve(__dirname, 'src/entries/consulta.jsx'),
         resultados: resolve(__dirname, 'src/entries/resultados.jsx'),
         gal_ws: resolve(__dirname, 'src/entries/gal_ws.jsx'),
+        configuracoes: resolve(__dirname, 'src/entries/configuracoes.jsx'),
       },
     },
   },
@@ -35,5 +36,8 @@ export default defineConfig({
     // Permite que o browser carregue scripts do Vite mesmo com a página
     // vindo de uma origem diferente (Django em :8000)
     cors: true,
+    // Necessário para que o servidor de dev do Vite sirva assets em /static/
+    // alinhando com o base: '/static/' e com as URLs geradas pelo django-vite
+    base: '/static/',
   },
 })

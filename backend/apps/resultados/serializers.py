@@ -46,10 +46,12 @@ class ResultadoAmostraSerializer(serializers.ModelSerializer):
             'ci_resultado', 'hpv16_resultado', 'hpv18_resultado', 'hpvar_resultado',
             'resultado_final', 'resultado_final_display',
             'imutavel', 'confirmado_em', 'confirmado_por', 'confirmado_por_nome',
+            'cp_valido', 'cn_valido', 'motivo_controle_invalido',
         )
         read_only_fields = (
             'id', 'amostra_codigo', 'resultado_final_display',
             'imutavel', 'confirmado_em', 'confirmado_por', 'confirmado_por_nome',
+            'cp_valido', 'cn_valido', 'motivo_controle_invalido',
         )
 
     def get_confirmado_por_nome(self, obj):

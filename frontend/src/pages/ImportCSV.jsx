@@ -256,6 +256,44 @@ export default function ImportCSV({ csrfToken }) {
               Voltar ao início
             </a>
           </div>
+
+          {/* Instruções GAL */}
+          <details className="mt-8 border border-gray-200 rounded-lg overflow-hidden">
+            <summary className="px-4 py-3 bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 select-none hover:bg-gray-100 transition-colors">
+              <Icon name="warning" className="mr-1.5" />
+              Como exportar o CSV do GAL
+            </summary>
+            <ol className="px-6 py-4 space-y-2 text-sm text-gray-700 list-decimal list-outside">
+              <li>Entre no GAL com suas credenciais.</li>
+              <li>
+                Acesse <span className="font-medium">Consultas → Consultar Exames</span>.
+              </li>
+              <li>
+                No campo <span className="font-medium">Exame</span>, digite{" "}
+                <span className="font-mono bg-gray-100 px-1 rounded">HPV</span> e selecione o primeiro resultado.
+              </li>
+              <li>
+                Selecione o período de início e fim (máx. 1 mês).
+              </li>
+              <li>
+                Desmarque a opção <span className="font-medium">Exame Cancelado</span>.
+              </li>
+              <li>Clique em <span className="font-medium">Filtrar</span>.</li>
+              <li>
+                Passe o mouse sobre qualquer cabeçalho da tabela e clique na seta{" "}
+                <span className="font-mono bg-gray-100 px-1 rounded">▼</span> que aparecer.
+              </li>
+              <li>
+                Vá em <span className="font-medium">Colunas</span> e adicione:{" "}
+                <span className="font-medium">Cód. Exame</span>,{" "}
+                <span className="font-medium">Num. Interno</span>,{" "}
+                <span className="font-medium">Nome Social</span>.
+              </li>
+              <li>
+                Clique em <span className="font-medium">Exportar listagem</span> na parte inferior da tela para baixar o CSV.
+              </li>
+            </ol>
+          </details>
         </div>
       )}
 

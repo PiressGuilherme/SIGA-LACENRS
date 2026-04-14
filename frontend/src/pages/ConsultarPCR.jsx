@@ -14,9 +14,28 @@ const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts);
 const THEME = MINI_THEMES.pcr;
 
 // ── Linha de placa PCR com expandível ─────────────────────────────────────────
+async function downloadSampleInfo(placaId, placaCodigo) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`/api/placas/${placaId}/sample-info/`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new Error("Falha ao baixar planilha.");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${placaCodigo}_sample_info.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
   const [aberta, setAberta] = useState(false);
   const [submetendo, setSubmetendo] = useState(false);
+  const [baixando, setBaixando] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   const badge = STATUS_PLACA[p.status_placa] || {
@@ -37,9 +56,17 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
         csrfToken,
         method: "POST",
       });
+
+      // Baixar planilha Sample Info para o Amplio® 96
+      try {
+        await downloadSampleInfo(p.id, p.codigo);
+      } catch {
+        // Download falhou silenciosamente — não bloqueia o fluxo
+      }
+
       setFeedback({
         tipo: "sucesso",
-        msg: `Placa ${p.codigo} enviada ao termociclador.`,
+        msg: `Placa ${p.codigo} enviada ao termociclador. Planilha Sample Info baixada.`,
       });
       onAtualizar();
     } catch (err) {
@@ -107,6 +134,29 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
                 className={`bg-orange-500 hover:bg-orange-400 text-white px-2 py-1 rounded text-[0.78rem] font-medium ${submetendo ? "opacity-60" : ""}`}
               >
                 {submetendo ? "Enviando..." : "Enviar ao termociclador"}
+              </button>
+            )}
+            {p.status_placa === "submetida" && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setBaixando(true);
+                  try {
+                    await downloadSampleInfo(p.id, p.codigo);
+                  } catch {
+                    setFeedback({
+                      tipo: "erro",
+                      msg: "Erro ao baixar planilha Sample Info.",
+                    });
+                  } finally {
+                    setBaixando(false);
+                  }
+                }}
+                disabled={baixando}
+                title="Baixar planilha Sample Info para o Amplio® 96"
+                className={`bg-teal-600 hover:bg-teal-500 text-white px-2 py-1 rounded text-[0.78rem] font-medium ${baixando ? "opacity-60" : ""}`}
+              >
+                {baixando ? "Baixando..." : "Sample Info"}
               </button>
             )}
           </div>

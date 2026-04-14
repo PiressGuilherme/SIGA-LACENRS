@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='amostra',
             name='status',
-            field=models.CharField(choices=[('aguardando_triagem', 'Aguardando Triagem'), ('exame_em_analise', 'Exame em Análise'), ('aliquotada', 'Aliquotada'), ('extracao', 'Extração'), ('extraida', 'Extraída'), ('pcr', 'PCR'), ('resultado', 'Resultado'), ('resultado_liberado', 'Resultado Liberado'), ('cancelada', 'Cancelada'), ('repeticao_solicitada', 'Repetição Solicitada')], db_index=True, default='aguardando_triagem', max_length=30, verbose_name='Status'),
+            field=models.CharField(choices=[('aguardando_triagem', 'Aguardando Triagem'), ('exame_em_analise', 'Exame em Análise'), ('aliquotada', 'Aliquotada'), ('extracao', 'Extração'), ('extraida', 'Extraída'), ('pcr', 'PCR em andamento'), ('resultado', 'Resultado'), ('resultado_liberado', 'Resultado Liberado'), ('cancelada', 'Cancelada'), ('repeticao_solicitada', 'Repetição Solicitada')], db_index=True, default='aguardando_triagem', max_length=30, verbose_name='Status'),
         ),
     ]

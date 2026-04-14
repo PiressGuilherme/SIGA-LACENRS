@@ -6,7 +6,7 @@ const STATUS_BADGE = {
   aliquotada: { class: "bg-blue-600", label: "Aliquotada" },
   extracao: { class: "bg-orange-500", label: "Extração" },
   extraida: { class: "bg-violet-600", label: "Extraída" },
-  pcr: { class: "bg-red-600", label: "PCR" },
+  pcr: { class: "bg-red-600", label: "PCR em andamento" },
   resultado: { class: "bg-teal-500", label: "Resultado" },
   resultado_liberado: { class: "bg-green-600", label: "Resultado Liberado" },
   cancelada: { class: "bg-red-500", label: "Cancelada" },

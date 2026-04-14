@@ -12,6 +12,8 @@ Fluxo:
 """
 from typing import Optional
 
+from apps.resultados.parser import buscar_canal
+
 
 class MotorInterpretacao:
     """
@@ -83,7 +85,7 @@ class MotorInterpretacao:
             limiar = self._get_limiar(alvo.nome, 'CP')
             if limiar is None:
                 continue
-            cq = self._cq_min(canais.get(alvo.nome, []))
+            cq = self._cq_min(buscar_canal(canais, alvo.nome, []))
             ok = self._avaliar(cq, limiar)
             cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
             limiar_str = f'{limiar.ct_limiar:.2f}' if limiar.ct_limiar is not None else 'N/A'
@@ -120,7 +122,7 @@ class MotorInterpretacao:
             limiar = self._get_limiar(alvo.nome, 'CN')
             if limiar is None:
                 continue
-            cq = self._cq_min(canais.get(alvo.nome, []))
+            cq = self._cq_min(buscar_canal(canais, alvo.nome, []))
             ok = self._avaliar(cq, limiar)
             cq_str = f'{cq:.2f}' if cq is not None else 'sem amplificação'
             limiar_str = f'{limiar.ct_limiar:.2f}' if limiar.ct_limiar is not None else 'N/A'

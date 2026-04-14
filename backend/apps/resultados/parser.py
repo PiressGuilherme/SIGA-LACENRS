@@ -58,6 +58,45 @@ CQ_AMOSTRA_HPV_MAX = 40.0   # Amostra HPV: Cq ≤ 40 → positivo
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def normalizar_nome_alvo(nome: str) -> str:
+    """Normaliza nome de alvo: remove separadores (-, _, espaço) e minúsculas.
+
+    Garante que variações como 'HPV-16', 'HPV_16', 'HPV 16', 'hpv16' e 'HPV16'
+    sejam tratadas como o mesmo alvo.
+    """
+    return nome.lower().replace('-', '').replace('_', '').replace(' ', '')
+
+
+def buscar_canal(canais: dict, nome: str, default=None):
+    """Busca valor em dicionário de canais com normalização de nome.
+
+    Tenta match exato primeiro; se falhar, compara por normalização.
+    """
+    if nome in canais:
+        return canais[nome]
+    nome_norm = normalizar_nome_alvo(nome)
+    for key in canais:
+        if normalizar_nome_alvo(key) == nome_norm:
+            return canais[key]
+    return default
+
+
+def resolver_canal(target: str) -> Optional[str]:
+    """Resolve nome de target do instrumento para canal canônico.
+
+    Tenta match exato em TARGET_CANAL_MAP; se falhar, usa normalização
+    para tolerar variações de maiúsculas, espaços e separadores.
+    """
+    canal = TARGET_CANAL_MAP.get(target)
+    if canal is not None:
+        return canal
+    norm = normalizar_nome_alvo(target)
+    for key, value in TARGET_CANAL_MAP.items():
+        if normalizar_nome_alvo(key) == norm:
+            return value
+    return None
+
+
 def _safe_cq(val: str) -> Optional[float]:
     """Converte string de Cq para float; retorna None se NaN ou inválido."""
     if not val or val.strip().upper() == 'NAN':
@@ -151,7 +190,7 @@ def parse_cfx_csv(content: bytes, filename: str = '') -> dict:
         sample  = row[col_idx['Sample']].strip()
         cq_raw  = row[col_idx['Cq']].strip()
 
-        canal = TARGET_CANAL_MAP.get(target)
+        canal = resolver_canal(target)
         if canal is None:
             continue  # canal não reconhecido — ignora
 

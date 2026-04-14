@@ -486,9 +486,32 @@ export default function MontarPCR({
         body: { numero_cracha: operador?.numero_cracha },
       });
       setPlaca(data);
+
+      // Baixar planilha Sample Info para o Amplio® 96
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(`/api/placas/${placa.id}/sample-info/`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${data.codigo}_sample_info.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      } catch {
+        // Download falhou silenciosamente — não bloqueia o fluxo
+      }
+
       setFeedback({
         tipo: "sucesso",
-        msg: `Placa ${data.codigo} enviada ao termociclador.`,
+        msg: `Placa ${data.codigo} enviada ao termociclador. Planilha Sample Info baixada.`,
       });
     } catch (err) {
       setFeedback({

@@ -401,7 +401,7 @@ export default function RevisarResultados({}) {
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.CSV"
+              accept=".csv,.CSV,.xlsx,.XLSX"
               onChange={(e) => setArquivo(e.target.files[0] || null)}
               className="text-sm flex-1 min-w-fit"
             />

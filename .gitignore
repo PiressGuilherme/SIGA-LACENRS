@@ -4,8 +4,11 @@
 .env.prod
 *.env.local
 
-# Arquivos CSV locais (podem conter dados sensíveis de pacientes)
+# Arquivos CSV/XLSX locais (podem conter dados sensíveis de pacientes)
 *.csv
+*.xlsx
+# Template do Amplio® 96 — necessário para o app gerar Sample Info
+!backend/apps/placas/96_sample_info_template.xlsx
 
 # Python
 __pycache__/

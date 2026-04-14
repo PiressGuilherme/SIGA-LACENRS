@@ -19,8 +19,10 @@ User = get_user_model()
 from .parser import (
     parse_cfx_csv, validar_cp, validar_cn,
     classificar_canal, calcular_resultado_final,
+    buscar_canal,
     _CANAIS,
 )
+from .parser_amplio import parse_amplio_xlsx
 from .serializers import (
     ResultadoAmostraSerializer,
     ResultadoAmostraDetalheSerializer,
@@ -129,10 +131,14 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Parser
+        # Parser — detecta o formato pelo nome do arquivo
         content = arquivo.read()
+        nome_arquivo = arquivo.name.lower()
         try:
-            parsed = parse_cfx_csv(content, arquivo.name)
+            if nome_arquivo.endswith('.xlsx'):
+                parsed = parse_amplio_xlsx(content, arquivo.name)
+            else:
+                parsed = parse_cfx_csv(content, arquivo.name)
         except ValueError as exc:
             return Response({'erro': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -239,7 +245,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
 
             if motor:
                 for alvo in motor.canais_amostra:
-                    cq = dados_poco.get(alvo.nome)
+                    cq = buscar_canal(dados_poco, alvo.nome)
                     interpretacao = motor.classificar_alvo([cq], alvo.nome)
                     ResultadoPoco.objects.update_or_create(
                         poco=poco,
@@ -275,7 +281,7 @@ class ResultadoAmostraViewSet(viewsets.ReadOnlyModelViewSet):
             # Classificação por alvo
             if motor:
                 resultados_alvos = {
-                    alvo.nome: motor.classificar_alvo(canais.get(alvo.nome, []), alvo.nome)
+                    alvo.nome: motor.classificar_alvo(buscar_canal(canais, alvo.nome, []), alvo.nome)
                     for alvo in motor.canais_amostra
                 }
                 resultado = motor.interpretar_amostra(resultados_alvos, cp_ok, cn_ok)

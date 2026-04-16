@@ -102,6 +102,24 @@ class PlacaViewSet(viewsets.ModelViewSet):
             instance.delete()
 
     # ------------------------------------------------------------------
+    # Verificar código de placa (duplicata)
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=['get'], url_path='verificar-codigo')
+    def verificar_codigo(self, request):
+        """
+        GET /api/placas/verificar-codigo/?codigo=<valor>
+
+        Retorna { existe: bool } indicando se já existe uma placa com esse código.
+        Usado para feedback em tempo real no frontend ao criar placas de extração.
+        """
+        codigo = (request.query_params.get('codigo') or '').strip()
+        if not codigo:
+            return Response({'existe': False})
+        existe = Placa.objects.filter(codigo=codigo).exists()
+        return Response({'existe': existe, 'codigo': codigo})
+
+    # ------------------------------------------------------------------
     # Buscar amostra elegível
     # ------------------------------------------------------------------
 

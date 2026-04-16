@@ -92,6 +92,22 @@ const gridFromPocos = (pocos) => baseGridFromPocos(pocos, { grupo: 1 });
 
 const api = (url, { csrfToken: _csrf, ...opts } = {}) => apiFetch(url, opts);
 
+// Extrai mensagem legível de um erro do DRF (aceita erros, detail ou {campo: [msg]})
+function extrairErro(err, fallback) {
+  const d = err?.data;
+  if (!d) return fallback;
+  if (Array.isArray(d.erros)) return d.erros.join("; ");
+  if (d.erros) return String(d.erros);
+  if (d.detail) return String(d.detail);
+  if (d.erro) return String(d.erro);
+  const partes = [];
+  for (const [, v] of Object.entries(d)) {
+    if (Array.isArray(v)) partes.push(...v.map(String));
+    else if (typeof v === "string") partes.push(v);
+  }
+  return partes.length ? partes.join("; ") : fallback;
+}
+
 // ================================================================
 export default function MontarPlaca({
   csrfToken,
@@ -120,6 +136,10 @@ export default function MontarPlaca({
   const [dragOver, setDragOver] = useState(null);
   const [kitsExtracao, setKitsExtracao] = useState([]);
   const [kitExtracaoId, setKitExtracaoId] = useState("");
+  // Código da placa (input do usuário ao criar placa de extração)
+  const [codigoPlaca, setCodigoPlaca] = useState("");
+  // Status da verificação: null | 'checando' | 'disponivel' | 'duplicado'
+  const [codigoStatus, setCodigoStatus] = useState(null);
 
   // Carrega kits de extração disponíveis
   useEffect(() => {
@@ -160,6 +180,28 @@ export default function MontarPlaca({
       onEditarDone?.();
     }
   }, [editarPlacaId]);
+
+  // Verifica duplicata do código em tempo real (debounce 400ms)
+  useEffect(() => {
+    if (!placa?.local) return;
+    const val = codigoPlaca.trim();
+    if (!val) {
+      setCodigoStatus(null);
+      return;
+    }
+    setCodigoStatus("checando");
+    const t = setTimeout(async () => {
+      try {
+        const data = await api(
+          `/api/placas/verificar-codigo/?codigo=${encodeURIComponent(val)}`,
+        );
+        setCodigoStatus(data.existe ? "duplicado" : "disponivel");
+      } catch {
+        setCodigoStatus(null);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [codigoPlaca, placa]);
 
   const isEditable =
     !!placa &&
@@ -247,6 +289,8 @@ export default function MontarPlaca({
     setFeedback(null);
     setGrupoAtivo(1);
     setTotalGrupos(1);
+    setCodigoPlaca("");
+    setCodigoStatus(null);
   }
 
   // ---- Colocar amostra ----
@@ -537,6 +581,23 @@ export default function MontarPlaca({
       });
       return;
     }
+    if (placa.local) {
+      const cod = codigoPlaca.trim();
+      if (!cod) {
+        setFeedback({
+          tipo: "erro",
+          msg: "Informe um código para a placa antes de salvar.",
+        });
+        return;
+      }
+      if (codigoStatus === "duplicado") {
+        setFeedback({
+          tipo: "erro",
+          msg: `Código "${cod}" já está em uso em outra placa.`,
+        });
+        return;
+      }
+    }
     setCarregando(true);
     setFeedback(null);
 
@@ -555,7 +616,7 @@ export default function MontarPlaca({
         placaAtual = await api("/api/placas/", {
           csrfToken,
           method: "POST",
-          body: {},
+          body: { codigo: codigoPlaca.trim(), tipo_placa: "extracao" },
         });
         setPlaca(placaAtual);
       }
@@ -574,13 +635,7 @@ export default function MontarPlaca({
         msg: `Placa ${data.codigo} salva — ${totalAmostras} amostras em extração.`,
       });
     } catch (err) {
-      const erros = err.data?.erros || err.data?.detail;
-      setFeedback({
-        tipo: "erro",
-        msg: Array.isArray(erros)
-          ? erros.join("; ")
-          : erros || "Erro ao salvar.",
-      });
+      setFeedback({ tipo: "erro", msg: extrairErro(err, "Erro ao salvar.") });
     } finally {
       setCarregando(false);
     }
@@ -595,6 +650,18 @@ export default function MontarPlaca({
       });
       return;
     }
+
+    const novoCodigo = window.prompt(
+      "Informe o código da nova placa de extração:",
+      "",
+    );
+    if (novoCodigo === null) return;
+    const cod = novoCodigo.trim();
+    if (!cod) {
+      setFeedback({ tipo: "erro", msg: "Código é obrigatório." });
+      return;
+    }
+
     setCarregando(true);
     setFeedback(null);
 
@@ -611,7 +678,7 @@ export default function MontarPlaca({
       const novaPlaca = await api("/api/placas/", {
         csrfToken,
         method: "POST",
-        body: {},
+        body: { codigo: cod, tipo_placa: "extracao" },
       });
       const bodyNova = { pocos, numero_cracha: operador?.numero_cracha };
       if (kitExtracaoId) bodyNova.kit_extracao_id = kitExtracaoId;
@@ -627,12 +694,9 @@ export default function MontarPlaca({
         msg: `Nova placa ${data.codigo} criada com ${totalAmostras} amostra${totalAmostras !== 1 ? "s" : ""}.`,
       });
     } catch (err) {
-      const erros = err.data?.erros || err.data?.detail;
       setFeedback({
         tipo: "erro",
-        msg: Array.isArray(erros)
-          ? erros.join("; ")
-          : erros || "Erro ao criar nova placa.",
+        msg: extrairErro(err, "Erro ao criar nova placa."),
       });
     } finally {
       setCarregando(false);
@@ -678,6 +742,8 @@ export default function MontarPlaca({
     setPendingDuplicate(null);
     setGrupoAtivo(1);
     setTotalGrupos(1);
+    setCodigoPlaca("");
+    setCodigoStatus(null);
   }
 
   // ================================================================
@@ -723,6 +789,43 @@ export default function MontarPlaca({
             >
               {(STATUS_PLACA[placa.status_placa] || {}).label ||
                 placa.status_display}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ---- Input de código (placa nova de extração) ---- */}
+      {placa?.local && (
+        <div className="mb-4 flex items-center gap-3 flex-wrap">
+          <label className="text-sm font-medium text-gray-700 min-w-[130px]">
+            Código da placa:
+          </label>
+          <input
+            type="text"
+            value={codigoPlaca}
+            onChange={(e) => setCodigoPlaca(e.target.value)}
+            placeholder="Ex: HPVe010426-1"
+            maxLength={20}
+            autoFocus
+            className={`px-3 py-1.5 text-sm border-2 rounded-md outline-none min-w-[220px] transition-colors ${
+              codigoStatus === "duplicado"
+                ? "border-red-500 focus:border-red-600"
+                : codigoStatus === "disponivel"
+                  ? "border-green-500 focus:border-green-600"
+                  : "border-gray-300 focus:border-blue-500"
+            }`}
+          />
+          {codigoStatus === "checando" && (
+            <span className="text-xs text-gray-500">Verificando...</span>
+          )}
+          {codigoStatus === "disponivel" && (
+            <span className="text-xs font-medium text-green-700">
+              Código disponível
+            </span>
+          )}
+          {codigoStatus === "duplicado" && (
+            <span className="text-xs font-medium text-red-700">
+              Código já está em uso
             </span>
           )}
         </div>
@@ -986,7 +1089,15 @@ export default function MontarPlaca({
               <Button
                 variant="primary"
                 onClick={salvarPlaca}
-                disabled={carregando || totalAmostras === 0 || !hasControls}
+                disabled={
+                  carregando ||
+                  totalAmostras === 0 ||
+                  !hasControls ||
+                  (placa?.local &&
+                    (!codigoPlaca.trim() ||
+                      codigoStatus === "duplicado" ||
+                      codigoStatus === "checando"))
+                }
               >
                 {carregando ? "Salvando..." : "Salvar Placa"}
               </Button>

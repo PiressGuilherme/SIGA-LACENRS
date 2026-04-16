@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -39,7 +40,7 @@ class Placa(models.Model):
     codigo = models.CharField(
         max_length=20, unique=True, blank=True,
         verbose_name='Código da Placa',
-        help_text='Gerado automaticamente: HPVe{DDMMAA}-{N} para extração (ex: HPVe010426-1) ou HPVp{DDMMAA}-{N} para PCR (ex: HPVp010426-1).',
+        help_text='Extração: informado pelo usuário ao criar a placa. PCR: gerado automaticamente no formato HPVp{DDMMAA}-{N} (ex: HPVp010426-1).',
         db_index=True,
     )
     tipo_placa = models.CharField(
@@ -96,14 +97,15 @@ class Placa(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.codigo:
-            self.codigo = self._gerar_codigo()
+            if self.tipo_placa == TipoPlaca.EXTRACAO:
+                raise ValidationError({'codigo': 'Código é obrigatório para placas de extração.'})
+            self.codigo = self._gerar_codigo_pcr()
         super().save(*args, **kwargs)
 
-    def _gerar_codigo(self):
-        """Gera código único: HPVe{DDMMAA}-{N} para extração, HPVp{DDMMAA}-{N} para PCR."""
+    def _gerar_codigo_pcr(self):
+        """Gera código único para placa PCR: HPVp{DDMMAA}-{N}."""
         agora = timezone.now()
-        tipo_letra = 'p' if self.tipo_placa == TipoPlaca.PCR else 'e'
-        prefixo = f'HPV{tipo_letra}{agora.strftime("%d%m%y")}-'
+        prefixo = f'HPVp{agora.strftime("%d%m%y")}-'
         ultimo = (
             Placa.objects.filter(codigo__startswith=prefixo)
             .order_by('-data_criacao', '-id')

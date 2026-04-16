@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Placa, Poco, TipoConteudoPoco
+from .models import Placa, Poco, TipoConteudoPoco, TipoPlaca
 
 
 class PocoSerializer(serializers.ModelSerializer):
@@ -50,9 +50,29 @@ class PlacaSerializer(serializers.ModelSerializer):
             'observacoes', 'total_amostras', 'grupos_count', 'data_criacao', 'pocos',
         )
         read_only_fields = (
-            'id', 'codigo', 'status_display', 'tipo_placa_display',
+            'id', 'status_display', 'tipo_placa_display',
             'total_amostras', 'data_criacao',
         )
+
+    def validate(self, attrs):
+        tipo = attrs.get('tipo_placa', getattr(self.instance, 'tipo_placa', TipoPlaca.EXTRACAO))
+        codigo = (attrs.get('codigo') or '').strip()
+
+        if tipo == TipoPlaca.EXTRACAO and not self.instance:
+            if not codigo:
+                raise serializers.ValidationError(
+                    {'codigo': 'Código é obrigatório para placas de extração.'}
+                )
+        if codigo:
+            qs = Placa.objects.filter(codigo=codigo)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {'codigo': 'Já existe uma placa com este código.'}
+                )
+            attrs['codigo'] = codigo
+        return attrs
 
 
 class PocoInputSerializer(serializers.Serializer):

@@ -2,7 +2,7 @@
 # SIGA-LACEN — Makefile de atalhos
 # =============================================================================
 
-.PHONY: help build up down logs shell migrate makemigrations superuser test \
+.PHONY: help build up up-dev up-prod down logs shell migrate makemigrations superuser test \
         reset-db collectstatic
 
 help:  ## Mostra esta ajuda
@@ -13,20 +13,29 @@ help:  ## Mostra esta ajuda
 # Docker
 # ---------------------------------------------------------------------------
 
-build:  ## Build das imagens Docker
-	docker compose build
+build:  ## Build das imagens Docker (dev)
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml build
 
-up:  ## Sobe os containers em foreground
-	docker compose up
+build-prod:  ## Build das imagens Docker (producao)
+	docker compose -f docker-compose.yml build
 
-up-d:  ## Sobe os containers em background
-	docker compose up -d
+up:  ## Sobe containers dev em foreground
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+up-d:  ## Sobe containers dev em background
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+up-prod:  ## Sobe containers de producao em background
+	docker compose -f docker-compose.yml up -d
 
 down:  ## Para e remove os containers
-	docker compose down
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+
+down-prod:  ## Para containers de producao
+	docker compose -f docker-compose.yml down
 
 down-v:  ## Para containers e remove volumes (APAGA O BANCO)
-	docker compose down -v
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
 
 logs:  ## Mostra logs de todos os containers
 	docker compose logs -f

@@ -73,6 +73,12 @@ class Placa(models.Model):
         default=StatusPlaca.ABERTA, verbose_name='Status da placa',
         db_index=True,
     )
+    kit_extracao = models.ForeignKey(
+        'configuracoes.KitExtracao', on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Kit de extração',
+        help_text='Kit de extração usado nesta placa (aparece no mapa de trabalho).',
+    )
     kit_interpretacao = models.ForeignKey(
         'configuracoes.KitInterpretacao', on_delete=models.SET_NULL,
         null=True, blank=True,

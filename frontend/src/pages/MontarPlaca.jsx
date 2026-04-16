@@ -118,6 +118,20 @@ export default function MontarPlaca({
   const isDraggingSelection = useRef(false);
   const lastClicked = useRef(null);
   const [dragOver, setDragOver] = useState(null);
+  const [kitsExtracao, setKitsExtracao] = useState([]);
+  const [kitExtracaoId, setKitExtracaoId] = useState("");
+
+  // Carrega kits de extração disponíveis
+  useEffect(() => {
+    api("/api/configuracoes/kits-extracao/?ativo=true")
+      .then((data) => {
+        setKitsExtracao(data.results || data);
+        // Seleciona o primeiro kit como default se houver apenas um
+        const lista = data.results || data;
+        if (lista.length === 1) setKitExtracaoId(String(lista[0].id));
+      })
+      .catch(() => {});
+  }, []);
 
   // Foco automático no input após cada scan (quando carregando volta a false)
   useEffect(() => {
@@ -212,6 +226,7 @@ export default function MontarPlaca({
         setGrupoAtivo(1);
       }
       setSelected(FILL_ORDER[0]);
+      if (data.kit_extracao) setKitExtracaoId(String(data.kit_extracao));
       setFeedback({ tipo: "sucesso", msg: `Placa ${data.codigo} carregada.` });
     } catch (err) {
       setFeedback({
@@ -545,10 +560,12 @@ export default function MontarPlaca({
         setPlaca(placaAtual);
       }
 
+      const body = { pocos, numero_cracha: operador?.numero_cracha };
+      if (kitExtracaoId) body.kit_extracao_id = kitExtracaoId;
       const data = await api(`/api/placas/${placaAtual.id}/salvar-pocos/`, {
         csrfToken,
         method: "POST",
-        body: { pocos, numero_cracha: operador?.numero_cracha },
+        body,
       });
       setPlaca(data);
       setSalva(true);
@@ -596,10 +613,12 @@ export default function MontarPlaca({
         method: "POST",
         body: {},
       });
+      const bodyNova = { pocos, numero_cracha: operador?.numero_cracha };
+      if (kitExtracaoId) bodyNova.kit_extracao_id = kitExtracaoId;
       const data = await api(`/api/placas/${novaPlaca.id}/salvar-pocos/`, {
         csrfToken,
         method: "POST",
-        body: { pocos, numero_cracha: operador?.numero_cracha },
+        body: bodyNova,
       });
       setPlaca(data);
       setSalva(true);
@@ -834,6 +853,24 @@ export default function MontarPlaca({
             </div>
           )}
 
+          {/* ---- Kit de extração ---- */}
+          {kitsExtracao.length > 0 && (
+            <div className="mb-4 flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700">Kit de extração:</label>
+              <select
+                value={kitExtracaoId}
+                onChange={(e) => { setKitExtracaoId(e.target.value); setSalva(false); }}
+                disabled={!isEditable}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Selecione --</option>
+                {kitsExtracao.map((k) => (
+                  <option key={k.id} value={k.id}>{k.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* ---- Reagentes por grupo ---- */}
           {totalReacoes > 0 && (
             <div className="mb-4">
@@ -967,11 +1004,9 @@ export default function MontarPlaca({
             {salva && placa && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-[#374151] border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:-translate-y-px transition-all duration-200 no-underline"
               >
-                Exportar PDF
+                Exportar Mapa
               </a>
             )}
             <Button variant="ghost" onClick={resetar}>

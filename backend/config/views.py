@@ -1,9 +1,21 @@
 from django.contrib.auth.decorators import login_required
+from django.db import connection
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 
 from apps.amostras.models import Amostra, StatusAmostra
 from apps.placas.models import Placa, StatusPlaca
+
+
+def health_check(request):
+    """Endpoint de saude — sem autenticacao, usado por Docker healthcheck e monitoramento."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        return JsonResponse({"status": "ok", "db": "ok"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "db": str(e)}, status=503)
 
 
 @method_decorator(login_required, name='dispatch')

@@ -1078,11 +1078,9 @@ export default function MontarPCR({
             {salva && placa && !placa.local && isEspecialista() && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-[#374151] border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:-translate-y-px transition-all duration-200 no-underline"
               >
-                Exportar PDF
+                Exportar Mapa
               </a>
             )}
             <Button variant="ghost" onClick={resetar}>

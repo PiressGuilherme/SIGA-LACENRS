@@ -13,10 +13,11 @@ from apps.resultados.urls import page_urlpatterns as resultados_pages
 from apps.gal_ws.urls import page_urlpatterns as gal_ws_pages
 from apps.configuracoes.urls import page_urlpatterns as configuracoes_pages
 from apps.usuarios.urls import api_urlpatterns as auth_api, page_urlpatterns as auth_pages
-from config.views import HomeView
+from config.views import HomeView, health_check
 
 urlpatterns = [
     path('', HomeView.as_view(), name='home'),
+    path('api/health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
 
     # Auth — login dedicado

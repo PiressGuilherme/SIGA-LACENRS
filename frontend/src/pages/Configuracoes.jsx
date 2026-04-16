@@ -665,16 +665,121 @@ function TabGalWs({ csrf }) {
   )
 }
 
+// ── Tab: Kits de Extração ────────────────────────────────────────────────────
+function TabKitsExtracao() {
+  const [kits, setKits] = useState([])
+  const [editando, setEditando] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => { carregar() }, [])
+
+  async function carregar() {
+    try {
+      const data = await apiFetch('/api/configuracoes/kits-extracao/')
+      setKits(data.results || data)
+    } catch { setMsg({ tipo: 'erro', texto: 'Erro ao carregar kits de extração.' }) }
+  }
+
+  function novo() {
+    setEditando({ id: null, nome: '', descricao: '', ativo: true })
+    setMsg(null)
+  }
+
+  function editar(k) {
+    setEditando({ ...k })
+    setMsg(null)
+  }
+
+  async function salvar(e) {
+    e.preventDefault()
+    setSalvando(true)
+    setMsg(null)
+    try {
+      const payload = { nome: editando.nome, descricao: editando.descricao, ativo: editando.ativo }
+      if (editando.id) {
+        await apiFetch(`/api/configuracoes/kits-extracao/${editando.id}/`, { method: 'PUT', body: payload })
+      } else {
+        await apiFetch('/api/configuracoes/kits-extracao/', { method: 'POST', body: payload })
+      }
+      setEditando(null)
+      carregar()
+      setMsg({ tipo: 'sucesso', texto: 'Kit salvo.' })
+    } catch (err) {
+      setMsg({ tipo: 'erro', texto: err.data?.nome?.[0] || err.data?.detail || 'Erro ao salvar.' })
+    } finally { setSalvando(false) }
+  }
+
+  async function excluir(id) {
+    if (!confirm('Excluir este kit de extração?')) return
+    try {
+      await apiFetch(`/api/configuracoes/kits-extracao/${id}/`, { method: 'DELETE' })
+      carregar()
+      setMsg({ tipo: 'sucesso', texto: 'Kit excluído.' })
+    } catch { setMsg({ tipo: 'erro', texto: 'Erro ao excluir.' }) }
+  }
+
+  if (editando) return (
+    <form onSubmit={salvar} className="space-y-4 max-w-lg">
+      <h3 className="text-lg font-bold">{editando.id ? 'Editar' : 'Novo'} Kit de Extração</h3>
+      <FeedbackBlock feedback={msg} />
+      <div>
+        <label className="block text-sm font-medium mb-1">Nome</label>
+        <input className="border rounded px-3 py-2 w-full text-sm" required value={editando.nome}
+          onChange={e => setEditando(p => ({ ...p, nome: e.target.value }))} />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Descrição</label>
+        <textarea className="border rounded px-3 py-2 w-full text-sm" rows={2} value={editando.descricao}
+          onChange={e => setEditando(p => ({ ...p, descricao: e.target.value }))} />
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={editando.ativo} onChange={e => setEditando(p => ({ ...p, ativo: e.target.checked }))} />
+        Ativo
+      </label>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</Button>
+        <Button variant="ghost" onClick={() => setEditando(null)}>Cancelar</Button>
+      </div>
+    </form>
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <h3 className="font-semibold text-lg">Kits de Extração</h3>
+        <Button size="sm" onClick={novo}>Novo Kit</Button>
+      </div>
+      <FeedbackBlock feedback={msg} />
+      {kits.length === 0 && <p className="text-gray-500 text-sm">Nenhum kit cadastrado.</p>}
+      {kits.map(k => (
+        <div key={k.id} className="flex items-center justify-between border rounded-lg px-4 py-3 bg-white">
+          <div>
+            <span className="font-medium">{k.nome}</span>
+            {!k.ativo && <span className="ml-2 text-xs text-gray-400">(inativo)</span>}
+            {k.descricao && <div className="text-xs text-gray-500">{k.descricao}</div>}
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button variant="secondary" size="sm" onClick={() => editar(k)}>Editar</Button>
+            <Button variant="danger" size="sm" onClick={() => excluir(k.id)}>Excluir</Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 const TABS = [
-  { id: 'reacoes', label: 'Reações' },
+  { id: 'kits-extracao', label: 'Kits de Extração' },
+  { id: 'reacoes', label: 'Reações PCR' },
   { id: 'kits',    label: 'Kits de Interpretação' },
   { id: 'gal-ws',  label: 'GAL WebService' },
 ]
 
 export default function Configuracoes({ csrfToken }) {
   const [operador, setOperador] = useState(() => getOperadorInicial())
-  const [aba, setAba] = useState('reacoes')
+  const [aba, setAba] = useState('kits-extracao')
 
   return (
     <div className="max-w-5xl">
@@ -685,7 +790,7 @@ export default function Configuracoes({ csrfToken }) {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-lacen-secondary mb-1">Configurações</h2>
         <p className="text-gray-500 text-sm">
-          Gerencie protocolos de reação, kits de interpretação e integração GAL.
+          Gerencie kits de extração, protocolos de reação, kits de interpretação e integração GAL.
         </p>
       </div>
 
@@ -701,6 +806,7 @@ export default function Configuracoes({ csrfToken }) {
         ))}
       </div>
 
+      {aba === 'kits-extracao' && <TabKitsExtracao />}
       {aba === 'reacoes' && <TabReacoes />}
       {aba === 'kits' && <TabKits />}
       {aba === 'gal-ws' && <TabGalWs csrf={csrfToken} />}

@@ -16,7 +16,8 @@ from apps.usuarios.permissions import IsTecnico, IsEspecialista, IsLaboratorio
 from apps.utils.auditoria import noop_ctx as _noop_ctx, resolver_operador as _resolver_operador
 from .models import Placa, Poco, StatusPlaca, TipoPlaca, TipoConteudoPoco
 from .ods_amplio import gerar_sample_info_amplio
-from .pdf import gerar_pdf_placa
+from .xlsx_extracao import gerar_xlsx_extracao
+from .xlsx_pcr import gerar_xlsx_pcr
 from .serializers import PlacaSerializer, PocoInputSerializer
 
 User = get_user_model()
@@ -273,6 +274,8 @@ class PlacaViewSet(viewsets.ModelViewSet):
 
         # Protocolo de reacao (opcional, para placas PCR)
         protocolo_id = request.data.get('protocolo_id')
+        # Kit de extração (opcional, para placas de extração)
+        kit_extracao_id = request.data.get('kit_extracao_id')
 
         with transaction.atomic(), actor_ctx:
             placa.pocos.all().delete()
@@ -286,6 +289,13 @@ class PlacaViewSet(viewsets.ModelViewSet):
                         placa=placa, grupo=1,
                         defaults={'protocolo_id': protocolo_id},
                     )
+
+            # Salvar kit de extração na placa
+            if kit_extracao_id and placa.tipo_placa == TipoPlaca.EXTRACAO:
+                from apps.configuracoes.models import KitExtracao
+                if KitExtracao.objects.filter(pk=kit_extracao_id, ativo=True).exists():
+                    placa.kit_extracao_id = kit_extracao_id
+                    placa.save(update_fields=['kit_extracao', 'atualizado_em'])
 
             if amostras_a_atualizar:
                 novo_status = (
@@ -314,9 +324,18 @@ class PlacaViewSet(viewsets.ModelViewSet):
                     {'erro': 'Exportar PDF de placa PCR é restrito ao perfil Especialista ou Supervisor.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        pdf_bytes = gerar_pdf_placa(placa, operador=request.user)
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="{placa.codigo}.pdf"'
+            xlsx_bytes = gerar_xlsx_pcr(placa, operador=request.user)
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            response = HttpResponse(xlsx_bytes, content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{placa.codigo}_mapa_pcr.xlsx"'
+            return response
+
+        # Placa de extração: preenche template XLSX e retorna para download
+        kit_nome = placa.kit_extracao.nome if placa.kit_extracao else ''
+        xlsx_bytes = gerar_xlsx_extracao(placa, operador=request.user, kit_nome=kit_nome)
+        content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response = HttpResponse(xlsx_bytes, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{placa.codigo}_mapa_extracao.xlsx"'
         return response
 
     # ------------------------------------------------------------------

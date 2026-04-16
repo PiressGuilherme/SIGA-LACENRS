@@ -119,12 +119,10 @@ function LinhaPlacaPCR({ p, csrfToken, onAtualizar, onEditar }) {
             {p.total_amostras > 0 && (
               <a
                 href={`/api/placas/${p.id}/pdf/`}
-                target="_blank"
-                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded text-[0.78rem] font-medium no-underline"
               >
-                PDF
+                Mapa
               </a>
             )}
             {p.status_placa === "aberta" && (

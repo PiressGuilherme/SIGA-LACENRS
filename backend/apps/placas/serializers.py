@@ -30,6 +30,9 @@ class PlacaSerializer(serializers.ModelSerializer):
     placa_origem_codigo = serializers.CharField(
         source='placa_origem.codigo', read_only=True, allow_null=True,
     )
+    kit_extracao_nome = serializers.CharField(
+        source='kit_extracao.nome', read_only=True, default=None,
+    )
     grupos_count = serializers.SerializerMethodField()
 
     def get_grupos_count(self, obj):
@@ -42,6 +45,7 @@ class PlacaSerializer(serializers.ModelSerializer):
             'id', 'codigo', 'tipo_placa', 'tipo_placa_display',
             'placa_origem', 'placa_origem_codigo',
             'protocolo', 'responsavel', 'responsavel_nome',
+            'kit_extracao', 'kit_extracao_nome',
             'status_placa', 'status_display',
             'observacoes', 'total_amostras', 'grupos_count', 'data_criacao', 'pocos',
         )

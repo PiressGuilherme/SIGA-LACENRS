@@ -1,9 +1,18 @@
 from rest_framework import serializers
 
 from .models import (
-    KitAlvo, KitInterpretacao, ReacaoProtocolo, ReacaoReagente,
+    KitAlvo, KitExtracao, KitInterpretacao, ReacaoProtocolo, ReacaoReagente,
     RegraInterpretacao, RegrasLimiar,
 )
+
+
+# ── Kit de Extração ──────────────────────────────────────────────────────────
+
+class KitExtracaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KitExtracao
+        fields = ['id', 'nome', 'descricao', 'ativo', 'criado_em', 'atualizado_em']
+        read_only_fields = ['criado_em', 'atualizado_em']
 
 
 # ── Reação ───────────────────────────────────────────────────────────────────

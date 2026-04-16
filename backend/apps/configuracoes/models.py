@@ -1,6 +1,27 @@
 from django.db import models
 
 
+class KitExtracao(models.Model):
+    """
+    Kit de extração de ácidos nucleicos.
+    Aparece no mapa de trabalho da placa de extração.
+    Ex: "Loccus - Extracta DNA e RNA Viral Fast"
+    """
+    nome = models.CharField(max_length=200, unique=True, verbose_name='Nome')
+    descricao = models.TextField(blank=True, verbose_name='Descrição')
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
+
+    class Meta:
+        verbose_name = 'Kit de extração'
+        verbose_name_plural = 'Kits de extração'
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+
 class ReacaoProtocolo(models.Model):
     """
     Protocolo de reacao PCR: agrupa reagentes e seus volumes por reacao.

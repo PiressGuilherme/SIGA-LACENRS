@@ -5,7 +5,7 @@
 **Sistema:** SIGA-LACEN — Sistema de Informação e Gerenciamento de Amostras  
 **Unidade:** LACEN-RS / CEVS  
 **Elaborado por:** Equipe LSG 
-**Revisão:** 00  
+**Revisão:** 02  
 
 ---
 
@@ -126,12 +126,21 @@ cd ../../..
 
 ### Passo 5 — Build e subida dos containers
 
+> **IMPORTANTE:** O repositório contém dois arquivos de composição:
+> - `docker-compose.yml` — **produção** (Gunicorn + Nginx HTTPS)
+> - `docker-compose.dev.yml` — **desenvolvimento** (runserver + Vite HMR + portas expostas)
+>
+> Em produção, **nunca** use o arquivo de dev. Use apenas `-f docker-compose.yml`.
+
 ```bash
 # Build das imagens (inclui compilação do frontend React)
-docker compose build
+docker compose -f docker-compose.yml build
 
-# Subir todos os serviços em background
-docker compose up -d
+# Subir todos os serviços em background (produção)
+docker compose -f docker-compose.yml up -d
+
+# OU, para desenvolvimento local:
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
 O `entrypoint.sh` executa automaticamente na primeira subida:
@@ -190,11 +199,11 @@ git pull origin main
 ### Passo 4 — Reconstruir e reiniciar
 
 ```bash
-# Rebuild das imagens com o novo código
-docker compose build
+# Rebuild das imagens com o novo código (produção)
+docker compose -f docker-compose.yml build
 
 # Reiniciar os containers (zero-downtime não garantido — avisar usuários)
-docker compose up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 O `entrypoint.sh` aplica automaticamente as migrations e atualiza os estáticos.
@@ -224,17 +233,33 @@ Saída esperada: todos os containers com status `Up`.
 
 Se a atualização causar falha crítica:
 
+### Opção A — Reverter o último commit (preferível)
+
 ```bash
 # Ver histórico de commits
 git log --oneline -10
 
-# Voltar para o commit anterior (substituir <HASH> pelo hash desejado)
-git checkout <HASH>
+# Reverter as mudanças do último commit (cria um novo commit de reversão)
+git revert --no-commit HEAD
+git commit -m "Rollback: reverter último deploy"
 
 # Reconstruir com a versão anterior
-docker compose build
-docker compose up -d
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d
 ```
+
+### Opção B — Voltar para commit específico (casos graves)
+
+```bash
+# Criar branch de rollback a partir do commit desejado
+git checkout -b rollback/$(date +%Y%m%d) <HASH>
+
+# Reconstruir com a versão anterior
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d
+```
+
+> **Atenção:** Nunca use `git checkout <HASH>` diretamente (sem `-b`) pois cria um estado "detached HEAD".
 
 > Se a nova versão criou migrations de banco que precisam ser revertidas:
 > ```bash
@@ -250,7 +275,7 @@ docker compose up -d
 
 ```bash
 # Via Django Admin (recomendado)
-# Acessar https://siga.lacen.local/admin/ → Usuários → Adicionar
+# Acessar https://siga.local/admin/ → Usuários → Adicionar
 # Informar: e-mail, nome completo, número do crachá, grupo de perfil
 
 # Ou via terminal
@@ -280,22 +305,63 @@ print('Senha alterada.')
 "
 ```
 
-### 6.3 Backup do banco de dados
+### 6.3 Backup automatizado
+
+O sistema possui backup automatizado via script + cron. Os backups são armazenados em `/mnt/HD/cdctserver/siga-backups/` e sincronizados para o Google Drive pelo rclone.
+
+**O que é salvo:**
+
+| Item | Formato | Frequência | Retenção |
+|------|---------|------------|----------|
+| Banco PostgreSQL | `pg_dump -Fc` (custom comprimido) | Diário 01:30 | 30 dias |
+| Media files (uploads) | `tar.gz` do volume Docker | Diário 01:30 | 30 dias |
+| Config (.env + certs) | `tar.gz` | Diário 01:30 | 30 dias |
+
+**Cron configurado:**
 
 ```bash
-# Criar dump
-docker compose exec db pg_dump -U siga_user siga_lacen > backup_$(date +%Y%m%d_%H%M).sql
+# SIGA-LACEN: backup diário às 01:30
+30 1 * * * /home/cdctserver/SIGA-LACENRS/scripts/backup.sh >> /mnt/HD/cdctserver/siga-backups/cron.log 2>&1
 
-# Restaurar dump (em caso de necessidade)
-docker compose exec -T db psql -U siga_user siga_lacen < backup_20260101_0800.sql
+# rclone sync: sincroniza HDD para Google Drive às 02:00 (inclui os backups)
+0 2 * * * /usr/bin/rclone sync --progress /mnt/HD/cdctserver gdrive:/server/ >> /home/cdctserver/rclone_sync.log 2>&1
 ```
 
-> Recomendado: agendar backup diário via cron no servidor host.
+**Backup manual (sob demanda):**
 
 ```bash
-# Exemplo de cron diário às 2h da manhã
-# Editar com: crontab -e
-0 2 * * * cd /opt/siga-lacen && docker compose exec -T db pg_dump -U siga_user siga_lacen > /backup/siga_$(date +\%Y\%m\%d).sql
+# Executar o script de backup manualmente
+/home/cdctserver/SIGA-LACENRS/scripts/backup.sh
+
+# Verificar resultado
+tail -10 /mnt/HD/cdctserver/siga-backups/backup.log
+ls -lh /mnt/HD/cdctserver/siga-backups/ | tail -5
+```
+
+**Restaurar banco de dados:**
+
+```bash
+# Listar backups disponíveis
+ls -lh /mnt/HD/cdctserver/siga-backups/db_*.dump
+
+# Restaurar (substitua a data pelo backup desejado)
+docker compose exec -T db pg_restore -U siga_user -d siga_lacen --clean --if-exists \
+    < /mnt/HD/cdctserver/siga-backups/db_YYYYMMDD_HHMM.dump
+```
+
+**Restaurar media files:**
+
+```bash
+docker run --rm \
+    -v siga-lacenrs_media_files:/data \
+    -v /mnt/HD/cdctserver/siga-backups:/backup:ro \
+    alpine sh -c "rm -rf /data/* && tar xzf /backup/media_YYYYMMDD_HHMM.tar.gz -C /data"
+```
+
+**Restaurar configuração (.env + certificados):**
+
+```bash
+tar xzf /mnt/HD/cdctserver/siga-backups/config_YYYYMMDD_HHMM.tar.gz -C /home/cdctserver/SIGA-LACENRS/
 ```
 
 ### 6.4 Ver logs de auditoria
@@ -349,13 +415,6 @@ avahi-resolve --name novo-nome.local
 
 ---
 
-```bash
-docker compose restart backend    # reinicia só o backend
-docker compose restart nginx      # reinicia só o Nginx
-```
-
----
-
 ## 7. Estrutura dos Containers em Produção
 
 ```
@@ -403,6 +462,189 @@ docker compose restart nginx      # reinicia só o Nginx
 
 ---
 
+## 9. Manutenção Docker
+
+### 9.1 Limpeza de cache e imagens
+
+O Docker acumula cache de build e imagens antigas que ocupam espaço. Executar **mensalmente**:
+
+```bash
+# Ver uso de disco do Docker
+docker system df
+
+# Limpar cache de build com mais de 7 dias
+docker builder prune --filter "until=168h" -f
+
+# Remover imagens não usadas com mais de 30 dias
+docker image prune -a --filter "until=720h" -f
+```
+
+### 9.2 Verificação de saúde dos containers
+
+```bash
+# Status de todos os containers
+docker compose ps
+
+# Verificar endpoint de saúde do backend
+curl -sk https://siga.local/api/health/
+# Resposta esperada: {"status": "ok", "db": "ok"}
+```
+
+---
+
+## 10. Monitoramento
+
+### 10.1 Espaço em disco
+
+Verificar **semanalmente**:
+
+```bash
+# Disco do sistema e HDD de backups
+df -h / /mnt/HD
+
+# Espaço usado pelo Docker
+docker system df
+
+# Tamanho dos backups
+du -sh /mnt/HD/cdctserver/siga-backups/
+```
+
+### 10.2 Logs do backend
+
+```bash
+# Erros nas últimas 24h
+docker compose logs backend --since 24h 2>&1 | grep -i "error\|traceback"
+
+# Todos os logs das últimas 24h
+docker compose logs backend --since 24h
+```
+
+### 10.3 Logs de backup
+
+```bash
+# Últimas entradas do log de backup
+tail -20 /mnt/HD/cdctserver/siga-backups/backup.log
+
+# Verificar se backups recentes existem
+ls -lh /mnt/HD/cdctserver/siga-backups/db_*.dump | tail -7
+
+# Verificar log do rclone (sync para Google Drive)
+tail -20 /home/cdctserver/rclone_sync.log
+```
+
+### 10.4 Auditoria de alterações
+
+Acessar via Django Admin: `https://siga.local/admin/auditlog/logentry/`
+
+---
+
+## 11. Atualização de Pacotes do Sistema
+
+Executar **mensalmente**, preferencialmente fora do horário de uso:
+
+```bash
+# 1. Verificar atualizações disponíveis
+sudo apt update && sudo apt list --upgradable
+
+# 2. Aplicar atualizações
+sudo apt upgrade -y
+
+# 3. Reiniciar apenas se o kernel foi atualizado
+# (verificar se apareceu "linux-image" na lista de atualizados)
+sudo reboot  # somente se necessário
+```
+
+> **Docker Engine:** Seguir o procedimento oficial em https://docs.docker.com/engine/install/ubuntu/ para atualizações do Docker.
+
+---
+
+## 12. Disaster Recovery — Recuperação Completa
+
+Procedimento para restaurar o SIGA-LACEN em um **novo servidor** a partir dos backups.
+
+### Pré-requisitos
+- Servidor Ubuntu com Docker, Git, mkcert e avahi-daemon instalados (Seção 2)
+- Acesso aos backups em `/mnt/HD/cdctserver/siga-backups/` ou no Google Drive
+
+### Passo 1 — Clonar o repositório
+
+```bash
+cd /opt
+sudo git clone https://github.com/PiressGuilherme/SIGA-LACENRS.git siga-lacen
+sudo chown -R $USER:$USER /opt/siga-lacen
+cd /opt/siga-lacen
+```
+
+### Passo 2 — Restaurar configuração
+
+```bash
+# Restaurar .env e certificados do backup mais recente
+tar xzf /mnt/HD/cdctserver/siga-backups/config_YYYYMMDD_HHMM.tar.gz -C /opt/siga-lacen/
+```
+
+### Passo 3 — Subir a stack (sem dados)
+
+```bash
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d
+```
+
+### Passo 4 — Restaurar o banco de dados
+
+```bash
+# Aguardar o banco inicializar, depois restaurar o dump
+docker compose exec -T db pg_restore -U siga_user -d siga_lacen --clean --if-exists \
+    < /mnt/HD/cdctserver/siga-backups/db_YYYYMMDD_HHMM.dump
+```
+
+### Passo 5 — Restaurar media files
+
+```bash
+docker run --rm \
+    -v siga-lacenrs_media_files:/data \
+    -v /mnt/HD/cdctserver/siga-backups:/backup:ro \
+    alpine sh -c "rm -rf /data/* && tar xzf /backup/media_YYYYMMDD_HHMM.tar.gz -C /data"
+```
+
+### Passo 6 — Verificar
+
+```bash
+docker compose ps                              # todos os containers Up
+curl -sk https://siga.local/api/health/        # {"status": "ok", "db": "ok"}
+```
+
+Acessar `https://siga.local` e fazer login para confirmar que os dados foram restaurados.
+
+---
+
+## 13. Plano de Manutenção Periódica
+
+### Diário (automatizado)
+- [x] Backup do banco, media e config às 01:30 (`scripts/backup.sh`)
+- [x] Sincronização para Google Drive às 02:00 (rclone)
+
+### Semanal (manual, ~10 min)
+- [ ] Verificar integridade dos backups (Seção 10.3)
+- [ ] Verificar espaço em disco (Seção 10.1)
+- [ ] Verificar saúde dos containers (Seção 9.2)
+- [ ] Verificar erros do backend (Seção 10.2)
+
+### Mensal (manual, ~30 min, primeira segunda-feira do mês)
+- [ ] Todas as verificações semanais
+- [ ] Limpeza Docker — cache e imagens (Seção 9.1)
+- [ ] Atualizações do sistema operacional (Seção 11)
+- [ ] Revisar audit log (Seção 10.4)
+- [ ] Verificar rclone sync (Seção 10.3)
+
+### Trimestral (manual, ~1 hora)
+- [ ] Todas as verificações mensais
+- [ ] Revisar dependências Python: `docker compose exec backend pip list --outdated`
+- [ ] Dry-run de disaster recovery (Seção 12), se possível
+- [ ] Revisar este POP para acurácia
+- [ ] Revisar contas de usuário — desativar inativos
+
+---
+
 ## Anexo A — Instalação do Certificado nos Clientes Windows
 
 Para que o browser aceite o HTTPS local sem aviso de segurança, instale o certificado raiz do mkcert em cada computador cliente:
@@ -429,4 +671,4 @@ Atribuir o grupo ao usuário via Django Admin: **Usuários → [usuário] → Gr
 
 ---
 
-*Documento gerado em 2026-04-06. Revisão 01 em 2026-04-07 — mDNS Avahi, deploy produção com Nginx. Revisão recomendada a cada nova versão major do sistema.*
+*Documento gerado em 2026-04-06. Revisão 01 em 2026-04-07 — mDNS Avahi, deploy produção com Nginx. Revisão 02 em 2026-04-16 — backup automatizado, manutenção Docker, disaster recovery, plano de manutenção periódica. Revisão recomendada a cada nova versão major do sistema.*

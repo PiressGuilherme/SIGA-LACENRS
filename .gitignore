@@ -7,8 +7,10 @@
 # Arquivos CSV/XLSX locais (podem conter dados sensíveis de pacientes)
 *.csv
 *.xlsx
-# Template do Amplio® 96 — necessário para o app gerar Sample Info
+# Templates de placas — necessários para o app gerar Sample Info e mapas
 !backend/apps/placas/96_sample_info_template.xlsx
+!backend/apps/placas/template_mapa_extracao.xlsx
+!backend/apps/placas/template_mapa_PCR.xlsx
 
 # Python
 __pycache__/

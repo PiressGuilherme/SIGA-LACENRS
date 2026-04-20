@@ -1,5 +1,7 @@
 export const ROWS = ['A','B','C','D','E','F','G','H']
 export const COLS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+// Rótulos de exibição (sem leading zero) — usados nos cabeçalhos dos grids.
+export const COL_LABELS = Array.from({ length: 12 }, (_, i) => String(i + 1))
 export const ALL_POSITIONS = ROWS.flatMap(r => COLS.map(c => r + c))
 
 // Ordem de preenchimento vertical (coluna-major): A01, B01...H01, A02, B02...
@@ -52,6 +54,75 @@ export function gridFromPocos(pocos, extraDefaults = {}) {
     }
   }
   return g
+}
+
+// Aloca amostras no grid respeitando:
+//  - primeira amostra do lote vai na LINHA A da próxima coluna cuja A esteja livre
+//    (se a coluna corrente está parcialmente preenchida, é pulada)
+//  - dentro da coluna, desce A→B→…→H pulando poços ocupados (CP/CN/amostras)
+//  - ao terminar uma coluna, avança para a próxima (não precisa de A livre após o início)
+// Retorna { grid, posicoesUsadas, erro }.
+export function alocarImport(grid, amostras) {
+  if (!amostras || amostras.length === 0) {
+    return { grid, posicoesUsadas: [], erro: null }
+  }
+
+  const vazios = grid.reduce(
+    (n, w) => n + (w.tipo_conteudo === TIPO.VAZIO ? 1 : 0),
+    0,
+  )
+  if (amostras.length > vazios) {
+    return {
+      grid,
+      posicoesUsadas: [],
+      erro: `Não cabe: ${amostras.length} amostras para ${vazios} poços livres.`,
+    }
+  }
+
+  let startCol = -1
+  for (let c = 0; c < 12; c++) {
+    if (grid[c].tipo_conteudo === TIPO.VAZIO) {
+      startCol = c
+      break
+    }
+  }
+  if (startCol === -1) {
+    return {
+      grid,
+      posicoesUsadas: [],
+      erro: 'Nenhuma coluna com linha A livre para iniciar o import.',
+    }
+  }
+
+  const novo = [...grid]
+  const posicoesUsadas = []
+  let i = 0
+  outer: for (let c = startCol; c < 12; c++) {
+    for (let r = 0; r < 8; r++) {
+      const idx = r * 12 + c
+      if (novo[idx].tipo_conteudo !== TIPO.VAZIO) continue
+      const a = amostras[i]
+      novo[idx] = {
+        ...novo[idx],
+        tipo_conteudo: TIPO.AMOSTRA,
+        amostra_id: a.amostra_id ?? null,
+        amostra_codigo: a.amostra_codigo || '',
+        tem_resultado: !!a.tem_resultado,
+      }
+      posicoesUsadas.push(ALL_POSITIONS[idx])
+      i++
+      if (i >= amostras.length) break outer
+    }
+  }
+
+  if (i < amostras.length) {
+    return {
+      grid,
+      posicoesUsadas: [],
+      erro: `Espaço insuficiente (apenas ${i} de ${amostras.length} couberam).`,
+    }
+  }
+  return { grid: novo, posicoesUsadas, erro: null }
 }
 
 // ── Temas para WellGrid (grid interativo) ────────────────────────────────────

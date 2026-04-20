@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import apiFetch from "../utils/apiFetch";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
-import { MINI_THEMES } from "../components/plates/PlateConstants";
+import { MINI_THEMES, ALL_POSITIONS, FILL_POS } from "../components/plates/PlateConstants";
 
 const STATUS_PLACA = {
   aberta: { bg: "bg-blue-600", label: "Aberta" },
@@ -24,7 +24,11 @@ function LinhaPlaca({ p, onEditar }) {
 
   const amostras = (p.pocos || [])
     .filter((w) => w.tipo_conteudo === "amostra" && w.amostra_codigo)
-    .sort((a, b) => a.posicao.localeCompare(b.posicao));
+    .sort((a, b) => {
+      const ia = ALL_POSITIONS.indexOf(a.posicao);
+      const ib = ALL_POSITIONS.indexOf(b.posicao);
+      return (FILL_POS[ia] ?? 999) - (FILL_POS[ib] ?? 999);
+    });
 
   return (
     <>
@@ -58,7 +62,7 @@ function LinhaPlaca({ p, onEditar }) {
               }}
               className="bg-blue-900 hover:bg-blue-800 text-white px-2 py-1 rounded text-[0.78rem] font-medium"
             >
-              Editar
+              Verificar
             </button>
             {p.total_amostras > 0 && (
               <a

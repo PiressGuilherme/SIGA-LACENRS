@@ -1,16 +1,24 @@
 import { ROWS, COLS, MINI_THEMES } from './PlateConstants'
 
+// Normaliza valores de tipo_conteudo vindos da API ('cp','cn') ou do grid
+// interno ('cp','cn') para as chaves usadas nos temas ('controle_positivo',
+// 'controle_negativo'). Aceita também chaves já normalizadas.
+const TIPO_ALIAS = {
+  cp: 'controle_positivo',
+  cn: 'controle_negativo',
+  controle_positivo: 'controle_positivo',
+  controle_negativo: 'controle_negativo',
+  amostra: 'amostra',
+  vazio: 'vazio',
+}
+
 /**
  * Mini grid 8×12 read-only para exibição de placas em páginas de consulta.
  *
  * Props:
- *   pocos  — array de poços da API:
- *            { posicao, tipo_conteudo, amostra_codigo, amostra_nome }
- *            tipo_conteudo esperado: 'amostra' | 'controle_positivo' | 'controle_negativo' | 'vazio'
+ *   pocos  — array de poços. tipo_conteudo aceito: 'amostra' | 'cp' | 'cn' |
+ *            'controle_positivo' | 'controle_negativo' | 'vazio'.
  *   theme  — objeto de tema (de MINI_THEMES em PlateConstants)
- *            Se omitido, usa MINI_THEMES.default
- *            theme.header: classe Tailwind para a cor dos rótulos de linha/coluna
- *            theme.rowBg:  exportado para uso externo pela LinhaPlaca pai (não usado aqui)
  */
 export default function PlacaMiniGrid({ pocos, theme = MINI_THEMES.default }) {
   const mapa = {}
@@ -43,7 +51,8 @@ export default function PlacaMiniGrid({ pocos, theme = MINI_THEMES.default }) {
               {COLS.map((col) => {
                 const pos = `${row}${col}`
                 const p = mapa[pos]
-                const tipo = p?.tipo_conteudo || 'vazio'
+                const tipoRaw = p?.tipo_conteudo || 'vazio'
+                const tipo = TIPO_ALIAS[tipoRaw] ?? 'vazio'
                 const cor = theme[tipo] ?? theme.vazio
                 const label =
                   tipo === 'amostra'

@@ -3,6 +3,16 @@
 
 {% block title %}Montar Placa — SIGA-LACEN{% endblock %}
 
+{% block extra_style %}
+/* Quando a aba "Montar Placa" está ativa, o React aplica a classe
+   .no-scroll-viewport em <body> para travar o scroll e encaixar tudo
+   na viewport. Nas demais abas, o layout volta ao comportamento normal. */
+body.no-scroll-viewport { overflow: hidden; height: 100vh; }
+body.no-scroll-viewport main { height: calc(100vh - 104px); margin-top: 0.75rem; margin-bottom: 0.75rem; overflow: hidden; display: flex; flex-direction: column; }
+body.no-scroll-viewport #plates-app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+body.no-scroll-viewport #plates-app > div { flex: 1; min-height: 0; }
+{% endblock %}
+
 {% block extra_head %}
   {% vite_hmr_client %}
   {% vite_react_refresh %}

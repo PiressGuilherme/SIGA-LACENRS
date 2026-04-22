@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Button from "../components/Button";
+import Modal from "../components/Modal";
 import apiFetch from "../utils/apiFetch";
 import FeedbackBlock from "../components/FeedbackBlock";
 import PlacaMiniGrid from "../components/plates/PlacaMiniGrid";
@@ -114,6 +115,7 @@ export default function ConfirmarExtracao({ csrfToken, operador }) {
   const [feedbackExtracao, setFeedbackExtracao] = useState(null);
   const [amostrasExtraidas, setAmostrasExtraidas] = useState([]);
   const [carregandoExtracao, setCarregandoExtracao] = useState(false);
+  const [confirmCodigo, setConfirmCodigo] = useState(null); // código pendente de confirmação
   const extracaoRef = useRef();
 
   useEffect(() => {
@@ -145,8 +147,14 @@ export default function ConfirmarExtracao({ csrfToken, operador }) {
     fetchPlacas(val);
   }
 
-  async function handleConfirmarExtracao(placaCodigo) {
-    const val = placaCodigo || codigoExtracao.trim();
+  function handleConfirmarExtracao(placaCodigo) {
+    const val = (placaCodigo || codigoExtracao).trim();
+    if (!val) return;
+    setConfirmCodigo(val);
+  }
+
+  async function executarConfirmarExtracao() {
+    const val = confirmCodigo;
     if (!val) return;
     setCarregandoExtracao(true);
     setFeedbackExtracao(null);
@@ -178,6 +186,7 @@ export default function ConfirmarExtracao({ csrfToken, operador }) {
     } finally {
       setCodigoExtracao("");
       setCarregandoExtracao(false);
+      setConfirmCodigo(null);
     }
   }
 
@@ -292,6 +301,37 @@ export default function ConfirmarExtracao({ csrfToken, operador }) {
           </div>
         )}
       </div>
+
+      {/* ---- Modal: Confirmação de extração ---- */}
+      <Modal
+        open={!!confirmCodigo}
+        onClose={() => (!carregandoExtracao ? setConfirmCodigo(null) : null)}
+        title="Confirmar Extração"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmCodigo(null)}
+              disabled={carregandoExtracao}
+            >
+              NÃO
+            </Button>
+            <Button
+              variant="primary"
+              onClick={executarConfirmarExtracao}
+              disabled={carregandoExtracao}
+            >
+              {carregandoExtracao ? "Confirmando..." : "SIM"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-gray-700">
+          Tem certeza que a seguinte placa{" "}
+          <b className="text-blue-900">{confirmCodigo}</b> foi extraída com
+          sucesso?
+        </p>
+      </Modal>
     </div>
   );
 }

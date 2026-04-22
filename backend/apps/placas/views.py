@@ -50,7 +50,7 @@ class PlacaPCRView(TemplateView):
 
 
 class PlacaViewSet(viewsets.ModelViewSet):
-    queryset = Placa.objects.prefetch_related('pocos__amostra').all()
+    queryset = Placa.objects.prefetch_related('pocos__amostra', 'placas_origem').all()
     serializer_class = PlacaSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -466,10 +466,10 @@ class PlacaViewSet(viewsets.ModelViewSet):
             # Cria nova placa PCR  # noqa: E265
             nova_placa = Placa.objects.create(
                 tipo_placa=TipoPlaca.PCR,
-                placa_origem=placa_original.placa_origem,
                 responsavel=operador,
                 observacoes=f'Replicata de {placa_original.codigo}',
             )
+            nova_placa.placas_origem.set(placa_original.placas_origem.all())
 
             # Copia todos os poços da placa original
             pocos_originais = placa_original.pocos.all()

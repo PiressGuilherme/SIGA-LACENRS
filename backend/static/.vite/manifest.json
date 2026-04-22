@@ -1,158 +1,227 @@
 {
-  "_ConsultarPlacas-L95QuFHX.js": {
-    "file": "assets/ConsultarPlacas-L95QuFHX.js",
+  "_Button-CF9-f9Zq.js": {
+    "file": "assets/Button-CF9-f9Zq.js",
+    "name": "Button",
+    "imports": [
+      "_ErrorBoundary-DCjpM8fT.js"
+    ]
+  },
+  "_ConsultarPlacas-S8i7B-L2.js": {
+    "file": "assets/ConsultarPlacas-S8i7B-L2.js",
     "name": "ConsultarPlacas",
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_NavigationButtons-aE4ZYCfS.js",
-      "_apiFetch-CLMXbKHP.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_PlacaMiniGrid-BVgKEbwj.js"
     ]
   },
-  "_ErrorBoundary-Dte5Axho.js": {
-    "file": "assets/ErrorBoundary-Dte5Axho.js",
-    "name": "ErrorBoundary"
+  "_ErrorBoundary-!~{00a}~.js": {
+    "file": "assets/ErrorBoundary-DOelojTt.css",
+    "src": "_ErrorBoundary-!~{00a}~.js"
   },
-  "_GalWs-BQDUigLc.js": {
-    "file": "assets/GalWs-BQDUigLc.js",
+  "_ErrorBoundary-DCjpM8fT.js": {
+    "file": "assets/ErrorBoundary-DCjpM8fT.js",
+    "name": "ErrorBoundary",
+    "css": [
+      "assets/ErrorBoundary-DOelojTt.css"
+    ]
+  },
+  "_FeedbackBlock-BaDwlnLj.js": {
+    "file": "assets/FeedbackBlock-BaDwlnLj.js",
+    "name": "FeedbackBlock",
+    "imports": [
+      "_ErrorBoundary-DCjpM8fT.js"
+    ]
+  },
+  "_GalWs-hf2dR2nM.js": {
+    "file": "assets/GalWs-hf2dR2nM.js",
     "name": "GalWs",
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_auth-DlbH-XT_.js",
+      "_FeedbackBlock-BaDwlnLj.js"
     ]
   },
-  "_NavigationButtons-aE4ZYCfS.js": {
-    "file": "assets/NavigationButtons-aE4ZYCfS.js",
+  "_Icon-3m9BeERw.js": {
+    "file": "assets/Icon-3m9BeERw.js",
+    "name": "Icon",
+    "imports": [
+      "_ErrorBoundary-DCjpM8fT.js"
+    ]
+  },
+  "_NavigationButtons-B51Q3SCx.js": {
+    "file": "assets/NavigationButtons-B51Q3SCx.js",
     "name": "NavigationButtons",
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_Icon-3m9BeERw.js"
     ]
   },
-  "_WellGrid-CQaHYpDX.js": {
-    "file": "assets/WellGrid-CQaHYpDX.js",
-    "name": "WellGrid",
+  "_OperatorBadge-DPnshPiD.js": {
+    "file": "assets/OperatorBadge-DPnshPiD.js",
+    "name": "OperatorBadge",
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_Button-CF9-f9Zq.js"
     ]
   },
-  "_apiFetch-CLMXbKHP.js": {
-    "file": "assets/apiFetch-CLMXbKHP.js",
+  "_PlacaMiniGrid-BVgKEbwj.js": {
+    "file": "assets/PlacaMiniGrid-BVgKEbwj.js",
+    "name": "PlacaMiniGrid",
+    "imports": [
+      "_ErrorBoundary-DCjpM8fT.js"
+    ]
+  },
+  "_StepperTabs-DBlH1ci3.js": {
+    "file": "assets/StepperTabs-DBlH1ci3.js",
+    "name": "StepperTabs",
+    "imports": [
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_PlacaMiniGrid-BVgKEbwj.js"
+    ]
+  },
+  "_apiFetch-k0lLy3Ai.js": {
+    "file": "assets/apiFetch-k0lLy3Ai.js",
     "name": "apiFetch",
     "imports": [
-      "_auth-Baz7Iblx.js"
+      "_auth-DlbH-XT_.js"
     ]
   },
-  "_auth-Baz7Iblx.js": {
-    "file": "assets/auth-Baz7Iblx.js",
+  "_auth-DlbH-XT_.js": {
+    "file": "assets/auth-DlbH-XT_.js",
     "name": "auth",
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js"
+      "_ErrorBoundary-DCjpM8fT.js"
     ]
   },
   "entries/aliquotagem.jsx": {
-    "file": "assets/aliquotagem-B6E4NUjb.js",
+    "file": "assets/aliquotagem-DGNZMfWR.js",
     "name": "aliquotagem",
     "src": "entries/aliquotagem.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_NavigationButtons-aE4ZYCfS.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_auth-DlbH-XT_.js",
+      "_NavigationButtons-B51Q3SCx.js",
+      "_Button-CF9-f9Zq.js",
+      "_OperatorBadge-DPnshPiD.js",
+      "_Icon-3m9BeERw.js"
     ]
   },
   "entries/configuracoes.jsx": {
-    "file": "assets/configuracoes-DAgOGkSd.js",
+    "file": "assets/configuracoes-C-r1deia.js",
     "name": "configuracoes",
     "src": "entries/configuracoes.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_apiFetch-CLMXbKHP.js",
-      "_GalWs-BQDUigLc.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_auth-DlbH-XT_.js",
+      "_Button-CF9-f9Zq.js",
+      "_Icon-3m9BeERw.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_GalWs-hf2dR2nM.js",
+      "_FeedbackBlock-BaDwlnLj.js"
     ]
   },
   "entries/consulta.jsx": {
-    "file": "assets/consulta-INSsfwYm.js",
+    "file": "assets/consulta-BW2mHVMc.js",
     "name": "consulta",
     "src": "entries/consulta.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_ConsultarPlacas-L95QuFHX.js",
-      "_NavigationButtons-aE4ZYCfS.js",
-      "_apiFetch-CLMXbKHP.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_ConsultarPlacas-S8i7B-L2.js",
+      "_auth-DlbH-XT_.js",
+      "_OperatorBadge-DPnshPiD.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_PlacaMiniGrid-BVgKEbwj.js",
+      "_Button-CF9-f9Zq.js"
     ]
   },
   "entries/gal_ws.jsx": {
-    "file": "assets/gal_ws-DQoBE1f1.js",
+    "file": "assets/gal_ws-DGdrOwNj.js",
     "name": "gal_ws",
     "src": "entries/gal_ws.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_GalWs-BQDUigLc.js",
-      "_auth-Baz7Iblx.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_GalWs-hf2dR2nM.js",
+      "_auth-DlbH-XT_.js",
+      "_FeedbackBlock-BaDwlnLj.js"
     ]
   },
   "entries/import.jsx": {
-    "file": "assets/import-BUGTnUL0.js",
+    "file": "assets/import-CY7IHA35.js",
     "name": "import",
     "src": "entries/import.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_apiFetch-CLMXbKHP.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_auth-DlbH-XT_.js",
+      "_OperatorBadge-DPnshPiD.js",
+      "_NavigationButtons-B51Q3SCx.js",
+      "_Icon-3m9BeERw.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_Button-CF9-f9Zq.js"
     ]
   },
   "entries/login.jsx": {
-    "file": "assets/login-CU3_s7m-.js",
+    "file": "assets/login-Dp_sQsgk.js",
     "name": "login",
     "src": "entries/login.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js"
+      "_ErrorBoundary-DCjpM8fT.js"
     ]
   },
   "entries/pcr.jsx": {
-    "file": "assets/pcr-CkJJvAaW.js",
+    "file": "assets/pcr-Boq4uWv2.js",
     "name": "pcr",
     "src": "entries/pcr.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_NavigationButtons-aE4ZYCfS.js",
-      "_apiFetch-CLMXbKHP.js",
-      "_WellGrid-CQaHYpDX.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_Button-CF9-f9Zq.js",
+      "_auth-DlbH-XT_.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_StepperTabs-DBlH1ci3.js",
+      "_PlacaMiniGrid-BVgKEbwj.js",
+      "_OperatorBadge-DPnshPiD.js",
+      "_NavigationButtons-B51Q3SCx.js",
+      "_Icon-3m9BeERw.js"
     ]
   },
   "entries/plates.jsx": {
-    "file": "assets/plates-CeVaYqaw.js",
+    "file": "assets/plates-Dosczzln.js",
     "name": "plates",
     "src": "entries/plates.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_NavigationButtons-aE4ZYCfS.js",
-      "_apiFetch-CLMXbKHP.js",
-      "_WellGrid-CQaHYpDX.js",
-      "_ConsultarPlacas-L95QuFHX.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_Button-CF9-f9Zq.js",
+      "_Icon-3m9BeERw.js",
+      "_apiFetch-k0lLy3Ai.js",
+      "_StepperTabs-DBlH1ci3.js",
+      "_PlacaMiniGrid-BVgKEbwj.js",
+      "_FeedbackBlock-BaDwlnLj.js",
+      "_ConsultarPlacas-S8i7B-L2.js",
+      "_auth-DlbH-XT_.js",
+      "_OperatorBadge-DPnshPiD.js",
+      "_NavigationButtons-B51Q3SCx.js"
     ]
   },
   "entries/resultados.jsx": {
-    "file": "assets/resultados-COgRdOvn.js",
+    "file": "assets/resultados-DloyXPNe.js",
     "name": "resultados",
     "src": "entries/resultados.jsx",
     "isEntry": true,
     "imports": [
-      "_ErrorBoundary-Dte5Axho.js",
-      "_auth-Baz7Iblx.js",
-      "_NavigationButtons-aE4ZYCfS.js",
-      "_apiFetch-CLMXbKHP.js"
+      "_ErrorBoundary-DCjpM8fT.js",
+      "_auth-DlbH-XT_.js",
+      "_NavigationButtons-B51Q3SCx.js",
+      "_Button-CF9-f9Zq.js",
+      "_Icon-3m9BeERw.js",
+      "_apiFetch-k0lLy3Ai.js"
     ]
   }
 }

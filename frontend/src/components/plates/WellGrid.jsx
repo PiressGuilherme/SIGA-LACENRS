@@ -1,4 +1,4 @@
-import { ROWS, COLS, TIPO, THEMES } from './PlateConstants'
+import { ROWS, COLS, COL_LABELS, TIPO, THEMES } from './PlateConstants'
 
 /**
  * Grid 8x12 reutilizável para MontarPlaca e MontarPCR.
@@ -93,14 +93,14 @@ export default function WellGrid({
   }
 
   return (
-    <div className="overflow-x-auto mb-6">
+    <div className="overflow-x-auto">
       <table className="border-collapse">
         <thead>
           <tr>
             <th className="w-7" />
-            {COLS.map(c => (
+            {COLS.map((c, i) => (
               <th key={c} className="text-center text-[0.75rem] text-gray-500 font-medium px-0 pb-1">
-                {c}
+                {COL_LABELS[i]}
               </th>
             ))}
           </tr>

@@ -27,9 +27,11 @@ class PlacaSerializer(serializers.ModelSerializer):
     responsavel_nome = serializers.CharField(
         source='responsavel.nome_completo', read_only=True, default=None,
     )
-    placa_origem_codigo = serializers.CharField(
-        source='placa_origem.codigo', read_only=True, allow_null=True,
+    placas_origem = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Placa.objects.all(), required=False,
     )
+    placas_origem_codigos = serializers.SerializerMethodField()
+    placa_origem_codigo = serializers.SerializerMethodField()
     kit_extracao_nome = serializers.CharField(
         source='kit_extracao.nome', read_only=True, default=None,
     )
@@ -39,11 +41,18 @@ class PlacaSerializer(serializers.ModelSerializer):
         grupos = obj.pocos.values_list('grupo', flat=True).distinct()
         return len(set(grupos))
 
+    def get_placas_origem_codigos(self, obj):
+        return list(obj.placas_origem.values_list('codigo', flat=True))
+
+    def get_placa_origem_codigo(self, obj):
+        primeira = obj.placas_origem.order_by('pk').first()
+        return primeira.codigo if primeira else None
+
     class Meta:
         model = Placa
         fields = (
             'id', 'codigo', 'tipo_placa', 'tipo_placa_display',
-            'placa_origem', 'placa_origem_codigo',
+            'placas_origem', 'placas_origem_codigos', 'placa_origem_codigo',
             'protocolo', 'responsavel', 'responsavel_nome',
             'kit_extracao', 'kit_extracao_nome',
             'status_placa', 'status_display',

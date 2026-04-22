@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MontarPlaca from "./MontarPlaca";
 import ConfirmarExtracao from "./ConfirmarExtracao";
 import ConsultarPlacas from "./ConsultarPlacas";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
 import NavigationButtons from "../components/NavigationButtons";
+import StepperTabs, { STEPPER_COLORS } from "../components/StepperTabs";
 import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
@@ -23,8 +24,15 @@ export default function PlateEditor({ csrfToken }) {
     setActiveTab("montar");
   }
 
+  const isMontar = activeTab === "montar";
+
+  useEffect(() => {
+    document.body.classList.toggle("no-scroll-viewport", isMontar);
+    return () => document.body.classList.remove("no-scroll-viewport");
+  }, [isMontar]);
+
   return (
-    <div>
+    <div className={isMontar ? "flex flex-col flex-1 min-h-0" : "flex flex-col"}>
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="Extração" />
       )}
@@ -40,26 +48,13 @@ export default function PlateEditor({ csrfToken }) {
         Placas de Extração
       </h2>
 
-      {/* ---- Abas ---- */}
-      <div className="flex border-b-2 border-gray-200 mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              px-6 py-2.5 border-none bg-none cursor-pointer -mb-0.5
-              transition-colors duration-150 text-[0.95rem]
-              ${
-                activeTab === tab.id
-                  ? "border-b-2 border-blue-900 text-blue-900 font-bold"
-                  : "border-b-2 border-transparent text-gray-500 font-normal"
-              }
-            `}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* ---- Abas em formato stepper (flechas) ---- */}
+      <StepperTabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        colors={STEPPER_COLORS.extracao}
+      />
 
       {activeTab === "montar" && (
         <MontarPlaca

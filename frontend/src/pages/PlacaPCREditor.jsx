@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MontarPCR from "./MontarPCR";
 import ConsultarPCR from "./ConsultarPCR";
 import CrachaModal from "../components/CrachaModal";
 import OperatorBadge from "../components/OperatorBadge";
 import NavigationButtons from "../components/NavigationButtons";
+import StepperTabs, { STEPPER_COLORS } from "../components/StepperTabs";
 import { getOperadorInicial } from "../utils/auth";
 
 const TABS = [
@@ -21,8 +22,15 @@ export default function PlacaPCREditor({ csrfToken }) {
     setActiveTab("montar");
   }
 
+  const isMontar = activeTab === "montar";
+
+  useEffect(() => {
+    document.body.classList.toggle("no-scroll-viewport", isMontar);
+    return () => document.body.classList.remove("no-scroll-viewport");
+  }, [isMontar]);
+
   return (
-    <div>
+    <div className={isMontar ? "flex flex-col flex-1 min-h-0" : "flex flex-col"}>
       {!operador && (
         <CrachaModal onValidado={setOperador} modulo="PCR" />
       )}
@@ -38,25 +46,12 @@ export default function PlacaPCREditor({ csrfToken }) {
         Módulo PCR
       </h2>
 
-      <div className="flex border-b-2 border-gray-200 mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              px-6 py-2.5 border-none bg-none cursor-pointer -mb-0.5
-              transition-colors duration-150 text-[0.95rem]
-              ${
-                activeTab === tab.id
-                  ? "border-b-2 border-emerald-800 text-emerald-800 font-bold"
-                  : "border-b-2 border-transparent text-gray-500 font-normal"
-              }
-            `}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <StepperTabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        colors={STEPPER_COLORS.pcr}
+      />
 
       {activeTab === "montar" && (
         <MontarPCR

@@ -48,13 +48,13 @@ class Placa(models.Model):
         default=TipoPlaca.EXTRACAO, verbose_name='Tipo de placa',
         db_index=True,
     )
-    placa_origem = models.ForeignKey(
+    placas_origem = models.ManyToManyField(
         'self',
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
+        symmetrical=False,
+        blank=True,
         related_name='placas_pcr_derivadas',
-        verbose_name='Placa de extração de origem',
-        help_text='Preenchido somente em placas PCR criadas a partir de uma extração.',
+        verbose_name='Placas de extração de origem',
+        help_text='Placas de extração usadas como base desta placa PCR (pode ser mais de uma).',
     )
     protocolo = models.CharField(max_length=50, blank=True, verbose_name='Protocolo')
     responsavel = models.ForeignKey(

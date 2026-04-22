@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Button from "../components/Button";
 import Icon from "../components/Icon";
+import Modal from "../components/Modal";
 import apiFetch from "../utils/apiFetch";
 import WellGrid from "../components/plates/WellGrid";
 import {
@@ -74,12 +75,6 @@ function wellColors(w) {
   return CTRL_COLORS[w.tipo_conteudo] || CTRL_COLORS[TIPO.VAZIO];
 }
 
-const REAGENTES = [
-  { nome: "Tampão de Lise", vol: 200 },
-  { nome: "Oligomix", vol: 5 },
-  { nome: "Enzima", vol: 0.5 },
-];
-
 const STATUS_PLACA = {
   aberta: { bg: "bg-blue-600", label: "Aberta" },
   extracao_confirmada: { bg: "bg-purple-700", label: "Extração confirmada" },
@@ -140,6 +135,10 @@ export default function MontarPlaca({
   const [codigoPlaca, setCodigoPlaca] = useState("");
   // Status da verificação: null | 'checando' | 'disponivel' | 'duplicado'
   const [codigoStatus, setCodigoStatus] = useState(null);
+  // Modal "Salvar como nova placa"
+  const [novaPlacaModalOpen, setNovaPlacaModalOpen] = useState(false);
+  const [novaPlacaCodigo, setNovaPlacaCodigo] = useState("");
+  const [novaPlacaErro, setNovaPlacaErro] = useState(null);
 
   // Carrega kits de extração disponíveis
   useEffect(() => {
@@ -215,17 +214,6 @@ export default function MontarPlaca({
   const totalCP = grid.filter((w) => w.tipo_conteudo === TIPO.CP).length;
   const totalReacoes = totalAmostras + totalCN + totalCP;
   const hasControls = totalCN > 0 && totalCP > 0;
-
-  // Contadores por grupo (para exibir reagentes por grupo)
-  const gruposAtivos = [
-    ...new Set(
-      grid.filter((w) => w.tipo_conteudo !== TIPO.VAZIO).map((w) => w.grupo),
-    ),
-  ].sort();
-  function reacoesPorGrupo(g) {
-    return grid.filter((w) => w.tipo_conteudo !== TIPO.VAZIO && w.grupo === g)
-      .length;
-  }
 
   const nextEmpty = useCallback(
     (afterGridIdx) => {
@@ -374,8 +362,8 @@ export default function MontarPlaca({
     placeSample(pendingDuplicate.amostra, pendingDuplicate.idx);
   }
 
-  function placeControl(tipo) {
-    let idx = selected;
+  function placeControl(tipo, targetIdx = null) {
+    let idx = targetIdx ?? selected;
     if (grid[idx].tipo_conteudo !== TIPO.VAZIO) idx = firstEmpty();
     if (idx === -1) return;
 
@@ -642,7 +630,7 @@ export default function MontarPlaca({
   }
 
   // ---- Salvar como nova placa (cópia / repetição) ----
-  async function salvarComoNova() {
+  function salvarComoNova() {
     if (!hasControls) {
       setFeedback({
         tipo: "erro",
@@ -650,20 +638,20 @@ export default function MontarPlaca({
       });
       return;
     }
+    setNovaPlacaCodigo("");
+    setNovaPlacaErro(null);
+    setNovaPlacaModalOpen(true);
+  }
 
-    const novoCodigo = window.prompt(
-      "Informe o código da nova placa de extração:",
-      "",
-    );
-    if (novoCodigo === null) return;
-    const cod = novoCodigo.trim();
+  async function confirmarSalvarComoNova() {
+    const cod = novaPlacaCodigo.trim();
     if (!cod) {
-      setFeedback({ tipo: "erro", msg: "Código é obrigatório." });
+      setNovaPlacaErro("Código é obrigatório.");
       return;
     }
 
     setCarregando(true);
-    setFeedback(null);
+    setNovaPlacaErro(null);
 
     const pocos = grid
       .filter((w) => w.tipo_conteudo !== TIPO.VAZIO)
@@ -689,15 +677,13 @@ export default function MontarPlaca({
       });
       setPlaca(data);
       setSalva(true);
+      setNovaPlacaModalOpen(false);
       setFeedback({
         tipo: "sucesso",
         msg: `Nova placa ${data.codigo} criada com ${totalAmostras} amostra${totalAmostras !== 1 ? "s" : ""}.`,
       });
     } catch (err) {
-      setFeedback({
-        tipo: "erro",
-        msg: extrairErro(err, "Erro ao criar nova placa."),
-      });
+      setNovaPlacaErro(extrairErro(err, "Erro ao criar nova placa."));
     } finally {
       setCarregando(false);
     }
@@ -750,7 +736,7 @@ export default function MontarPlaca({
   // Render
   // ================================================================
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* ---- Selecionar / Criar placa ---- */}
       {!placa && (
         <div className="mb-6">
@@ -770,10 +756,16 @@ export default function MontarPlaca({
 
       {/* ---- Info da placa ativa ---- */}
       {placa && (
-        <div className="flex items-center gap-4 mb-4 flex-wrap">
-          <span className="bg-blue-900 text-white px-4 py-1.5 rounded-md font-semibold text-[1rem] tracking-wider">
-            {placa.local ? "Nova Placa" : placa.codigo}
-          </span>
+        <div className="flex items-center gap-4 mb-3 flex-wrap shrink-0">
+          {placa.local ? (
+            <span className="text-blue-900 font-semibold text-[1rem] tracking-wider">
+              Nova Placa
+            </span>
+          ) : (
+            <span className="bg-blue-900 text-white px-4 py-1.5 rounded-md font-semibold text-[1rem] tracking-wider">
+              {placa.codigo}
+            </span>
+          )}
           <span className="text-gray-500 text-[0.85rem]">
             {totalAmostras} amostras | {totalCN} CN | {totalCP} CP |{" "}
             {totalReacoes} reações
@@ -794,212 +786,207 @@ export default function MontarPlaca({
         </div>
       )}
 
-      {/* ---- Input de código (placa nova de extração) ---- */}
-      {placa?.local && (
-        <div className="mb-4 flex items-center gap-3 flex-wrap">
-          <label className="text-sm font-medium text-gray-700 min-w-[130px]">
-            Código da placa:
-          </label>
-          <input
-            type="text"
-            value={codigoPlaca}
-            onChange={(e) => setCodigoPlaca(e.target.value)}
-            placeholder="Ex: HPVe010426-1"
-            maxLength={20}
-            autoFocus
-            className={`px-3 py-1.5 text-sm border-2 rounded-md outline-none min-w-[220px] transition-colors ${
-              codigoStatus === "duplicado"
-                ? "border-red-500 focus:border-red-600"
-                : codigoStatus === "disponivel"
-                  ? "border-green-500 focus:border-green-600"
-                  : "border-gray-300 focus:border-blue-500"
-            }`}
-          />
-          {codigoStatus === "checando" && (
-            <span className="text-xs text-gray-500">Verificando...</span>
-          )}
-          {codigoStatus === "disponivel" && (
-            <span className="text-xs font-medium text-green-700">
-              Código disponível
-            </span>
-          )}
-          {codigoStatus === "duplicado" && (
-            <span className="text-xs font-medium text-red-700">
-              Código já está em uso
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* ---- Feedback ---- */}
-      {feedback && (
-        <div
-          className={`px-4 py-2 rounded-md mb-4 flex items-center gap-3 flex-wrap ${
-            feedback.tipo === "sucesso"
-              ? "bg-green-100 text-green-800 border border-green-300"
-              : feedback.tipo === "erro"
-                ? "bg-red-100 text-red-800 border border-red-300"
-                : "bg-amber-100 text-amber-800 border border-amber-300"
-          }`}
-        >
-          <span>{feedback.msg}</span>
-          {pendingDuplicate && (
-            <Button variant="ghost" size="sm" onClick={forceAddDuplicate}>
-              Adicionar mesmo assim
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* ---- Aviso de controles ---- */}
-      {placa && isEditable && !hasControls && (
-        <div className="px-4 py-2 rounded-md mb-4 bg-red-100 text-red-700 border border-red-300 text-[0.85rem]">
-          A placa precisa de pelo menos um CN e um CP para ser salva.
-        </div>
-      )}
-
       {placa && (
-        <>
-          {/* ---- Scanner + modo (só para placa aberta) ---- */}
-          {isEditable && (
-            <div className="flex gap-2 mb-4 flex-wrap items-center">
-              <form
-                onSubmit={handleScan}
-                className="flex gap-2 flex-1 min-w-[280px]"
-              >
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                  placeholder={
-                    modo === TIPO.AMOSTRA
-                      ? "Escanear código da amostra..."
-                      : `Clique no poço ou Enter para ${modo === TIPO.CN ? "CN" : "CP"}`
-                  }
-                  disabled={carregando}
-                  autoComplete="off"
-                  className="flex-1 px-3 py-2 text-[1rem] border-2 border-blue-300 rounded-md outline-none focus:border-blue-500"
-                />
-                <Button type="submit" variant="secondary" disabled={carregando}>
-                  {modo === TIPO.AMOSTRA ? "Buscar" : "Inserir"}
-                </Button>
-              </form>
-
-              <div className="flex gap-1">
-                {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map((t) => {
-                  const gc = t === TIPO.AMOSTRA ? GROUP_COLORS[0] : null;
-                  const cc = t !== TIPO.AMOSTRA ? CTRL_COLORS[t] : null;
-                  const isActive = modo === t;
-                  // classe de fundo ativo: usa classes Tailwind onde possível
-                  const activeClass = gc
-                    ? `bg-blue-500 border-blue-500`
-                    : t === TIPO.CN
-                      ? `bg-amber-500 border-amber-500`
-                      : `bg-pink-500 border-pink-500`;
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setModo(t)}
-                      className={`px-3 py-2 rounded-md text-[0.8rem] font-medium transition-colors border-2 ${
-                        isActive
-                          ? `${activeClass} text-white`
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300 border-transparent"
-                      }`}
-                    >
-                      {t === TIPO.AMOSTRA ? "Amostra" : t.toUpperCase()}
-                    </button>
-                  );
-                })}
+        <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
+          {/* ==================== COLUNA ESQUERDA ==================== */}
+          <aside className="w-full xl:w-[380px] shrink-0 flex flex-col gap-3 xl:overflow-y-auto xl:pr-1">
+            {/* ---- Input de código (placa nova de extração) ---- */}
+            {placa?.local && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-gray-700">
+                  Código da placa:
+                </label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    value={codigoPlaca}
+                    onChange={(e) => setCodigoPlaca(e.target.value)}
+                    placeholder="Ex: HPVe010426-1"
+                    maxLength={20}
+                    autoFocus
+                    className={`px-3 py-1.5 text-sm border-2 rounded-md outline-none flex-1 min-w-[180px] transition-colors ${
+                      codigoStatus === "duplicado"
+                        ? "border-red-500 focus:border-red-600"
+                        : codigoStatus === "disponivel"
+                          ? "border-green-500 focus:border-green-600"
+                          : "border-gray-300 focus:border-blue-500"
+                    }`}
+                  />
+                  {codigoStatus === "checando" && (
+                    <span className="text-xs text-gray-500">Verificando...</span>
+                  )}
+                  {codigoStatus === "disponivel" && (
+                    <span className="text-xs font-medium text-green-700">
+                      Disponível
+                    </span>
+                  )}
+                  {codigoStatus === "duplicado" && (
+                    <span className="text-xs font-medium text-red-700">
+                      Em uso
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ---- Barra de grupos ---- */}
-          {isEditable && (
-            <div className="flex gap-1 mb-4 flex-wrap items-center">
-              {Array.from({ length: totalGrupos }, (_, i) => i + 1).map((g) => {
-                const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length];
-                const isAtivo = g === grupoAtivo;
-                const hasNext = g === totalGrupos && totalGrupos > 1;
-                return (
-                  <div key={g} className="flex items-center">
-                    <button
-                      onClick={() => setGrupoAtivo(g)}
-                      className={`px-3 py-1.5 text-[0.82rem] border-2 cursor-pointer font-medium transition-colors
-                        ${hasNext ? "rounded-l-md" : "rounded-md"}
-                        ${
-                          isAtivo
-                            ? `${gc.bgActive} ${gc.border} text-white font-bold`
-                            : `bg-gray-50 ${gc.text} ${gc.border}`
-                        }`}
-                    >
-                      Grupo {g}
-                    </button>
-                    {g > 1 && (
-                      <button
-                        onClick={() => removerGrupo(g)}
-                        title={`Remover Grupo ${g}`}
-                        className={`px-2 py-1.5 text-[0.75rem] border-2 border-l-0 rounded-r-md cursor-pointer font-bold transition-colors
-                          ${
-                            isAtivo
-                              ? `${gc.bgActive} ${gc.border} text-white`
-                              : `bg-gray-50 text-gray-400 ${gc.border}`
-                          }`}
-                      >
-                        <Icon name="close" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ---- Kit de extração ---- */}
-          {kitsExtracao.length > 0 && (
-            <div className="mb-4 flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700">Kit de extração:</label>
-              <select
-                value={kitExtracaoId}
-                onChange={(e) => { setKitExtracaoId(e.target.value); setSalva(false); }}
-                disabled={!isEditable}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            {/* ---- Feedback ---- */}
+            {feedback && (
+              <div
+                className={`px-3 py-2 rounded-md flex items-center gap-2 flex-wrap text-sm ${
+                  feedback.tipo === "sucesso"
+                    ? "bg-green-100 text-green-800 border border-green-300"
+                    : feedback.tipo === "erro"
+                      ? "bg-red-100 text-red-800 border border-red-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                }`}
               >
-                <option value="">-- Selecione --</option>
-                {kitsExtracao.map((k) => (
-                  <option key={k.id} value={k.id}>{k.nome}</option>
-                ))}
-              </select>
-            </div>
-          )}
+                <span>{feedback.msg}</span>
+                {pendingDuplicate && (
+                  <Button variant="ghost" size="sm" onClick={forceAddDuplicate}>
+                    Adicionar mesmo assim
+                  </Button>
+                )}
+              </div>
+            )}
 
-          {/* ---- Reagentes por grupo ---- */}
-          {totalReacoes > 0 && (
-            <div className="mb-4">
-              {(gruposAtivos.length > 0 ? gruposAtivos : [1]).map((g) => {
-                const rg = reacoesPorGrupo(g);
-                const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length];
-                return (
-                  <div
-                    key={g}
-                    className={`flex gap-6 px-4 py-2 ${gc.bg} ${gc.text} border ${gc.border} rounded-md text-[0.85rem] flex-wrap mb-1`}
-                  >
-                    {gruposAtivos.length > 1 && (
-                      <span className="font-bold min-w-[60px]">Grupo {g}:</span>
-                    )}
-                    {REAGENTES.map((r) => (
-                      <span key={r.nome}>
-                        <b>{r.nome}:</b> {(rg * r.vol).toFixed(1)} uL ({r.vol} ×{" "}
-                        {rg})
-                      </span>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+            {/* ---- Aviso de controles ---- */}
+            {isEditable && !hasControls && (
+              <div className="px-3 py-2 rounded-md bg-red-100 text-red-700 border border-red-300 text-[0.85rem]">
+                A placa precisa de pelo menos um CN e um CP para ser salva.
+              </div>
+            )}
 
+            {/* ---- Scanner + modo (só para placa aberta) ---- */}
+            {isEditable && (
+              <div className="flex flex-col gap-2">
+                <form onSubmit={handleScan} className="flex gap-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={modo === TIPO.AMOSTRA ? codigo : ""}
+                    onChange={(e) => setCodigo(e.target.value)}
+                    placeholder={
+                      modo === TIPO.AMOSTRA
+                        ? "Escanear código da amostra..."
+                        : `Clique em um poço vazio para inserir ${modo === TIPO.CN ? "CN" : "CP"}`
+                    }
+                    disabled={carregando || modo !== TIPO.AMOSTRA}
+                    autoComplete="off"
+                    className="flex-1 min-w-0 px-3 py-2 text-[0.9rem] border-2 border-blue-300 rounded-md outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                  <Button type="submit" variant="secondary" size="sm" disabled={carregando || modo !== TIPO.AMOSTRA}>
+                    {modo === TIPO.AMOSTRA ? "Buscar" : "Inserir"}
+                  </Button>
+                </form>
+
+                <div className="flex gap-1">
+                  {[TIPO.AMOSTRA, TIPO.CN, TIPO.CP].map((t) => {
+                    const gc = t === TIPO.AMOSTRA ? GROUP_COLORS[0] : null;
+                    const isActive = modo === t;
+                    const activeClass = gc
+                      ? `bg-blue-500 border-blue-500`
+                      : t === TIPO.CN
+                        ? `bg-amber-500 border-amber-500`
+                        : `bg-pink-500 border-pink-500`;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setModo(t)}
+                        className={`flex-1 px-3 py-1.5 rounded-md text-[0.8rem] font-medium transition-colors border-2 ${
+                          isActive
+                            ? `${activeClass} text-white`
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300 border-transparent"
+                        }`}
+                      >
+                        {t === TIPO.AMOSTRA ? "Amostra" : t.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ---- Barra de grupos ---- */}
+            {isEditable && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-gray-700">Grupos:</label>
+                <div className="flex gap-1 flex-wrap items-center">
+                  {Array.from({ length: totalGrupos }, (_, i) => i + 1).map((g) => {
+                    const gc = GROUP_COLORS[(g - 1) % GROUP_COLORS.length];
+                    const isAtivo = g === grupoAtivo;
+                    const isUltimo = g === totalGrupos;
+                    return (
+                      <div key={g} className="flex items-center">
+                        <button
+                          onClick={() => setGrupoAtivo(g)}
+                          className={`px-3 py-1.5 text-[0.82rem] border-2 cursor-pointer font-medium transition-colors
+                            ${g > 1 || isUltimo ? "rounded-l-md" : "rounded-md"}
+                            ${g === 1 && !isUltimo ? "rounded-md" : ""}
+                            ${
+                              isAtivo
+                                ? `${gc.bgActive} ${gc.border} text-white font-bold`
+                                : `bg-gray-50 ${gc.text} ${gc.border}`
+                            }`}
+                        >
+                          Grupo {g}
+                        </button>
+                        {g > 1 && (
+                          <button
+                            onClick={() => removerGrupo(g)}
+                            title={`Remover Grupo ${g}`}
+                            className={`px-2 py-1.5 text-[0.75rem] border-2 border-l-0 cursor-pointer font-bold transition-colors
+                              ${isUltimo ? "" : "rounded-r-md"}
+                              ${
+                                isAtivo
+                                  ? `${gc.bgActive} ${gc.border} text-white`
+                                  : `bg-gray-50 text-gray-400 ${gc.border}`
+                              }`}
+                          >
+                            <Icon name="close" />
+                          </button>
+                        )}
+                        {isUltimo && (
+                          <button
+                            onClick={adicionarGrupo}
+                            title="Adicionar novo grupo"
+                            className={`px-2 py-1.5 text-[0.9rem] leading-none border-2 border-l-0 rounded-r-md cursor-pointer font-bold transition-colors
+                              ${
+                                isAtivo
+                                  ? `${gc.bgActive} ${gc.border} text-white`
+                                  : `bg-gray-50 text-gray-500 ${gc.border} hover:bg-gray-100`
+                              }`}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ---- Kit de extração ---- */}
+            {kitsExtracao.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-gray-700">Kit de extração:</label>
+                <select
+                  value={kitExtracaoId}
+                  onChange={(e) => { setKitExtracaoId(e.target.value); setSalva(false); }}
+                  disabled={!isEditable}
+                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- Selecione --</option>
+                  {kitsExtracao.map((k) => (
+                    <option key={k.id} value={k.id}>{k.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </aside>
+
+          {/* ==================== COLUNA DIREITA ==================== */}
+          <main className="flex-1 flex flex-col gap-3 min-w-0 items-start">
           {/* ---- Grid 8x12 ---- */}
           <WellGrid
             grid={grid}
@@ -1070,7 +1057,7 @@ export default function MontarPlaca({
                 setSelectedSet(new Set());
                 lastClicked.current = idx;
                 if (w.tipo_conteudo === TIPO.VAZIO) {
-                  if (modo !== TIPO.AMOSTRA) placeControl(modo);
+                  if (modo !== TIPO.AMOSTRA) placeControl(modo, idx);
                   else setSelected(idx);
                 } else {
                   setSelected(idx);
@@ -1084,10 +1071,11 @@ export default function MontarPlaca({
           />
 
           {/* ---- Ações ---- */}
-          <div className="flex gap-3 flex-wrap mb-8">
+          <div className="flex gap-2 flex-wrap items-center">
             {isEditable && (
               <Button
                 variant="primary"
+                size="sm"
                 onClick={salvarPlaca}
                 disabled={
                   carregando ||
@@ -1105,36 +1093,91 @@ export default function MontarPlaca({
             {placa && !placa.local && (
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={salvarComoNova}
                 disabled={carregando || totalAmostras === 0 || !hasControls}
                 title="Cria uma nova placa com os mesmos poços, sem alterar a original"
               >
-                {carregando ? "Salvando..." : "Salvar como nova placa"}
+                {carregando ? "Salvando..." : "Salvar como nova"}
               </Button>
             )}
             {salva && placa && (
               <a
                 href={`/api/placas/${placa.id}/pdf/`}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-[#374151] border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:-translate-y-px transition-all duration-200 no-underline"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-transparent text-[#374151] border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:bg-[#f3f4f6] hover:border-[#9ca3af] hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)] hover:-translate-y-px transition-all duration-200 no-underline"
               >
                 Exportar Mapa
               </a>
             )}
-            <Button variant="ghost" onClick={resetar}>
+            <Button variant="ghost" size="sm" onClick={resetar}>
               {placa ? "Fechar Placa" : "Nova Placa"}
             </Button>
             {placa && (
               <Button
-                variant="danger"
+                variant="ghost"
+                size="sm"
                 onClick={excluirPlaca}
                 disabled={carregando}
+                className="text-red-600 hover:bg-red-50 hover:border-red-400"
               >
-                Excluir Placa
+                Excluir
               </Button>
             )}
           </div>
-        </>
+          </main>
+        </div>
       )}
+
+      {/* ---- Modal: Salvar como nova placa ---- */}
+      <Modal
+        open={novaPlacaModalOpen}
+        onClose={() => (!carregando ? setNovaPlacaModalOpen(false) : null)}
+        title="Salvar como nova placa"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setNovaPlacaModalOpen(false)}
+              disabled={carregando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmarSalvarComoNova}
+              disabled={carregando || !novaPlacaCodigo.trim()}
+            >
+              {carregando ? "Salvando..." : "Salvar"}
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3 text-gray-600">
+          Informe o código da nova placa de extração:
+        </p>
+        <input
+          type="text"
+          value={novaPlacaCodigo}
+          onChange={(e) => {
+            setNovaPlacaCodigo(e.target.value);
+            if (novaPlacaErro) setNovaPlacaErro(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && novaPlacaCodigo.trim() && !carregando) {
+              confirmarSalvarComoNova();
+            }
+          }}
+          placeholder="Ex: HPVe010426-2"
+          maxLength={20}
+          autoFocus
+          className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-md outline-none focus:border-blue-500"
+        />
+        {novaPlacaErro && (
+          <p className="mt-2 text-xs font-medium text-red-700">
+            {novaPlacaErro}
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -12,6 +12,7 @@ from apps.placas.urls import page_urlpatterns as placas_pages
 from apps.resultados.urls import page_urlpatterns as resultados_pages
 from apps.gal_ws.urls import page_urlpatterns as gal_ws_pages
 from apps.configuracoes.urls import page_urlpatterns as configuracoes_pages
+from apps.dashboard.urls import page_urlpatterns as dashboard_pages
 from apps.usuarios.urls import api_urlpatterns as auth_api, page_urlpatterns as auth_pages
 from config.views import HomeView, health_check
 
@@ -30,6 +31,7 @@ urlpatterns = [
     path('api/resultados/', include('apps.resultados.urls')),
     path('api/gal-ws/', include('apps.gal_ws.urls')),
     path('api/configuracoes/', include('apps.configuracoes.urls')),
+    path('api/dashboard/', include('apps.dashboard.urls')),
 
     # Apps — Páginas web (Django Templates + React)
     *auth_pages,
@@ -38,6 +40,7 @@ urlpatterns = [
     *resultados_pages,
     *gal_ws_pages,
     *configuracoes_pages,
+    *dashboard_pages,
 ]
 
 if settings.DEBUG:

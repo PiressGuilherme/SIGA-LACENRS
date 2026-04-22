@@ -328,7 +328,7 @@ main { max-width: 1100px; }
 </div>
 
 <!-- Consulta -->
-<p class="section-title">Consulta</p>
+<p class="section-title">Consulta e Indicadores</p>
 <div class="cards-grid">
   <a class="card" href="{% url 'consulta-amostras-page' %}">
     <div class="card-accent" style="background:#0dcaf0"></div>
@@ -338,6 +338,16 @@ main { max-width: 1100px; }
     <div class="card-desc">
       Busca e filtra amostras por nome, CPF, CNS, código GAL ou
       código interno. Visualiza status e histórico de cada amostra.
+    </div>
+  </a>
+  <a class="card" href="{% url 'dashboard-page' %}">
+    <div class="card-accent" style="background:#6f42c1"></div>
+    <div class="card-icon">📈</div>
+    <div class="card-step">Indicadores</div>
+    <div class="card-title">Dashboard</div>
+    <div class="card-desc">
+      Recebimento de amostras, tempo médio de processamento, distribuição
+      de resultados e indicadores de qualidade por operador.
     </div>
   </a>
 </div>
